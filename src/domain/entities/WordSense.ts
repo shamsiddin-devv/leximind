@@ -1,6 +1,5 @@
 import { BadRequestError } from "../errors/BadRequestError";
 
-
 export interface IWordSenseProps {
   id?: string;
   wordId: string;
