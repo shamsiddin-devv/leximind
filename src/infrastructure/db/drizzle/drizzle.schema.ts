@@ -29,11 +29,12 @@ export const learnerProfiles = pgTable('learner_profiles', {
 
 export const words = pgTable('words', {
   id: uuid('id').defaultRandom().primaryKey(),
+  text: text().notNull(),
   cefrLevel: cefrLevels('cefr_level').notNull(),
   audioUrl: text('audio_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').$onUpdate(() => new Date())
-});
+}, (table) => [unique().on(table.cefrLevel, table.text)]);
 
 export const wordSenses = pgTable('word_senses', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -75,7 +76,7 @@ export const sessionsTasks = pgTable('session_tasks', {
   format: varchar({length: 255}).notNull(),
   orderIndex: varchar('order_index', {length: 255}).notNull(),
   completed: boolean().notNull(),
-  correct: boolean().notNull(),
+  correct: boolean(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').$onUpdate(() => new Date()),
 });
