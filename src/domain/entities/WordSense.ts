@@ -2,7 +2,7 @@ import { BadRequestError } from "../errors/BadRequestError";
 
 export interface IWordSenseProps {
   id?: string;
-  wordId: string;
+  wordId?: string;
   definition: string;
   exampleSentence: string;
   translationUz: string;
@@ -11,10 +11,6 @@ export interface IWordSenseProps {
 
 export class WordSense {
   constructor(private props: IWordSenseProps) {
-    if(!props.wordId) {
-      throw new BadRequestError('Word id is required.');
-    };
-
     if(!props.definition || props.definition.trim() === '') {
       throw new BadRequestError('Definition is required.');
     };
