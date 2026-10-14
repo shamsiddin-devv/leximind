@@ -20,7 +20,6 @@ export class CreateWordUseCase {
       sense: dto.sense
     });
     const result = await this.wordRepo.create(wordCreation);
-
     return result;
   };
 };

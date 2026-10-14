@@ -4,6 +4,7 @@ import { CreateWordUseCase } from "src/application/use-cases/word/CreateWordUseC
 import { IWordRepository } from "src/domain/repositories/IWordRepository";
 import { GetWordByIdUseCase } from "src/application/use-cases/word/GetWordByIdUseCase";
 import { SearchWordUseCase } from "src/application/use-cases/word/SearchWordUseCase";
+import { CreateManyWordsUseCase } from "src/application/use-cases/word/create-many-words/CreateManyWordsUseCase";
 
 @Module({
   imports: [],
@@ -24,6 +25,11 @@ import { SearchWordUseCase } from "src/application/use-cases/word/SearchWordUseC
     {
       provide: SearchWordUseCase,
       useFactory: (wordRepo: IWordRepository) => new SearchWordUseCase(wordRepo),
+      inject: ['IWordRepository']
+    },
+    {
+      provide: CreateManyWordsUseCase,
+      useFactory: (wordRepo: IWordRepository) => new CreateManyWordsUseCase(wordRepo),
       inject: ['IWordRepository']
     },
   ],

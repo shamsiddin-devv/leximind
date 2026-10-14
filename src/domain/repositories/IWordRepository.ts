@@ -21,5 +21,6 @@ export interface IWordRepository {
   findByText(text: string, cefrLevel: CefrLevel): Promise<Word | null>
   findAll(filters: WordFilters): Promise<WordListResult>
   create(word: Word): Promise<Word>,
+  createMany(word: Word[]): Promise<void>,
   update(id: string, word: Word): Promise<Word>
 };

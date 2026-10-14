@@ -4,27 +4,35 @@ import { GetWordByIdUseCase } from "src/application/use-cases/word/GetWordByIdUs
 import { SearchWordUseCase } from "src/application/use-cases/word/SearchWordUseCase";
 import type { CreateWordDto } from "./dto/create-word.dto";
 import type { SearchWordDto } from "./dto/search-word.dto";
+import { Word } from "src/domain/entities/Word";
+import { CreateManyWordsUseCase } from "src/application/use-cases/word/create-many-words/CreateManyWordsUseCase";
 
 @Controller('words')
 export class WordController {
   constructor(
     private readonly createWordUseCase: CreateWordUseCase,
     private readonly getWordByIdUseCase: GetWordByIdUseCase,
-    private readonly searchWordUseCase: SearchWordUseCase
+    private readonly searchWordUseCase: SearchWordUseCase,
+    private readonly createManyWordsUseCase: CreateManyWordsUseCase 
   ) {};
 
   @Get(':id')
   async getById(@Param('id') id: string) {
-    await this.getWordByIdUseCase.execute(id);
+    return this.getWordByIdUseCase.execute(id);
   };
 
   @Get()
   async searchWord(@Query() dto: SearchWordDto) {
-    await this.searchWordUseCase.execute(dto);
+    return this.searchWordUseCase.execute(dto);
+  };
+
+  @Post('bulk')
+  async createManyWords(@Body() words: Word[]) {
+    return this.createManyWordsUseCase.execute(words);
   };
 
   @Post()
   async createWord(@Body() dto: CreateWordDto) {
-    await this.createWordUseCase.execute(dto);
+    return this.createWordUseCase.execute(dto);
   };
 };
