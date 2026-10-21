@@ -3,6 +3,7 @@ import { integer, pgTable, varchar, text, timestamp, pgEnum, uuid, boolean, real
 export const cefrLevels = pgEnum('cefr_level', ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'])
 export const sessionStatus = pgEnum('session_status', ['in_progress', 'completed'])
 export const gameTypes = pgEnum('game_type', ['word_span', 'sequence_memory', 'meaning_match', 'visual_grid', 'word_rush'])
+export const cardState = pgEnum('card_state', ['NEW', 'LEARNING', 'REVIEW', 'RELEARNING']);
 
 export const users = pgTable("users", {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -54,6 +55,9 @@ export const cards = pgTable('cards', {
   difficulty: real('difficulty').notNull(),
   due: timestamp('due').notNull(),
   reps: integer('reps').notNull(),
+  state: cardState().notNull(),
+  lapses: integer().notNull(),
+  lastReviewAt: timestamp('last_review_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').$onUpdate(() => new Date()),
 }, (table) => [unique().on(table.userId, table.wordId)])

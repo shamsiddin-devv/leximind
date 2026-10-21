@@ -11,7 +11,6 @@ import { WordSense } from 'src/domain/entities/WordSense';
 import { CefrLevel, Word } from 'src/domain/entities/Word';
 import { cefrLevels, words, wordSenses } from '../db/drizzle/drizzle.schema';
 import { eq } from 'drizzle-orm';
-import { NotFoundError } from 'src/domain/errors/NotFoundError';
 
 @Injectable()
 export class DrizzleWordRepository implements IWordRepository {
