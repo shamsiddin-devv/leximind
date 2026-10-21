@@ -1,6 +1,6 @@
 import { CefrLevel } from "src/domain/entities/Word";
 
-export interface SearchWordDto {
+export interface SearchWordFilterDto {
   cefrLevel?: CefrLevel;
   search?: string;
   excludeIds?: string[];

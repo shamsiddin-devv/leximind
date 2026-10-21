@@ -3,7 +3,7 @@ import { CreateWordUseCase } from "src/application/use-cases/word/CreateWordUseC
 import { GetWordByIdUseCase } from "src/application/use-cases/word/GetWordByIdUseCase";
 import { SearchWordUseCase } from "src/application/use-cases/word/SearchWordUseCase";
 import type { CreateWordDto } from "./dto/create-word.dto";
-import type { SearchWordDto } from "./dto/search-word.dto";
+import type { SearchWordFilterDto } from "./dto/search-word-filter.dto";
 import { Word } from "src/domain/entities/Word";
 import { CreateManyWordsUseCase } from "src/application/use-cases/word/create-many-words/CreateManyWordsUseCase";
 
@@ -22,7 +22,7 @@ export class WordController {
   };
 
   @Get()
-  async searchWord(@Query() dto: SearchWordDto) {
+  async searchWord(@Query() dto: SearchWordFilterDto) {
     return this.searchWordUseCase.execute(dto);
   };
 
