@@ -1,4 +1,4 @@
-import { UpdateCardUseCaseDto } from 'src/application/dto/UpdateCardUseCaseDto';
+import { UpdateCardUseCaseDto } from 'src/application/dto/card/UpdateCardUseCaseDto';
 import { Card } from 'src/domain/entities/Card';
 import { NotFoundError } from 'src/domain/errors/NotFoundError';
 import { ICardRepository } from 'src/domain/repositories/ICardRepository';

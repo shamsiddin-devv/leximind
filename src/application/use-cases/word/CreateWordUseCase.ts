@@ -1,4 +1,4 @@
-import { CreateWordUseCaseDto } from "src/application/dto/CreateWordUseCaseDto";
+import { CreateWordUseCaseDto } from "src/application/dto/word/CreateWordUseCaseDto";
 import { Word } from "src/domain/entities/Word";
 import { ConflictError } from "src/domain/errors/ConflictError";
 import type { IWordRepository } from "src/domain/repositories/IWordRepository";

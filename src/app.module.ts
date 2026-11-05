@@ -6,6 +6,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { DomainExceptionFilter } from './presentation/filters/DomainExceptionFilter';
 import { RepositoriesModule } from './infrastructure/repositories.module';
 import { CardModule } from './presentation/modules/card/card.module';
+import { UserModule } from './presentation/modules/user/User.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CardModule } from './presentation/modules/card/card.module';
     WordModule,
     CardModule,
     RepositoriesModule,
+    UserModule
   ],
   providers: [{provide: APP_FILTER, useClass: DomainExceptionFilter}],
 })

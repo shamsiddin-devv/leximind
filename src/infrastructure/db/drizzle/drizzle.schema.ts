@@ -16,7 +16,7 @@ export const users = pgTable("users", {
 
 export const learnerProfiles = pgTable('learner_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id),
+  userId: uuid('user_id').notNull().references(() => users.id, {onDelete: 'cascade'}),
   level: cefrLevels('level').notNull(),
   timezone: text('timezone').notNull().default('UTC'),
   streakDay: integer('streak_day').notNull(),
@@ -38,7 +38,7 @@ export const words = pgTable('words', {
 
 export const wordSenses = pgTable('word_senses', {
   id: uuid('id').defaultRandom().primaryKey(),
-  wordId: uuid('word_id').notNull().references(() => words.id),
+  wordId: uuid('word_id').notNull().references(() => words.id, {onDelete: 'cascade'}),
   definition: varchar('definition', {length: 255}).notNull(),
   exampleSentence: varchar('example_sentence', {length: 255}).notNull(),
   translationUz: varchar('translation_uz', {length: 255}).notNull(),
@@ -49,8 +49,8 @@ export const wordSenses = pgTable('word_senses', {
 
 export const cards = pgTable('cards', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id),
-  wordId: uuid('word_id').notNull().references(() => words.id),
+  userId: uuid('user_id').notNull().references(() => users.id, {onDelete: 'cascade'}),
+  wordId: uuid('word_id').notNull().references(() => words.id, {onDelete: 'cascade'}),
   stability: real('stability').notNull(),
   difficulty: real('difficulty').notNull(),
   due: timestamp('due').notNull(),
@@ -64,7 +64,7 @@ export const cards = pgTable('cards', {
 
 export const sessions = pgTable('sessions', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id),
+  userId: uuid('user_id').notNull().references(() => users.id, {onDelete: 'cascade'}),
   status: varchar('status', {length: 255}).notNull(),
   startedAt: timestamp('started_at').defaultNow().notNull(),
   endedAt: timestamp('ended_at').defaultNow().notNull(),
@@ -74,8 +74,8 @@ export const sessions = pgTable('sessions', {
 
 export const sessionsTasks = pgTable('session_tasks', {
   id: uuid('id').defaultRandom().primaryKey(),
-  sessionId: uuid('session_id').notNull().references(() => sessions.id),
-  cardId: uuid('card_id').notNull().references(() => cards.id),
+  sessionId: uuid('session_id').notNull().references(() => sessions.id, {onDelete: 'cascade'}),
+  cardId: uuid('card_id').notNull().references(() => cards.id, {onDelete: 'cascade'}),
   format: varchar({length: 255}).notNull(),
   orderIndex: varchar('order_index', {length: 255}).notNull(),
   completed: boolean().notNull(),
@@ -86,7 +86,7 @@ export const sessionsTasks = pgTable('session_tasks', {
 
 export const reviewLogs = pgTable('review_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
-  cardId: uuid('card_id').notNull().references(() => cards.id),
+  cardId: uuid('card_id').notNull().references(() => cards.id, {onDelete: 'cascade'}),
   rating: varchar({length: 255}).notNull(),
   responseMs: integer('response_ms').notNull(),
   reviewedAt: timestamp('reviewed_at').notNull(),
@@ -96,7 +96,7 @@ export const reviewLogs = pgTable('review_logs', {
 
 export const assessmentResults = pgTable('assessment_result', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id),
+  userId: uuid('user_id').notNull().references(() => users.id, {onDelete: 'cascade'}),
   resultingLevel: varchar('resulting_level', {length: 255}).notNull(),
   correctCount: integer('correct_count').notNull(),
   totalQuestion: integer('total_question').notNull(),
@@ -107,7 +107,7 @@ export const assessmentResults = pgTable('assessment_result', {
 
 export const gameScores = pgTable('game_scores', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id),
+  userId: uuid('user_id').notNull().references(() => users.id, {onDelete: 'cascade'}),
   gameType: gameTypes('game_type').notNull(),
   score: integer().notNull(),
   playedAt: timestamp().notNull(),

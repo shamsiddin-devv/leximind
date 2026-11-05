@@ -1,9 +1,9 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "6c6080ff-2e50-4bb0-99ea-2786df2a696d",
+  "id": "7578e7de-357e-4f71-bdc2-e46eadea9d9c",
   "prevIds": [
-    "93947832-89ea-4094-b44d-46877de89881"
+    "6c6080ff-2e50-4bb0-99ea-2786df2a696d"
   ],
   "ddl": [
     {
@@ -1162,7 +1162,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "assessment_result_user_id_users_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1179,7 +1179,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "cards_user_id_users_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1196,7 +1196,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "cards_word_id_words_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1213,7 +1213,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "game_scores_user_id_users_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1230,7 +1230,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "learner_profiles_user_id_users_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1247,7 +1247,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "review_logs_card_id_cards_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1264,7 +1264,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "sessions_user_id_users_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1281,7 +1281,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "session_tasks_session_id_sessions_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1298,7 +1298,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "session_tasks_card_id_cards_id_fkey",
       "entityType": "fks",
       "schema": "public",
@@ -1315,7 +1315,7 @@
         "id"
       ],
       "onUpdate": "NO ACTION",
-      "onDelete": "NO ACTION",
+      "onDelete": "CASCADE",
       "name": "word_senses_word_id_words_id_fkey",
       "entityType": "fks",
       "schema": "public",

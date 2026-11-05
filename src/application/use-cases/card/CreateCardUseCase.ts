@@ -1,4 +1,4 @@
-import { CreateCardUseCaseDto } from 'src/application/dto/CreateCardUseCaseDto';
+import { CreateCardUseCaseDto } from 'src/application/dto/card/CreateCardUseCaseDto';
 import { Card } from 'src/domain/entities/Card';
 import { ConflictError } from 'src/domain/errors/ConflictError';
 import { ICardRepository } from 'src/domain/repositories/ICardRepository';
