@@ -1,134 +1,159 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { and, asc, count, eq, isNull, lte, SQL } from 'drizzle-orm';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { DRIZZLE } from '../db/drizzle/drizzle.provider';
+import { relations } from '../db/drizzle/drizzle.relations';
+import {
+  cards,
+  reviewLogs,
+  sessions,
+  sessionsTasks,
+} from '../db/drizzle/drizzle.schema';
+import { ConflictError } from '../../domain/errors/ConflictError';
+import { NotFoundError } from '../../domain/errors/NotFoundError';
 import {
   CardFilters,
-  CardResult,
   ICardRepository,
-} from 'src/domain/repositories/ICardRepository';
-import { DRIZZLE } from '../db/drizzle/drizzle.provider';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { relations } from '../db/drizzle/drizzle.relations';
-import { Card } from 'src/domain/entities/Card';
-import { and, asc, count, eq, type SQL } from 'drizzle-orm';
-import { cards } from '../db/drizzle/drizzle.schema';
-
+} from '../../domain/repositories/ICardRepository';
+import { Card } from '../../domain/entities/Card';
+export function cardFromRow(r: typeof cards.$inferSelect) {
+  return new Card({
+    id: r.id,
+    userId: r.userId,
+    wordId: r.wordId,
+    stability: r.stability,
+    difficulty: r.difficulty,
+    due: r.due,
+    reps: r.reps,
+    lapses: r.lapses,
+    state: r.state,
+    lastReviewedAt: r.lastReviewAt ?? undefined,
+    pausedAt: r.pausedAt ?? undefined,
+    createdAt: r.createdAt,
+  });
+}
+export function cardValues(c: Card) {
+  return {
+    userId: c.userId,
+    wordId: c.wordId,
+    stability: c.stability,
+    difficulty: c.difficulty,
+    due: c.due,
+    reps: c.reps,
+    lapses: c.lapses,
+    state: c.state,
+    lastReviewAt: c.lastReviewedAt ?? null,
+  };
+}
+@Injectable()
 export class DrizzleCardRepository implements ICardRepository {
   constructor(
     @Inject(DRIZZLE) private readonly db: NodePgDatabase<typeof relations>,
   ) {}
-
-  async findById(id: string): Promise<Card | null> {
-    const row = await this.db.query.cards.findFirst({
-      where: { id },
-      with: {user: true, word: true}
-    });
-    return this.toDomain(row);
+  async findById(id: string) {
+    const [r] = await this.db.select().from(cards).where(eq(cards.id, id));
+    return r ? cardFromRow(r) : null;
   }
-
-  async findByUserId(userId: string): Promise<Card | null> {
-    const row = await this.db.query.cards.findFirst({
-      where: {
-        userId
-      },
-    });
-    return this.toDomain(row);
-  };
-
-  async findUnique(userId: string, wordId: string): Promise<Card | null> {
-    const row = await this.db.query.cards.findFirst({where: {userId, wordId}});
-    return this.toDomain(row);
-  };
-
-  async findAll(filter: CardFilters): Promise<CardResult | null> {
-    const page = Math.max(filter.page ?? 1, 1);
-    const pageSize = Math.min(filter.pageSize ?? 20, 100);
-
-    const offset = (page - 1) * pageSize;
-
-    const conditions: SQL[] = [];
-
-    if (filter.userId) {
-      conditions.push(eq(cards.userId, filter.userId));
-    }
-
-    if (filter.wordId) {
-      conditions.push(eq(cards.wordId, filter.wordId));
-    }
-
-    if (filter.state) {
-      conditions.push(eq(cards.state, filter.state));
-    }
-
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
-
-    const rows = await this.db
+  async findUnique(userId: string, wordId: string) {
+    const [r] = await this.db
       .select()
       .from(cards)
-      .where(where)
-      .orderBy(asc(cards.id))
-      .limit(pageSize)
-      .offset(offset);
-
-    const [countResult] = await this.db
+      .where(and(eq(cards.userId, userId), eq(cards.wordId, wordId)));
+    return r ? cardFromRow(r) : null;
+  }
+  async findAll(f: CardFilters) {
+    const page = Math.max(f.page ?? 1, 1),
+      pageSize = Math.max(1, Math.min(f.pageSize ?? f.limit ?? 20, 100));
+    const conditions: SQL[] = [];
+    if (f.userId) conditions.push(eq(cards.userId, f.userId));
+    if (f.wordId) conditions.push(eq(cards.wordId, f.wordId));
+    if (f.state) conditions.push(eq(cards.state, f.state));
+    if (f.dueBefore)
+      conditions.push(lte(cards.due, f.dueBefore), isNull(cards.pausedAt));
+    const where = and(...conditions),
+      rows = await this.db
+        .select()
+        .from(cards)
+        .where(where)
+        .orderBy(asc(cards.due), asc(cards.id))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize);
+    const [c] = await this.db
       .select({ total: count() })
       .from(cards)
       .where(where);
-
-    const total = countResult.total;
-
     return {
-      data: rows.map((row) => this.toDomain(row)),
+      data: rows.map(cardFromRow),
       page,
-      pageSize: pageSize,
-      total,
-      totalPage: Math.ceil(total / pageSize)
+      pageSize,
+      total: c.total,
+      totalPage: Math.ceil(c.total / pageSize),
     };
-  };
-
-  async create(data: Card): Promise<Card> {
-    const row = await this.db.insert(cards).values(this.toPersistence(data)).returning();
-    return this.toDomain(row);
-  };
-
-  async createMany(data: Card[]): Promise<void> {
-    for(const item of data) {
-      const row = await this.db.insert(cards).values(this.toPersistence(item));
-    };
-  };
-
-  async update(id: string, data: Card): Promise<Card | null> {
-    const row = await this.db.update(cards).set(this.toPersistence(data)).where(eq(cards.id, id)).returning();
-    return this.toDomain(row);
-  };
-
-  private toDomain(row): Card {
-    return new Card({
-      id: row.id,
-      userId: row.userId,
-      wordId: row.userId,
-      stability: row.stability,
-      difficulty: row.difficulty,
-      due: row.due,
-      reps: row.reps,
-      lapses: row.lapses,
-      state: row.state,
-      lastReviewedAt: row.lastReviewedAt,
-      createdAt: row.createdAt,
+  }
+  async create(c: Card) {
+    const [r] = await this.db.insert(cards).values(cardValues(c)).returning();
+    return cardFromRow(r);
+  }
+  async createMany(data: Card[]) {
+    await this.db.insert(cards).values(data.map(cardValues));
+  }
+  async delete(id: string, userId: string) {
+    await this.db.transaction(async (tx) => {
+      const owned = and(eq(cards.id, id), eq(cards.userId, userId));
+      const [card] = await tx
+        .select({ id: cards.id })
+        .from(cards)
+        .where(owned)
+        .for('update');
+      if (!card) throw new NotFoundError('Card not found.');
+      const [task] = await tx
+        .select({ id: sessionsTasks.id })
+        .from(sessionsTasks)
+        .where(eq(sessionsTasks.cardId, id))
+        .limit(1);
+      const [review] = await tx
+        .select({ id: reviewLogs.id })
+        .from(reviewLogs)
+        .where(eq(reviewLogs.cardId, id))
+        .limit(1);
+      if (task || review)
+        throw new ConflictError(
+          'This card has learning history. Pause it to remove it from the study queue.',
+        );
+      await tx.delete(cards).where(owned);
     });
   }
 
-  private toPersistence(row: Card): any {
-    return {
-      id: row.id,
-      userId: row.userId,
-      wordId: row.wordId,
-      stability: row.stability,
-      difficulty: row.difficulty,
-      due: row.due,
-      reps: row.reps,
-      lapses: row.lapses,
-      state: row.state,
-      lastReviewedAt: row.lastReviewedAt,
-      createdAt: row.createdAt,
-    };
+  async setPaused(id: string, userId: string, paused: boolean) {
+    return this.db.transaction(async (tx) => {
+      const owned = and(eq(cards.id, id), eq(cards.userId, userId));
+      const [card] = await tx.select().from(cards).where(owned).for('update');
+      if (!card) throw new NotFoundError('Card not found.');
+      if (Boolean(card.pausedAt) === paused) return cardFromRow(card);
+      if (paused) {
+        const [pending] = await tx
+          .select({ id: sessionsTasks.id })
+          .from(sessionsTasks)
+          .innerJoin(sessions, eq(sessions.id, sessionsTasks.sessionId))
+          .where(
+            and(
+              eq(sessionsTasks.cardId, id),
+              eq(sessionsTasks.completed, false),
+              eq(sessions.status, 'in_progress'),
+            ),
+          )
+          .limit(1);
+        if (pending)
+          throw new ConflictError(
+            'Finish or cancel the active session before pausing this card.',
+          );
+      }
+      const [updated] = await tx
+        .update(cards)
+        .set({ pausedAt: paused ? new Date() : null })
+        .where(owned)
+        .returning();
+      return cardFromRow(updated);
+    });
   }
 }

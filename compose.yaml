@@ -1,0 +1,56 @@
+name: leximind
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: leximind
+      POSTGRES_USER: leximind
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      TZ: UTC
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U leximind -d leximind']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  migrate:
+    build: .
+    environment:
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:?Set COMPOSE_DATABASE_URL using host db}
+    command: [node, scripts/migrate.cjs]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: 'no'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  api:
+    build: .
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: ${COMPOSE_DATABASE_URL:?Set COMPOSE_DATABASE_URL using host db}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      AUTH_TTL_SECONDS: ${AUTH_TTL_SECONDS:-604800}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+    ports:
+      - '127.0.0.1:${PORT:-3000}:3000'
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 100
+    mem_limit: 512m
+    cpus: 1.0
+    stop_grace_period: 30s
+volumes:
+  postgres_data:

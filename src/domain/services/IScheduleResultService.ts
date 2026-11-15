@@ -1,4 +1,4 @@
-import { CardStateType } from "../entities/Card";
+import type { CardStateType } from '../entities/Card';
 
 export interface IScheduleResult {
   stability: number;
@@ -8,4 +8,4 @@ export interface IScheduleResult {
   lapses: number;
   state: CardStateType;
   learningSteps: number;
-};
+}

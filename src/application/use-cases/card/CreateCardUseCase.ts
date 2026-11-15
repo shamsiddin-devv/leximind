@@ -1,26 +1,12 @@
-import { CreateCardUseCaseDto } from 'src/application/dto/card/CreateCardUseCaseDto';
-import { Card } from 'src/domain/entities/Card';
-import { ConflictError } from 'src/domain/errors/ConflictError';
-import { ICardRepository } from 'src/domain/repositories/ICardRepository';
-
+import { CreateCardUseCaseDto } from '../../dto/card/CreateCardUseCaseDto';
+import { Card } from '../../../domain/entities/Card';
+import { ConflictError } from '../../../domain/errors/ConflictError';
+import { ICardRepository } from '../../../domain/repositories/ICardRepository';
 export class CreateCardUseCase {
-  constructor(private readonly cardRepo: ICardRepository) {}
-
+  constructor(private readonly repo: ICardRepository) {}
   async execute(dto: CreateCardUseCaseDto) {
-    const findCard = await this.cardRepo.findUnique(dto.userId, dto.wordId);
-    if (findCard) throw new ConflictError('Card already exists.');
-
-    const card = new Card({
-      userId: dto.userId,
-      wordId: dto.wordId,
-      difficulty: dto.difficulty,
-      stability: dto.stability,
-      due: dto.due,
-      lapses: dto.lapses,
-      reps: dto.reps,
-      state: dto.state,
-    });
-    const result = await this.cardRepo.create(card);
-    return result;
+    if (await this.repo.findUnique(dto.userId, dto.wordId))
+      throw new ConflictError('Card already exists.');
+    return this.repo.create(Card.createNew(dto.userId, dto.wordId, new Date()));
   }
 }

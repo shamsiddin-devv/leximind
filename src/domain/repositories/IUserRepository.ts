@@ -1,12 +1,19 @@
-import { User } from "../entities/User";
+import { User } from '../entities/User';
 
 export interface IUserRepository {
   findById(id: string): Promise<User | null>;
-  findByEmail(email: string): Promise<User | null>
-  findAll(): Promise<void>;
+  findByEmail(email: string): Promise<User | null>;
+  findAll(
+    page?: number,
+    limit?: number,
+  ): Promise<{ data: User[]; total: number; page: number; limit: number }>;
   findPasswordHashByUserId(id: string): Promise<string | null>;
-  updateHashPassword(id: string, hashPassword: string): Promise<void>;
-  create(data: User, passwordHash: string): Promise<User | null>;
-  update(id: string, data: User): Promise<User>;
-  delete(id: string): Promise<void>
-};
+  updateHashPassword(
+    id: string,
+    hashPassword: string,
+    expectedHash: string,
+  ): Promise<boolean>;
+  create(data: User, passwordHash: string): Promise<User>;
+  edit(id: string, change: (current: User) => void): Promise<User>;
+  delete(id: string): Promise<void>;
+}

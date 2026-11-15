@@ -1,8 +1,8 @@
-import { DomainError } from "./DomainError";
+import { DomainError } from './DomainError';
 
 export class UnauthorizedError extends DomainError {
   constructor(message: string) {
-    super(message, 401);
+    super(message, 'UNAUTHORIZED');
     this.name = 'UnauthorizedError';
-  };
-};
+  }
+}

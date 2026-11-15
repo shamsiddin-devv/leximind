@@ -1,5 +1,5 @@
-import { IReviewRating } from 'src/domain/services/IReviewRatingService';
-import { IScheduleResult } from 'src/domain/services/IScheduleResultService';
+import { IReviewRating } from '../../domain/services/IReviewRatingService';
+import { IScheduleResult } from '../../domain/services/IScheduleResultService';
 import {
   fsrs,
   Rating as FsrsRating,
@@ -8,7 +8,7 @@ import {
   type CardInput as FsrsCardInput,
 } from 'ts-fsrs';
 import { State, Card, type CardStateType } from '../../domain/entities/Card';
-import { IReviewScheduler } from 'src/domain/services/IReviewSchedulerService';
+import { IReviewScheduler } from '../../domain/services/IReviewSchedulerService';
 
 const ratingMap: Record<IReviewRating, FsrsGrade> = {
   [IReviewRating.GOOD]: FsrsRating.Good,
@@ -31,7 +31,7 @@ const stateFormFsrs: Record<FsrsState, CardStateType> = {
   [FsrsState.Review]: State.REVIEW,
 };
 
-export class TsFsrsScheduler implements IReviewScheduler  {
+export class TsFsrsScheduler implements IReviewScheduler {
   private readonly scheduler = fsrs({
     request_retention: 0.9,
     enable_fuzz: false,

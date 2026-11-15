@@ -1,9 +1,9 @@
-import { IUserRepository } from "src/domain/repositories/IUserRepository";
+import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 
 export class GetUsersUseCase {
-  constructor(private readonly userRepo: IUserRepository) {};
+  constructor(private readonly userRepo: IUserRepository) {}
 
-  async execute() {
-    return this.userRepo.findAll();
-  };
-};
+  async execute(page = 1, limit = 20) {
+    return this.userRepo.findAll(page, limit);
+  }
+}

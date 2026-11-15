@@ -1,16 +1,10 @@
-import { UpdateUserUseCaseDto } from "src/application/dto/user/UpdateUserUseCaseDto";
-import { NotFoundError } from "src/domain/errors/NotFoundError";
-import { IUserRepository } from "src/domain/repositories/IUserRepository";
+import { UpdateUserUseCaseDto } from '../../dto/user/UpdateUserUseCaseDto';
+import { IUserRepository } from '../../../domain/repositories/IUserRepository';
 
 export class UpdateUserUseCase {
-  constructor(private readonly userRepo: IUserRepository) {};
+  constructor(private readonly userRepo: IUserRepository) {}
 
-  async execute(id: string, dto: UpdateUserUseCaseDto) {
-    const findingUser = await this.userRepo.findById(id);
-    if(!findingUser) throw new NotFoundError('User not found.');
-
-    findingUser.update(dto);
-
-    await this.userRepo.update(id, findingUser);
-  };
+  execute(id: string, dto: UpdateUserUseCaseDto) {
+    return this.userRepo.edit(id, (user) => user.update(dto));
+  }
 }

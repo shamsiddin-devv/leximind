@@ -19,6 +19,7 @@ export interface ICardProps {
   lapses: number;
   state: CardStateType;
   lastReviewedAt?: Date;
+  pausedAt?: Date;
   createdAt?: Date;
 }
 
@@ -32,16 +33,22 @@ export interface ICardReviewResult {
 }
 
 export class Card {
+  get pausedAt() {
+    return this.props.pausedAt;
+  }
+
   constructor(private props: ICardProps) {
     this.validate(props);
   }
 
   private validate(props: ICardProps): void {
-    if (!props.userId.trim()) {
+    if (!Object.values(State).includes(props.state))
+      throw new BadRequestError('Invalid card state.');
+    if (typeof props.userId !== 'string' || !props.userId.trim()) {
       throw new BadRequestError('User id is required.');
     }
 
-    if (!props.wordId.trim()) {
+    if (typeof props.wordId !== 'string' || !props.wordId.trim()) {
       throw new BadRequestError('Word id is required.');
     }
 

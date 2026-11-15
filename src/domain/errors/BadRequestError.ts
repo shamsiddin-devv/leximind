@@ -1,8 +1,8 @@
-import { DomainError } from "./DomainError";
+import { DomainError } from './DomainError';
 
 export class BadRequestError extends DomainError {
   constructor(message: string) {
-    super(message, 400);
+    super(message, 'INVALID_INPUT');
     this.name = 'BadRequestError';
-  };
-};
+  }
+}

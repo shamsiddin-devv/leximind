@@ -1,7 +1,7 @@
-import { ICardRepository } from 'src/domain/repositories/ICardRepository';
+import { ICardRepository } from '../../../../domain/repositories/ICardRepository';
 import { CreateManyCardsResult } from './CreateManyCardsResult';
-import { BadRequestError } from 'src/domain/errors/BadRequestError';
-import { Card } from 'src/domain/entities/Card';
+import { BadRequestError } from '../../../../domain/errors/BadRequestError';
+import { Card } from '../../../../domain/entities/Card';
 
 export class CreateManyCardsUseCase {
   constructor(private readonly cardRepo: ICardRepository) {}

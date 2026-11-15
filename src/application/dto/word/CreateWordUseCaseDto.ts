@@ -1,9 +1,9 @@
-import { CefrLevel } from "src/domain/entities/Word";
-import { WordSense } from "src/domain/entities/WordSense";
+import type { CefrLevel } from '../../../domain/entities/Word';
 
 export interface CreateWordUseCaseDto {
   text: string;
   cefrLevel: CefrLevel;
-  sense: WordSense[];
+  sense: import('../../../domain/entities/WordSense').IWordSenseProps[];
   audioUrl?: string;
+  topic?: string;
 }
