@@ -118,15 +118,15 @@ Ovoz profil sozlamasida sukut bo‘yicha o‘chiq. `PATCH /api/profile` orqali `
 | Holat | Cue ID’lari | Yozuvlar |
 | --- | --- | --- |
 | Imlo xatosi | `bruh`, `dexter` | BRUH va Dexter |
-| So‘z yoki ketma-ketlik tartibi xato | `shocked`, `spider` | Shocked sound va Spider-Man |
+| So‘z yoki ketma-ketlik tartibi xato | `shocked`, `black-suit-spider-man` | Shocked sound va Black Suit Spider-Man |
 | Chala gap | `alert`, `galaxy` | Metal Gear alert va Galaxy |
-| Savol tashlab ketildi | `huh-cat` | HUH? Cat |
-| Boshqa noto‘g‘ri javob | `faah`, `vine-boom`, `chicken` | FAAAH, Vine Boom va chicken scream |
-| Xato so‘z to‘g‘ri topildi | `encourage` | Du bist gut genug |
+| Savol tashlab ketildi | `huh-cat`, `hub-intro-sound` | HUH? Cat va Hub Intro Sound |
+| Boshqa noto‘g‘ri javob | `faah`, `patrick-jane`, `chicken-on-tree-screaming` | FAAAH, Patrick Jane va Chicken on Tree Screaming |
+| Xato so‘z to‘g‘ri topildi | `encourage`, `romanceeeeeeeeeeeeee` | Du bist gut genug va Romance |
 
-O‘yin ovozlari Myinstants’dagi yozuvlardan yuklab olingan. Har bir yozuvning nomi, sahifasi, davomiyligi va o‘lchangan peak qiymati `assets/feedback-audio/sources.json` faylida. “Chicken free scream” uchun katalogdagi “Chicken tree scream” varianti tanlangan. “Du bist gut genug” uchun ovozli klip ishlatiladi.
+O‘yin ovozlarining nomi, ma’lum manbasi yoki import qilingan MP3 nomi, davomiyligi va o‘lchangan peak qiymati `assets/feedback-audio/sources.json` faylida.
 
-Yozuvlar mono, 48 kHz, 16-bit PCM WAV formatida. Manba yozuvlari chastota filtrlari, shovqin tahlili, mos kliplarda FFT orqali shovqin kamaytirish va qisqa fade bilan qayta ishlangan. Barcha 11 klipda past g‘uvillash diapazonining umumiy signalga nisbatan ulushi kamaygan. `sources.json` faylida filtrlar, oldingi manbaga nisbatan chastota o‘lchovlari, sample peak, true peak va SHA-256 bor. Qayta ishlash skripti `node scripts/restore-feedback-audio.cjs <ffmpeg> <mp3-katalogi> <chiqish-katalogi>`. Skript yozuvlarni qayta ishlaydi, yangi ovoz yaratmaydi.
+13 ta yozuv mono, 48 kHz, 16-bit PCM WAV formatida. Yangi beshta klipda sample peak −4 dBFS dan oshmaydi. Manifestda har bir WAV uchun SHA-256, ilgari filtrlangan kliplar uchun esa qo‘shimcha audio o‘lchovlari bor. Asl MP3 fayllar mavjud bo‘lsa, `node scripts/restore-feedback-audio.cjs <ffmpeg> <mp3-katalogi> <chiqish-katalogi>` orqali yozuvlarni qayta ishlash mumkin.
 
 Testlar format, amplituda, HTTP orqali yuklash va range javoblarini tekshiradi. Yangi URL versiyasi eskirgan keshdan foydalanishning oldini oladi. Siqilgan manbada oldindan mavjud buzilishlar to‘liq tiklanishi kafolatlanmaydi.
 
@@ -175,7 +175,7 @@ Reference documentation: [NestJS validation](https://docs.nestjs.com/techniques/
 
 ### Ishlatish va tekshirish
 
-- Readiness release ichidagi barcha SQL migratsiyalari checksum’ini bazadagi yozuv bilan solishtiradi. Ishga tushishda 11 ta audio faylning SHA-256 qiymati ham tekshiriladi. Fayl yoki migratsiya mos kelmasa `/api/health/ready` 503 qaytaradi, liveness esa jarayon holatini alohida bildiradi.
+- Readiness release ichidagi barcha SQL migratsiyalari checksum’ini bazadagi yozuv bilan solishtiradi. Ishga tushishda 13 ta faol audio faylning SHA-256 qiymati ham tekshiriladi. Fayl yoki migratsiya mos kelmasa `/api/health/ready` 503 qaytaradi, liveness esa jarayon holatini alohida bildiradi.
 - Reverse proxy ishlatilganda `TRUSTED_PROXIES`ga faqat boshqariladigan proxy IP yoki CIDR qiymatlari kiritiladi. Bo‘sh sozlamada tashqaridan berilgan `X-Forwarded-For` ishonchli hisoblanmaydi.
 - Integratsion test Swagger’da ko‘rsatilgan 61 ta API amali uchun muvaffaqiyatli HTTP javobi bo‘lishini talab qiladi. Shuningdek, ruxsatlar, bir vaqtdagi profil tahrirlari, audio range va migratsiya checksum xatolari tekshiriladi.
 - Yangi indekslarni qo‘llash uchun `npm run db:migrate` ishlatiladi. Avvalgi migratsiyalar saqlangan.

@@ -23,14 +23,16 @@ const bands = {
   faah: [70, 11500],
   shocked: [35, 13500],
   dexter: [60, 11000],
-  spider: [38, 14000],
-  chicken: [78, 10500],
+  'black-suit-spider-man': [38, 14000],
+  'chicken-on-tree-screaming': [78, 10500],
   encourage: [68, 11500],
   alert: [45, 12500],
   galaxy: [36, 11500],
   bruh: [62, 11200],
   'huh-cat': [72, 11500],
-  'vine-boom': [23, 10000],
+  'hub-intro-sound': [45, 12500],
+  'patrick-jane': [45, 12500],
+  romanceeeeeeeeeeeeee: [38, 14000],
 };
 
 function execute(args) {
@@ -178,6 +180,7 @@ for (const [id, [highpass, lowpass]] of Object.entries(bands)) {
     title: sources[id].title,
     source: sources[id].source,
     sourceAudio: sources[id].sourceAudio,
+    sourceFile: sources[id].sourceFile,
     sha256: createHash('sha256').update(readFileSync(target)).digest('hex'),
     durationSeconds: Number((samples.length / rate).toFixed(3)),
     samplePeakDbfs: round(db(after.peak)),

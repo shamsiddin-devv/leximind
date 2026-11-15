@@ -110,7 +110,7 @@ export class ChallengeUseCases {
   private sound(feedback: AnswerFeedback, index: number, recovery: boolean) {
     const id = chooseSound(feedback, index, recovery);
     return id
-      ? { id, url: '/api/feedback-audio/' + id + '.wav?v=restored-2' }
+      ? { id, url: '/api/feedback-audio/' + id + '.wav?v=3' }
       : undefined;
   }
   history(userId: string, assessment: boolean, page: number, limit: number) {

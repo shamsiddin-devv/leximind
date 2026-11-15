@@ -38,32 +38,6 @@
     "rumbleBandChangeDb": -2.7,
     "filters": ["highpass=f=60", "lowpass=f=11000"]
   },
-  "spider": {
-    "title": "spiderman meme song",
-    "source": "https://www.myinstants.com/en/instant/spiderman-meme-song-37638/",
-    "sourceAudio": "https://www.myinstants.com/media/sounds/spiderman-meme-song.mp3",
-    "sha256": "5258d33ff5b6a00ca8ea2dde2179f85fa3b3ecf7ef7c6de17cbe000756fa2111",
-    "durationSeconds": 12.4,
-    "samplePeakDbfs": -4.05,
-    "truePeakDbtp": -4,
-    "activeRmsDbfs": -19.23,
-    "highBandChangeDb": 0.96,
-    "rumbleBandChangeDb": -2.46,
-    "filters": ["highpass=f=38", "lowpass=f=14000"]
-  },
-  "chicken": {
-    "title": "Chicken tree scream",
-    "source": "https://www.myinstants.com/en/instant/chicken-tree-scream-26381/",
-    "sourceAudio": "https://www.myinstants.com/media/sounds/chicken-tree-scream_3fBuCLP.mp3",
-    "sha256": "cdb37641e507e83312ac4a847cac4d4301feb2483a9f71bf37e8410dfec80e90",
-    "durationSeconds": 11.97,
-    "samplePeakDbfs": -6.26,
-    "truePeakDbtp": -6.2,
-    "activeRmsDbfs": -19,
-    "highBandChangeDb": 0.97,
-    "rumbleBandChangeDb": -16,
-    "filters": ["highpass=f=78", "lowpass=f=10500", "afftdn=nr=6:nf=-51"]
-  },
   "encourage": {
     "title": "Du bist gut genug",
     "source": "https://www.myinstants.com/en/instant/du-bist-gut-genug-22336/",
@@ -129,17 +103,39 @@
     "rumbleBandChangeDb": -0.48,
     "filters": ["highpass=f=72", "lowpass=f=11500"]
   },
-  "vine-boom": {
-    "title": "Vine Boom (meme)",
-    "source": "https://www.myinstants.com/en/instant/vine-boom-meme-7639/",
-    "sourceAudio": "https://www.myinstants.com/media/sounds/vine-boom-meme_cCCpxZG.mp3",
-    "sha256": "c1677c33d995f7484fe86c30bb865c8674ff773568607ab6bb46b32d655c0e27",
-    "durationSeconds": 1.255,
-    "samplePeakDbfs": -9.3,
-    "truePeakDbtp": -9.3,
-    "activeRmsDbfs": -19,
-    "highBandChangeDb": -0.92,
-    "rumbleBandChangeDb": -0.9,
-    "filters": ["highpass=f=23", "lowpass=f=10000"]
+  "black-suit-spider-man": {
+    "title": "Black Suit Spider-Man",
+    "sourceFile": "black-suit-spider-man.mp3",
+    "sha256": "e059ce688bb42c9fc2799af54caefb37e1b91ddba5f05e31b867f9ee361794fb",
+    "durationSeconds": 14.237,
+    "samplePeakDbfs": -4
+  },
+  "chicken-on-tree-screaming": {
+    "title": "Chicken on Tree Screaming",
+    "sourceFile": "chicken-on-tree-screaming.mp3",
+    "sha256": "7e1ae980ce9258a8fe46bd3031883ef3962f2151ce17f97cda6fb23fa8f3358b",
+    "durationSeconds": 5.736,
+    "samplePeakDbfs": -4.01
+  },
+  "hub-intro-sound": {
+    "title": "Hub Intro Sound",
+    "sourceFile": "hub-intro-sound.mp3",
+    "sha256": "89ec6f524e4e799503067127848b5f0aadb13ef14f27f003c4686345ac674d4a",
+    "durationSeconds": 4.168,
+    "samplePeakDbfs": -7.41
+  },
+  "patrick-jane": {
+    "title": "Patrick Jane",
+    "sourceFile": "patrick-jane.mp3",
+    "sha256": "a0d2d8309235b7315c18681e73eca1158e51d4291d229fb9ba42014fa7df5551",
+    "durationSeconds": 11.777,
+    "samplePeakDbfs": -4
+  },
+  "romanceeeeeeeeeeeeee": {
+    "title": "Romance",
+    "sourceFile": "romanceeeeeeeeeeeeee.mp3",
+    "sha256": "6a4950387a8335705f3baa37027ca075784deae4a4629fc33acad2239ffaa147",
+    "durationSeconds": 5.81,
+    "samplePeakDbfs": -4
   }
 }

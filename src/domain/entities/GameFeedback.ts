@@ -68,34 +68,28 @@ export function gradeAnswer(
   return { correct: false, mistake: 'incorrect' };
 }
 
+const cueGroups = {
+  skipped: ['huh-cat', 'hub-intro-sound'],
+  typo: ['bruh', 'dexter'],
+  word_order: ['shocked', 'black-suit-spider-man'],
+  incomplete: ['alert', 'galaxy'],
+  incorrect: ['faah', 'patrick-jane', 'chicken-on-tree-screaming'],
+} as const satisfies Record<Mistake, readonly string[]>;
+const recoveryCues = ['encourage', 'romanceeeeeeeeeeeeee'] as const;
+
 export const soundIds = [
-  'faah',
-  'shocked',
-  'dexter',
-  'spider',
-  'chicken',
-  'encourage',
-  'alert',
-  'galaxy',
-  'bruh',
-  'huh-cat',
-  'vine-boom',
+  ...Object.values(cueGroups).flat(),
+  ...recoveryCues,
 ] as const;
 export type SoundId = (typeof soundIds)[number];
-const cueGroups: Record<Mistake, readonly SoundId[]> = {
-  skipped: ['huh-cat'],
-  typo: ['bruh', 'dexter'],
-  word_order: ['shocked', 'spider'],
-  incomplete: ['alert', 'galaxy'],
-  incorrect: ['faah', 'vine-boom', 'chicken'],
-};
 
 export function chooseSound(
   feedback: AnswerFeedback,
   index: number,
   recovery: boolean,
 ): SoundId | undefined {
-  if (feedback.correct) return recovery ? 'encourage' : undefined;
+  if (feedback.correct)
+    return recovery ? recoveryCues[index % recoveryCues.length] : undefined;
   const group = cueGroups[feedback.mistake ?? 'incorrect'];
   return group[index % group.length];
 }

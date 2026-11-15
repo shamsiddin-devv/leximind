@@ -17,6 +17,28 @@ import {
   type QuizWord,
 } from './entities/Challenge';
 import { TsFsrsScheduler } from '../infrastructure/scheduler/TsFsrsScheduler';
+import { chooseSound } from './entities/GameFeedback';
+
+describe('feedback audio selection', () => {
+  it('selects replacements from the appropriate cue group', () => {
+    expect(
+      chooseSound({ correct: false, mistake: 'word_order' }, 1, false),
+    ).toBe('black-suit-spider-man');
+    expect(chooseSound({ correct: false, mistake: 'skipped' }, 1, false)).toBe(
+      'hub-intro-sound',
+    );
+    expect(
+      chooseSound({ correct: false, mistake: 'incorrect' }, 1, false),
+    ).toBe('patrick-jane');
+    expect(
+      chooseSound({ correct: false, mistake: 'incorrect' }, 2, false),
+    ).toBe('chicken-on-tree-screaming');
+    expect(chooseSound({ correct: true }, 1, true)).toBe(
+      'romanceeeeeeeeeeeeee',
+    );
+    expect(chooseSound({ correct: true }, 1, false)).toBeUndefined();
+  });
+});
 
 describe('identity and vocabulary invariants', () => {
   it('normalizes email and compares normalized values', () => {

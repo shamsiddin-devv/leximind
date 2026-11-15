@@ -1,6 +1,8 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { randomUUID, createHash } = require('node:crypto');
+const { readdirSync } = require('node:fs');
+const { join } = require('node:path');
 const { Pool } = require('pg');
 const request = require('supertest');
 const { NestFactory } = require('@nestjs/core');
@@ -882,10 +884,7 @@ test('complete API and database lifecycle', async (t) => {
       ).body;
       assert.equal(first.expectedAnswer, 'apple');
       assert.equal(first.feedback.mistake, 'typo');
-      assert.equal(
-        first.sound.url,
-        '/api/feedback-audio/bruh.wav?v=restored-2',
-      );
+      assert.equal(first.sound.url, '/api/feedback-audio/bruh.wav?v=3');
       assert.equal(duplicate.sound, undefined);
       assert.equal(duplicate.result.score, 0);
       assert.equal(
@@ -963,54 +962,62 @@ test('complete API and database lifecycle', async (t) => {
     },
   );
 
-  await t.test('serves all 11 unclipped lossless feedback sounds', async () => {
-    for (const id of [
-      'faah',
-      'shocked',
-      'dexter',
-      'spider',
-      'chicken',
-      'encourage',
-      'alert',
-      'galaxy',
-      'bruh',
-      'huh-cat',
-      'vine-boom',
-    ]) {
-      const response = await api
-        .get('/api/feedback-audio/' + id + '.wav')
-        .buffer(true)
-        .parse((stream, callback) => {
-          const chunks = [];
-          stream.on('data', (chunk) => chunks.push(chunk));
-          stream.on('end', () => callback(null, Buffer.concat(chunks)));
-          stream.on('error', callback);
-        })
-        .expect(200);
-      const wav = response.body;
-      assert.match(response.headers['content-type'], /audio\/(?:x-)?wav/);
-      assert.equal(wav.toString('ascii', 0, 4), 'RIFF');
-      assert.equal(wav.readUInt16LE(20), 1);
-      assert.equal(wav.readUInt32LE(24), 48000);
-      assert.equal(wav.readUInt16LE(34), 16);
-      assert.equal(wav.readUInt32LE(40), wav.length - 44);
-      let peak = 0;
-      for (let index = 44; index < wav.length; index += 2)
-        peak = Math.max(peak, Math.abs(wav.readInt16LE(index)));
-      assert.ok(peak > 1_000 && peak < 23_000, id + ' has audible headroom');
-    }
-    await api
-      .get('/api/feedback-audio/bruh.wav')
-      .set('Range', 'bytes=0-43')
-      .expect(206);
-    await api.get('/api/feedback-audio/unknown.wav').expect(404);
-    await api
-      .get('/api/feedback-audio/bruh.wav')
-      .set('Range', 'bytes=999999999-')
-      .expect('Content-Type', /application\/json/)
-      .expect('Cache-Control', 'no-store')
-      .expect(416);
-  });
+  await t.test(
+    'serves every configured feedback sound and matches its manifest checksum',
+    async () => {
+      const { soundIds } = require('../dist/src/domain/entities/GameFeedback');
+      const manifest = require('../assets/feedback-audio/sources.json');
+      const files = readdirSync(
+        join(__dirname, '..', 'assets', 'feedback-audio'),
+      )
+        .filter((file) => file.endsWith('.wav'))
+        .map((file) => file.slice(0, -4))
+        .sort();
+      assert.deepEqual(files, Object.keys(manifest).sort());
+      assert.deepEqual(files, [...soundIds].sort());
+      for (const id of soundIds) {
+        const response = await api
+          .get('/api/feedback-audio/' + id + '.wav')
+          .buffer(true)
+          .parse((stream, callback) => {
+            const chunks = [];
+            stream.on('data', (chunk) => chunks.push(chunk));
+            stream.on('end', () => callback(null, Buffer.concat(chunks)));
+            stream.on('error', callback);
+          })
+          .expect(200);
+        const wav = response.body;
+        assert.equal(
+          createHash('sha256').update(wav).digest('hex'),
+          manifest[id].sha256,
+        );
+        assert.match(response.headers['content-type'], /audio\/(?:x-)?wav/);
+        assert.equal(wav.toString('ascii', 0, 4), 'RIFF');
+        assert.equal(wav.readUInt16LE(20), 1);
+        assert.equal(wav.readUInt32LE(24), 48000);
+        assert.equal(wav.readUInt16LE(34), 16);
+        assert.equal(wav.readUInt32LE(40), wav.length - 44);
+        let peak = 0;
+        for (let index = 44; index < wav.length; index += 2)
+          peak = Math.max(peak, Math.abs(wav.readInt16LE(index)));
+        assert.ok(peak > 1_000 && peak < 23_000, id + ' has audible headroom');
+      }
+      await api
+        .get('/api/feedback-audio/bruh.wav')
+        .set('Range', 'bytes=0-43')
+        .expect(206);
+      await api.get('/api/feedback-audio/unknown.wav').expect(404);
+      for (const id of ['spider', 'chicken', 'vine-boom']) {
+        await api.get('/api/feedback-audio/' + id + '.wav').expect(404);
+      }
+      await api
+        .get('/api/feedback-audio/bruh.wav')
+        .set('Range', 'bytes=999999999-')
+        .expect('Content-Type', /application\/json/)
+        .expect('Cache-Control', 'no-store')
+        .expect(416);
+    },
+  );
 
   await t.test(
     'completes account, catalog, bulk card and learning history routes',

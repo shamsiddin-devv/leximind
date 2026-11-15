@@ -39,6 +39,9 @@ export class ReleaseReadiness implements OnModuleInit {
       const manifest = JSON.parse(
         readFileSync(resolve(this.audioDirectory, 'sources.json'), 'utf8'),
       ) as Record<string, { sha256?: string }>;
+      if (Object.keys(manifest).length !== soundIds.length) {
+        throw new Error('Feedback manifest does not match the active cues.');
+      }
       for (const id of soundIds) {
         const file = readFileSync(resolve(this.audioDirectory, id + '.wav'));
         if (
