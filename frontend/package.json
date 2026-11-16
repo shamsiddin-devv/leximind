@@ -1,0 +1,27 @@
+{
+  "name": "leximind-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "@fontsource-variable/dm-sans": "^5",
+    "lucide-react": "^0.577",
+    "react": "^19",
+    "react-dom": "^19",
+    "@fontsource-variable/plus-jakarta-sans": "^5"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5",
+    "typescript": "^5.9",
+    "vite": "^7"
+  }
+}

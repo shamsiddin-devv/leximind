@@ -1,0 +1,242 @@
+[
+  {
+    "text": "apple",
+    "cefrLevel": "A1",
+    "topic": "food",
+    "translationUz": "olma",
+    "exampleSentence": "I eat an apple.",
+    "definition": "A round fruit that grows on a tree"
+  },
+  {
+    "text": "water",
+    "cefrLevel": "A1",
+    "topic": "food",
+    "translationUz": "suv",
+    "exampleSentence": "I drink water.",
+    "definition": "A clear liquid that people drink"
+  },
+  {
+    "text": "house",
+    "cefrLevel": "A1",
+    "topic": "home",
+    "translationUz": "uy",
+    "exampleSentence": "The house has two doors.",
+    "definition": "A building where someone lives"
+  },
+  {
+    "text": "book",
+    "cefrLevel": "A1",
+    "topic": "study",
+    "translationUz": "kitob",
+    "exampleSentence": "I read a book.",
+    "definition": "A written work with pages"
+  },
+  {
+    "text": "morning",
+    "cefrLevel": "A1",
+    "topic": "daily-life",
+    "translationUz": "ertalab",
+    "exampleSentence": "I go for a walk in the morning.",
+    "definition": "The early part of the day"
+  },
+  {
+    "text": "borrow",
+    "cefrLevel": "A2",
+    "topic": "study",
+    "translationUz": "qarzga olmoq",
+    "exampleSentence": "May I borrow your pencil?",
+    "definition": "To use something and return it later"
+  },
+  {
+    "text": "recipe",
+    "cefrLevel": "A2",
+    "topic": "food",
+    "translationUz": "retsept",
+    "exampleSentence": "Follow the recipe carefully.",
+    "definition": "Instructions for preparing a dish"
+  },
+  {
+    "text": "journey",
+    "cefrLevel": "A2",
+    "topic": "travel",
+    "translationUz": "safar",
+    "exampleSentence": "The journey takes two hours.",
+    "definition": "An act of travelling from one place to another"
+  },
+  {
+    "text": "repair",
+    "cefrLevel": "A2",
+    "topic": "home",
+    "translationUz": "ta’mirlamoq",
+    "exampleSentence": "We can repair the chair.",
+    "definition": "To fix something that is damaged"
+  },
+  {
+    "text": "luggage",
+    "cefrLevel": "A2",
+    "topic": "travel",
+    "translationUz": "yuk",
+    "exampleSentence": "We left our luggage at the hotel.",
+    "definition": "The bags you take with you when you travel"
+  },
+  {
+    "text": "recommend",
+    "cefrLevel": "B1",
+    "topic": "study",
+    "translationUz": "tavsiya qilmoq",
+    "exampleSentence": "I recommend this course.",
+    "definition": "To suggest something as a good choice"
+  },
+  {
+    "text": "avoid",
+    "cefrLevel": "B1",
+    "topic": "travel",
+    "translationUz": "chetlab o‘tmoq",
+    "exampleSentence": "We avoid busy roads on Friday.",
+    "definition": "To stay away from someone or something"
+  },
+  {
+    "text": "reliable",
+    "cefrLevel": "B1",
+    "topic": "study",
+    "translationUz": "ishonchli",
+    "exampleSentence": "This is a reliable source.",
+    "definition": "Able to be trusted to work well"
+  },
+  {
+    "text": "budget",
+    "cefrLevel": "B1",
+    "topic": "work",
+    "translationUz": "byudjet",
+    "exampleSentence": "We set a budget for the project.",
+    "definition": "A plan for how money will be spent"
+  },
+  {
+    "text": "deadline",
+    "cefrLevel": "B1",
+    "topic": "work",
+    "translationUz": "oxirgi muddat",
+    "exampleSentence": "The deadline for the report is Friday.",
+    "definition": "The latest time by which something must be finished"
+  },
+  {
+    "text": "negotiate",
+    "cefrLevel": "B2",
+    "topic": "work",
+    "translationUz": "muzokara qilmoq",
+    "exampleSentence": "We need to negotiate the price.",
+    "definition": "To discuss terms in order to reach an agreement"
+  },
+  {
+    "text": "drawback",
+    "cefrLevel": "B2",
+    "topic": "work",
+    "translationUz": "kamchilik",
+    "exampleSentence": "The main drawback is the cost.",
+    "definition": "A disadvantage of an option"
+  },
+  {
+    "text": "sustain",
+    "cefrLevel": "B2",
+    "topic": "work",
+    "translationUz": "davom ettirmoq",
+    "exampleSentence": "Can we sustain this pace?",
+    "definition": "To keep an activity or condition going"
+  },
+  {
+    "text": "evidence",
+    "cefrLevel": "B2",
+    "topic": "study",
+    "translationUz": "dalil",
+    "exampleSentence": "There is evidence for this claim.",
+    "definition": "Information supporting a claim"
+  },
+  {
+    "text": "overlook",
+    "cefrLevel": "B2",
+    "topic": "work",
+    "translationUz": "e’tibordan chetda qoldirmoq",
+    "exampleSentence": "Do not overlook the small details.",
+    "definition": "To fail to notice or consider something"
+  },
+  {
+    "text": "substantiate",
+    "cefrLevel": "C1",
+    "topic": "study",
+    "translationUz": "dalil bilan asoslamoq",
+    "exampleSentence": "Please substantiate the conclusion.",
+    "definition": "To support a claim with evidence"
+  },
+  {
+    "text": "viable",
+    "cefrLevel": "C1",
+    "topic": "work",
+    "translationUz": "amalga oshirish mumkin bo‘lgan",
+    "exampleSentence": "The proposal is a viable alternative.",
+    "definition": "Able to work successfully in practice"
+  },
+  {
+    "text": "scrutinize",
+    "cefrLevel": "C1",
+    "topic": "study",
+    "translationUz": "sinchiklab tekshirmoq",
+    "exampleSentence": "The reviewers scrutinize every assumption.",
+    "definition": "To examine something very carefully"
+  },
+  {
+    "text": "mitigate",
+    "cefrLevel": "C1",
+    "topic": "work",
+    "translationUz": "ta’sirini yumshatmoq",
+    "exampleSentence": "Better planning can mitigate the risk.",
+    "definition": "To reduce the harmful effect of something"
+  },
+  {
+    "text": "undermine",
+    "cefrLevel": "C1",
+    "topic": "work",
+    "translationUz": "zaiflashtirmoq",
+    "exampleSentence": "A lack of transparency can undermine trust.",
+    "definition": "To gradually weaken something or make it less effective"
+  },
+  {
+    "text": "equivocal",
+    "cefrLevel": "C2",
+    "topic": "study",
+    "translationUz": "ikki ma’noli",
+    "exampleSentence": "The response was deliberately equivocal.",
+    "definition": "Open to more than one interpretation"
+  },
+  {
+    "text": "intransigent",
+    "cefrLevel": "C2",
+    "topic": "work",
+    "translationUz": "murosasiz",
+    "exampleSentence": "The negotiator remained intransigent.",
+    "definition": "Unwilling to change a position or compromise"
+  },
+  {
+    "text": "circumspect",
+    "cefrLevel": "C2",
+    "topic": "work",
+    "translationUz": "ehtiyotkor",
+    "exampleSentence": "Be circumspect when sharing the findings.",
+    "definition": "Careful to weigh risks before acting"
+  },
+  {
+    "text": "perfunctory",
+    "cefrLevel": "C2",
+    "topic": "work",
+    "translationUz": "yuzaki",
+    "exampleSentence": "The report received a perfunctory review.",
+    "definition": "Done with little care or interest"
+  },
+  {
+    "text": "obfuscate",
+    "cefrLevel": "C2",
+    "topic": "study",
+    "translationUz": "ataylab chalkashtirmoq",
+    "exampleSentence": "The report uses jargon to obfuscate the facts.",
+    "definition": "To deliberately make something harder to understand"
+  }
+]

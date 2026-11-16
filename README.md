@@ -113,7 +113,7 @@ Mashq mexanikalari [Easy Vocabulary’ning ochiq o‘yinlar tavsifi](https://eas
 
 `POST /api/games/:id/attempts` uchun `{"index":0,"answer":"appel"}` yuboring. Backend bahoni, xato turini, o‘sha savolning to‘g‘ri javobini va sozlama yoqilgan bo‘lsa audio URL’ni qaytaradi. Oxirgi savol natijani avtomatik saqlaydi. Qayta yuborilgan indeks avvalgi bahoni `replayed: true` bilan qaytaradi. Bunday javobda ovoz qayta yuborilmaydi. `GET /api/games/:id` orqali sahifa yangilangach navbatdagi indeksni va oldingi baholarni olish mumkin. Eski `/submit` oqimi ham mavjud va natija uchun bitta umumiy signal beradi. Boshlangan individual urinishlar shu urinishlar orqali yakunlanadi.
 
-Ovoz profil sozlamasida sukut bo‘yicha o‘chiq. `PATCH /api/profile` orqali `{"feedbackAudioEnabled":true}` yuboriladi. Frontend `sound.url` bo‘lsa API originiga nisbatan ochib, foydalanuvchining javob berish harakati bilan bog‘liq holda ijro etadi. Yangi cue chalinganda oldingisini to‘xtatish va matnli feedback’ni ham ko‘rsatish mumkin.
+Ovoz profil sozlamasida sukut bo‘yicha o‘chiq. `PATCH /api/profile` orqali `{"feedbackAudioEnabled":true}` yuboriladi. Frontend `sound.url` bo‘lsa API originiga nisbatan ochib, foydalanuvchining javob berish harakati bilan bog‘liq holda ijro etadi. Keyingi savolga o‘tilganda oldingi ovoz to‘xtaydi. Javob natijasi matnda ham ko‘rinadi.
 
 | Holat | Cue ID’lari | Yozuvlar |
 | --- | --- | --- |
@@ -121,12 +121,13 @@ Ovoz profil sozlamasida sukut bo‘yicha o‘chiq. `PATCH /api/profile` orqali `
 | So‘z yoki ketma-ketlik tartibi xato | `shocked`, `black-suit-spider-man` | Shocked sound va Black Suit Spider-Man |
 | Chala gap | `alert`, `galaxy` | Metal Gear alert va Galaxy |
 | Savol tashlab ketildi | `huh-cat`, `hub-intro-sound` | HUH? Cat va Hub Intro Sound |
-| Boshqa noto‘g‘ri javob | `faah`, `patrick-jane`, `chicken-on-tree-screaming` | FAAAH, Patrick Jane va Chicken on Tree Screaming |
-| Xato so‘z to‘g‘ri topildi | `encourage`, `romanceeeeeeeeeeeeee` | Du bist gut genug va Romance |
+| Boshqa noto‘g‘ri javob | `faah`, `chicken-on-tree-screaming` | FAAAH va Chicken on Tree Screaming |
+| To‘g‘ri javob | `encourage` | Du bist gut genug |
+| Xato so‘z qayta to‘g‘ri topildi | `romanceeeeeeeeeeeeee` | Romance |
 
 O‘yin ovozlarining nomi, ma’lum manbasi yoki import qilingan MP3 nomi, davomiyligi va o‘lchangan peak qiymati `assets/feedback-audio/sources.json` faylida.
 
-13 ta yozuv mono, 48 kHz, 16-bit PCM WAV formatida. Yangi beshta klipda sample peak −4 dBFS dan oshmaydi. Manifestda har bir WAV uchun SHA-256, ilgari filtrlangan kliplar uchun esa qo‘shimcha audio o‘lchovlari bor. Asl MP3 fayllar mavjud bo‘lsa, `node scripts/restore-feedback-audio.cjs <ffmpeg> <mp3-katalogi> <chiqish-katalogi>` orqali yozuvlarni qayta ishlash mumkin.
+12 ta yozuv mono, 48 kHz, 16-bit PCM WAV formatida. Kliplar 5.5 soniyadan oshmaydi. Uzun kliplarning oxiri asta pasayadi. Manifestda har bir WAV uchun SHA-256, davomiylik va peak qiymati bor. Asl MP3 fayllar mavjud bo‘lsa, `node scripts/restore-feedback-audio.cjs <ffmpeg> <mp3-katalogi> <chiqish-katalogi>` orqali yozuvlarni qayta ishlash mumkin.
 
 Testlar format, amplituda, HTTP orqali yuklash va range javoblarini tekshiradi. Yangi URL versiyasi eskirgan keshdan foydalanishning oldini oladi. Siqilgan manbada oldindan mavjud buzilishlar to‘liq tiklanishi kafolatlanmaydi.
 
@@ -144,7 +145,7 @@ The bounded areas are identity, vocabulary, spaced repetition and challenges. `L
 
 ## Security and operations
 
-- Passwords require 12 characters minimum and at most 72 UTF-8 bytes, are bcrypt-hashed at cost 12, and are never serialized. Unicode inputs cannot silently exceed bcrypt's byte limit.
+- Passwords require 8 characters minimum and at most 72 UTF-8 bytes, are bcrypt-hashed at cost 12, and are never serialized. Unicode inputs cannot silently exceed bcrypt's byte limit.
 - Access tokens are cryptographically random 256-bit opaque bearer tokens. Only SHA-256 digests are stored. Sessions expire after seven days by default (`AUTH_TTL_SECONDS`, allowed 300–2592000). Logout and password changes revoke database-backed sessions immediately. Password change/login races are serialized on the user record.
 - Authorization is global with explicit public routes. Admin role is checked against the database on every request. Store bearer tokens securely; only serve the API over HTTPS outside local development.
 - PostgreSQL-backed fixed-window rate limits are shared across replicas: 120 requests/minute per route/IP by default, registration 5, login 10, assessment creation 5 and game creation 10. Deploy an ingress/WAF with its own edge rate limit for internet-facing traffic. The application does not trust forwarded IP headers by default; account for this when configuring a reverse proxy.
@@ -175,14 +176,14 @@ Reference documentation: [NestJS validation](https://docs.nestjs.com/techniques/
 
 ### Ishlatish va tekshirish
 
-- Readiness release ichidagi barcha SQL migratsiyalari checksum’ini bazadagi yozuv bilan solishtiradi. Ishga tushishda 13 ta faol audio faylning SHA-256 qiymati ham tekshiriladi. Fayl yoki migratsiya mos kelmasa `/api/health/ready` 503 qaytaradi, liveness esa jarayon holatini alohida bildiradi.
+- Readiness release ichidagi barcha SQL migratsiyalari checksum’ini bazadagi yozuv bilan solishtiradi. Ishga tushishda 12 ta faol audio faylning SHA-256 qiymati ham tekshiriladi. Fayl yoki migratsiya mos kelmasa `/api/health/ready` 503 qaytaradi, liveness esa jarayon holatini alohida bildiradi.
 - Reverse proxy ishlatilganda `TRUSTED_PROXIES`ga faqat boshqariladigan proxy IP yoki CIDR qiymatlari kiritiladi. Bo‘sh sozlamada tashqaridan berilgan `X-Forwarded-For` ishonchli hisoblanmaydi.
 - Integratsion test Swagger’da ko‘rsatilgan 61 ta API amali uchun muvaffaqiyatli HTTP javobi bo‘lishini talab qiladi. Shuningdek, ruxsatlar, bir vaqtdagi profil tahrirlari, audio range va migratsiya checksum xatolari tekshiriladi.
 - Yangi indekslarni qo‘llash uchun `npm run db:migrate` ishlatiladi. Avvalgi migratsiyalar saqlangan.
 
 ### Auditdan keyingi yangilanishlar
 
-- `006_catalog_and_account_actions.sql` uchun PostgreSQL'da `pg_trgm` extensionini yoqish huquqi kerak. Yangi jadval `account_actions` bir martalik email amallarini saqlaydi. `npm run db:seed:vocabulary` 24 ta boshlang‘ich so‘z va ma’noni kiritadi. Qayta ishlatilganda mavjud lug‘at yozuvlarini almashtirmaydi.
+- `006_catalog_and_account_actions.sql` uchun PostgreSQL'da `pg_trgm` extensionini yoqish huquqi kerak. Yangi jadval `account_actions` bir martalik email amallarini saqlaydi. `npm run db:seed:vocabulary` 30 ta boshlang‘ich so‘z va ma’noni kiritadi. Qayta ishlatilganda mavjud lug‘at yozuvlarini almashtirmaydi.
 - `GET /api/words` mavzu uchun `topic` va keyingi sahifa uchun `after` qabul qiladi. Javobdagi `nextCursor` keyingi so‘rovga yuboriladi. Filtrlar o‘zgarsa sahifalashni boshidan boshlash kerak. Eski `page` parametri ishlaydi. So‘z va ma’nolar o‘qilishi bitta DB snapshot ichida bajariladi.
 - `POST /api/games` qo‘shimcha `topic` va `cefrLevel` qabul qiladi. Lug‘atli rejimlarda har safar mos katalog bo‘yicha yangi namuna tanlanadi. `sentence_dictation` rejimi admin so‘z ma’nosiga qo‘shgan HTTPS `exampleAudioUrl` yozuvidan foydalanadi. Boshlang‘ich lug‘at so‘zlarida audio yo‘q.
 - Email uchun `EMAIL_API_KEY`, `EMAIL_FROM`, `ACCOUNT_ACTION_URL` va `ACCOUNT_EMAIL_KEY` birga sozlanadi. Oxirgisi 32 bayt tasodifiy hex kalit. `ACCOUNT_ACTION_URL` frontend sahifasi bo‘lib, URL fragmentidan `action` va `token`ni o‘qiydi, keyin tegishli confirm endpointiga yuboradi. Xatlar shifrlangan navbatdan yuboriladi. SMTP yoki boshqa transport o‘rnida bu adapter Resend HTTPS API ishlatadi.
