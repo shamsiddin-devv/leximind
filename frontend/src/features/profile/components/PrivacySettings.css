@@ -1,0 +1,66 @@
+.settings-sheet.privacy-page {
+  --learning-switch-off: color-mix(in srgb, var(--ink) 34%, var(--settings-control));
+  --privacy-segment-track: color-mix(in srgb, var(--ink) 9%, var(--settings-control));
+  gap: 26px;
+}
+.privacy-sections { display: grid; }
+.privacy-section { border-block-start: 1px solid var(--line); padding-block: 22px; min-inline-size: 0; }
+.privacy-section h2, .privacy-flow-content h2 { font-size: 1.0625rem; font-weight: 740; letter-spacing: -.02em; line-height: 1.35; }
+.privacy-section h3, .privacy-section label { font-size: .9rem; font-weight: 710; }
+.privacy-section h3 { margin: 0; }
+.privacy-section p, .privacy-flow p { color: var(--muted); font-size: .875rem; line-height: 1.48; }
+.privacy-section :is(h2, h3) + p, .privacy-section label + p { margin-block-start: 4px; }
+.privacy-section > .privacy-heading { margin-block-end: 14px; }
+.privacy-row { display: flex; align-items: center; justify-content: space-between; gap: 14px 24px; }
+.privacy-section > .privacy-row:not(.privacy-heading) { padding-block: 15px; }
+.privacy-section > .privacy-row + .privacy-row { border-block-start: 1px solid var(--line); }
+.privacy-row > :first-child { min-inline-size: 0; overflow-wrap: anywhere; }
+.privacy-section > .privacy-row:last-child { padding-block-end: 0; }
+.privacy-row > :is(.button, .privacy-visibility, .learning-toggle) { flex-shrink: 0; }
+.privacy-icon-row, .privacy-actions, .privacy-flow-actions { display: flex; align-items: center; gap: 12px; }
+.privacy-actions, .privacy-flow-actions { flex-wrap: wrap; }
+.privacy-row-icon { flex: 0 0 38px; block-size: 38px; border-radius: 10px; display: grid; place-items: center; background: var(--paper); color: var(--muted); }
+.privacy-row-icon.is-positive { background: var(--settings-positive-soft); color: var(--settings-positive); }
+.privacy-row-icon.is-warning { color: var(--settings-warning); background: color-mix(in srgb, var(--settings-warning) 12%, transparent); }
+.privacy-note { display: flex; align-items: flex-start; gap: 8px; border-block-start: 1px solid var(--line); padding-block-start: 13px; }
+.privacy-note svg { color: var(--settings-positive); flex-shrink: 0; margin-block-start: 2px; }
+.privacy-visibility { display: inline-flex; gap: 4px; padding: 3px; border-radius: 999px; background: var(--privacy-segment-track); }
+.privacy-visibility button { display: flex; align-items: center; gap: 5px; border: 0; border-radius: inherit; min-block-size: 34px; padding-inline: 10px; background: transparent; color: var(--muted); font: inherit; font-size: .82rem; font-weight: 690; cursor: pointer; }
+.privacy-visibility button[aria-pressed="true"] { background: var(--settings-control); color: var(--ink); box-shadow: 0 1px 3px #0001; }
+.privacy-visibility button:disabled { cursor: wait; }
+.privacy-sections .notice { margin-block-start: 10px; }
+.privacy-section.privacy-devices .account-device-list { border-block-start: 1px solid var(--line); }
+.privacy-section.privacy-devices .account-device-list li { padding-inline: 0; }
+.privacy-section.privacy-devices .account-device-list li:last-child { border-block-end: 0; padding-block-end: 0; }
+.privacy-devices .account-device-details > span { color: var(--muted); font-size: .85rem; }
+.privacy-danger h2 { color: var(--settings-danger); }
+.privacy-danger > .button { color: var(--settings-danger); background: var(--settings-danger-hover); border-color: transparent; }
+.privacy-danger > .button:hover { background: color-mix(in srgb, var(--settings-danger) 22%, var(--settings-control)); }
+
+.privacy-flow { max-inline-size: 720px; display: grid; gap: 20px; }
+.privacy-back { width: fit-content; }
+.privacy-flow-heading p { margin-block-start: 7px; }
+.privacy-steps { display: flex; gap: 8px 20px; flex-wrap: wrap; list-style: none; padding: 0; margin: 0; }
+.privacy-steps li { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .83rem; }
+.privacy-steps li span { display: grid; place-items: center; inline-size: 26px; block-size: 26px; border-radius: 50%; background: var(--paper); font-weight: 700; flex-shrink: 0; }
+.privacy-steps li[aria-current="step"] { color: var(--ink); font-weight: 730; }
+.privacy-steps li[aria-current="step"] span { color: #fff; background: var(--settings-accent); }
+.privacy-steps li[data-done="true"] span { color: var(--settings-positive); background: var(--settings-positive-soft); }
+.privacy-flow-content { display: grid; gap: 12px; padding-block-start: 24px; border-block-start: 1px solid var(--line); }
+.privacy-step-form { display: grid; gap: 12px; }
+.privacy-step-form > label { display: grid; gap: 6px; font-size: .89rem; font-weight: 690; }
+.privacy-step-form .settings-form-row { padding: 9px 0; }
+.privacy-step-form > label, .privacy-step-form .settings-field-control { max-inline-size: 440px; }
+.privacy-flow-actions { margin-block-start: 8px; }
+.privacy-flow .privacy-verification-address { display: flex; align-items: center; gap: 8px; color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+.privacy-verification-address svg { flex-shrink: 0; }
+.privacy-success { display: grid; justify-items: start; gap: 9px; }
+.privacy-success > svg { color: var(--settings-positive); }
+.privacy-success p { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .privacy-row { flex-wrap: wrap; }
+  .privacy-row > :is(.privacy-visibility, .learning-toggle) { margin-inline-start: auto; }
+  .privacy-section .privacy-row .button { white-space: normal; }
+  .privacy-devices .account-device-list li > :is(.button, .account-device-current) { grid-column: 2; justify-self: start; }
+  .privacy-steps { column-gap: 14px; }
+}

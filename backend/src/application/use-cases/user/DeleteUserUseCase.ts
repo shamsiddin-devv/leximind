@@ -1,14 +1,23 @@
-import { NotFoundError } from '../../../domain/errors/NotFoundError';
-import { IUserRepository } from '../../../domain/repositories/IUserRepository';
+import { BadRequestError } from '../../../domain/errors/BadRequestError';
+import type { IUserRepository } from '../../../domain/repositories/IUserRepository';
+import type { IHashService } from '../../../domain/services/IHashService';
+import type { IAvatarStorage } from '../../../domain/services/IAvatarStorage';
 
 export class DeleteUserUseCase {
-  constructor(private readonly userRepo: IUserRepository) {}
+  constructor(
+    private readonly users: IUserRepository,
+    private readonly hash: IHashService,
+    private readonly avatars: IAvatarStorage,
+  ) {}
 
-  async execute(id: string) {
-    const findingUser = await this.userRepo.findById(id);
-    if (!findingUser) throw new NotFoundError('User not found.');
+  async execute(id: string, currentPassword: string) {
+    const expectedHash = await this.users.findPasswordHashByUserId(id);
+    if (!expectedHash || !(await this.hash.compare(currentPassword, expectedHash))) {
+      throw new BadRequestError('Current password is incorrect.');
+    }
 
-    await this.userRepo.delete(id);
-    return { success: true };
+    const deleted = await this.users.delete(id, expectedHash);
+    if (!deleted) throw new BadRequestError('Credentials changed; sign in again.');
+    if (deleted.avatarPublicId) await this.avatars.remove(deleted.avatarPublicId);
   }
 }

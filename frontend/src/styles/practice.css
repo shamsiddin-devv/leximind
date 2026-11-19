@@ -53,3 +53,4 @@ progress::-moz-progress-bar { background: #3555ec; border-radius: 20px; }
 }
 @keyframes choice-bump { 0%, 100% { transform: scale(1); } 42% { transform: scale(1.021); } }
 @keyframes choice-nudge { 0%, 100% { transform: translateX(0); } 32% { transform: translateX(-4px); } 68% { transform: translateX(3px); } }
+.practice-pronunciation { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; }

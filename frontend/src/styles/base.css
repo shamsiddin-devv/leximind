@@ -5,8 +5,8 @@
 }
 :root {
   font-family: 'DM Sans Variable', sans-serif;
-  color: #171c2d;
-  background: #faf9f6;
+  color: var(--ink);
+  background: var(--paper);
   color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;

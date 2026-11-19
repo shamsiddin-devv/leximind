@@ -9,6 +9,7 @@ import { ChallengeRepository } from '../../../infrastructure/repositories/Challe
 import { TsFsrsScheduler } from '../../../infrastructure/scheduler/TsFsrsScheduler';
 @Module({
   controllers: [LearningController, FeedbackAudioController],
+  exports: [LearningUseCases],
   providers: [
     LearningRepository,
     ChallengeRepository,

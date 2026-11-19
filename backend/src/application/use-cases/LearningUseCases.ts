@@ -1,17 +1,22 @@
 import {
   ILearningRepository,
   LearningTransaction,
+  type ProfilePreferences,
+  reviewModes,
+  studyReminderTimePattern,
 } from '../../domain/repositories/ILearningRepository';
 import {
   LearningSession,
   nextStreak,
   validateTimezone,
+  type SessionData,
 } from '../../domain/entities/LearningSession';
 import { IReviewScheduler } from '../../domain/services/IReviewSchedulerService';
 import { IReviewRating } from '../../domain/services/IReviewRatingService';
 import { NotFoundError } from '../../domain/errors/NotFoundError';
 import { ConflictError } from '../../domain/errors/ConflictError';
 import { BadRequestError } from '../../domain/errors/BadRequestError';
+import { CEFR_LEVELS } from '../../domain/entities/Word';
 export class LearningUseCases {
   constructor(
     private readonly repo: ILearningRepository,
@@ -22,11 +27,7 @@ export class LearningUseCases {
   }
   updateProfile(
     userId: string,
-    patch: {
-      timezone?: string;
-      dailyNewWords?: number;
-      feedbackAudioEnabled?: boolean;
-    },
+    patch: Partial<ProfilePreferences>,
   ) {
     if (patch.timezone !== undefined) validateTimezone(patch.timezone);
     if (
@@ -36,12 +37,27 @@ export class LearningUseCases {
         patch.dailyNewWords > 100)
     )
       throw new BadRequestError('Invalid daily target.');
+    if (patch.dailyStudyMinutes !== undefined &&
+        (!Number.isInteger(patch.dailyStudyMinutes) || patch.dailyStudyMinutes < 5 || patch.dailyStudyMinutes > 180))
+      throw new BadRequestError('Invalid study duration.');
+    if (patch.studyLevel != null && !CEFR_LEVELS.includes(patch.studyLevel))
+      throw new BadRequestError('Invalid CEFR level.');
+    if (patch.reviewMode !== undefined && !reviewModes.includes(patch.reviewMode))
+      throw new BadRequestError('Invalid review mode.');
+    if (patch.studyReminderTime !== undefined && !studyReminderTimePattern.test(patch.studyReminderTime))
+      throw new BadRequestError('Invalid study reminder time.');
     return this.repo.transaction(async (tx) => {
       const current = await tx.profile(userId);
       return tx.updateProfile({
         ...current,
         timezone: patch.timezone ?? current.timezone,
         dailyNewWords: patch.dailyNewWords ?? current.dailyNewWords,
+        dailyStudyMinutes: patch.dailyStudyMinutes ?? current.dailyStudyMinutes,
+        studyLevel: patch.studyLevel === undefined ? current.studyLevel : patch.studyLevel,
+        reviewMode: patch.reviewMode ?? current.reviewMode,
+        studyReminderEnabled: patch.studyReminderEnabled ?? current.studyReminderEnabled,
+        studyReminderTime: patch.studyReminderTime ?? current.studyReminderTime,
+        autoplayPronunciation: patch.autoplayPronunciation ?? current.autoplayPronunciation,
         feedbackAudioEnabled:
           patch.feedbackAudioEnabled ?? current.feedbackAudioEnabled,
       });
@@ -153,8 +169,8 @@ export class LearningUseCases {
       return session.data;
     });
   }
-  history(userId: string, page: number, limit: number) {
-    return this.repo.history(userId, page, limit);
+  history(userId: string, page: number, limit: number, status?: SessionData['status']) {
+    return this.repo.history(userId, page, limit, status);
   }
   cancel(userId: string, id: string) {
     return this.repo.transaction(async (tx) => {

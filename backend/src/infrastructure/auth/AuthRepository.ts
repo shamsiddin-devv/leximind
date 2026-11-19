@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { randomBytes, createHash } from 'node:crypto';
 import { DatabasePool } from '../db/drizzle/drizzle.provider';
 import {
+  AccountSession,
   IAuthRepository,
   Identity,
 } from '../../domain/repositories/IAuthRepository';
@@ -22,6 +23,7 @@ export class AuthRepository implements IAuthRepository {
     tokenHash: string,
     expiresAt: Date,
     expectedPasswordHash: string,
+    userAgent?: string,
   ) {
     const client = await this.pool.connect();
     try {
@@ -36,8 +38,8 @@ export class AuthRepository implements IAuthRepository {
         return false;
       }
       await client.query(
-        'INSERT INTO auth_sessions(user_id,token_hash,expires_at) VALUES($1,$2,$3)',
-        [userId, tokenHash, expiresAt],
+        'INSERT INTO auth_sessions(user_id,token_hash,expires_at,user_agent) VALUES($1,$2,$3,$4)',
+        [userId, tokenHash, expiresAt, userAgent?.trim().slice(0, 512) || null],
       );
       await client.query('COMMIT');
       return true;
@@ -55,10 +57,24 @@ export class AuthRepository implements IAuthRepository {
     );
     return rows[0] ?? null;
   }
+  async list(userId: string) {
+    const { rows } = await this.pool.query<AccountSession>(
+      `SELECT id,user_agent AS "userAgent",created_at AS "createdAt",expires_at AS "expiresAt"
+       FROM auth_sessions WHERE user_id=$1 AND expires_at>now() ORDER BY created_at DESC,id`,
+      [userId],
+    );
+    return rows;
+  }
   async revoke(sessionId: string, userId: string) {
     await this.pool.query(
       'DELETE FROM auth_sessions WHERE id=$1 AND user_id=$2',
       [sessionId, userId],
+    );
+  }
+  async revokeOthers(userId: string, currentSessionId: string) {
+    await this.pool.query(
+      'DELETE FROM auth_sessions WHERE user_id=$1 AND id<>$2',
+      [userId, currentSessionId],
     );
   }
 }

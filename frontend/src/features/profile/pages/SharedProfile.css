@@ -1,0 +1,8 @@
+.shared-profile { max-inline-size: 720px; display: grid; align-content: start; justify-items: start; gap: 16px; }
+.shared-profile h1 { display: flex; gap: 10px; align-items: center; overflow-wrap: anywhere; min-inline-size: 0; }
+.shared-profile h1 svg { flex-shrink: 0; color: var(--night-link, var(--blue)); }
+.shared-profile-avatar { inline-size: 78px; block-size: 78px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; background: var(--paper); font-size: 1.65rem; font-weight: 800; }
+.shared-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.shared-profile-stats { display: flex; gap: 22px; flex-wrap: wrap; margin: 4px 0 0; padding-block-start: 16px; border-block-start: 1px solid var(--line); }
+.shared-profile-stats dt { color: var(--muted); font-size: .86rem; }
+.shared-profile-stats dd { margin: 5px 0 0; font-weight: 750; }

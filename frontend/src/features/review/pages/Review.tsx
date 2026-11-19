@@ -2,11 +2,13 @@ import { useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Eye, RotateCcw } from 'lucide-react';
 import { api, explain } from '../../../shared/services/api';
 import type { Rating, Session } from '../../../shared/types/api';
-import { Notice } from '../../../shared/components/UI';
+import { Notice, Speak } from '../../../shared/components/UI';
 
 const ratings: [Rating, string][] = [['AGAIN', 'Qayta'], ['HARD', 'Qiyin'], ['GOOD', 'Yaxshi'], ['EASY', 'Oson']];
 
-export function Review({ initial, token, onDone, onClose }: { initial: Session; token: string; onDone: () => void; onClose: () => void }) {
+export function Review({ initial, token, onDone, onClose, autoplayPronunciation = false, doneActionLabel = 'Bosh sahifaga' }: {
+  initial: Session; token: string; onDone: () => void; onClose: () => void; autoplayPronunciation?: boolean; doneActionLabel?: string;
+}) {
   const [session, setSession] = useState(initial);
   const [revealed, setRevealed] = useState(false);
   const [done, setDone] = useState(false);
@@ -43,10 +45,10 @@ export function Review({ initial, token, onDone, onClose }: { initial: Session; 
       <progress aria-label="Takrorlash jarayoni" max={Math.max(1, session.tasks.length)} value={progress} /><span className="step-counter">{progress} / {session.tasks.length}</span></div>
     <section className="panel question-card">
       <span className="question-kind"><RotateCcw size={16} /> Kartalarni takrorlash</span>
-      {done ? <><h1>Bugungi sessiya yakunlandi!</h1><button className="button primary" onClick={onClose}>Bosh sahifaga <ArrowRight size={18} /></button></>
+      {done ? <><h1>Bugungi sessiya yakunlandi!</h1><button className="button primary" onClick={onClose}>{doneActionLabel} <ArrowRight size={18} /></button></>
         : !task ? <><h1>Kartalar takrorlandi!</h1><button className="button primary" disabled={busy} onClick={() => void act()}>Sessiyani yakunlash <Check size={18} /></button></>
           : <div className="review-content" key={task.id}>
-            <h1 lang="en">{task.text}</h1>
+            <div className="practice-pronunciation"><h1 lang="en">{task.text}</h1><Speak text={task.text} url={task.audioUrl} autoplay={autoplayPronunciation} /></div>
             {revealed ? <><p className="review-answer">{task.translationUz}</p><p className="question-hint" lang="en">{task.definition}</p>
               <div className="ratings">{ratings.map(([rating, label]) => <button className="button secondary" type="button" disabled={busy} key={rating}
                 onClick={() => void act(rating)}>{label}</button>)}</div></>

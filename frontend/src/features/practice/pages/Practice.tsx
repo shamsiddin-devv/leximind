@@ -3,12 +3,12 @@ import { ArrowLeft, ArrowRight, Check, CircleX, Clock3, Eye, PartyPopper, Sparkl
 import { api, explain, mediaUrl } from '../../../shared/services/api';
 import type { Attempt, Result, Round } from '../../../shared/types/api';
 import { activities } from '../activities';
-import { Notice } from '../../../shared/components/UI';
+import { Notice, Speak } from '../../../shared/components/UI';
 
 export type ActiveRound = Round & { demoAnswers?: string[] };
 
-export function Practice({ round, token, onDone, onClose, soundEnabled }: {
-  round: ActiveRound; token?: string; onDone: (result: Result) => void; onClose: () => void; soundEnabled: boolean;
+export function Practice({ round, token, onDone, onClose, soundEnabled, autoplayPronunciation = false }: {
+  round: ActiveRound; token?: string; onDone: (result: Result) => void; onClose: () => void; soundEnabled: boolean; autoplayPronunciation?: boolean;
 }) {
   const [index, setIndex] = useState(0);
   const [answer, setAnswer] = useState('');
@@ -140,7 +140,9 @@ export function Practice({ round, token, onDone, onClose, soundEnabled }: {
       </h1>
       {question?.hint && <p className="question-hint">{question.hint}</p>}
       {question?.definition && <p className="question-hint" lang="en">{question.definition}</p>}
-      {question?.audioUrl && <audio controls preload="none" src={question.audioUrl} aria-label="Diktant audiosi" />}
+      {question?.audioUrl && <audio key={index} controls preload="none" autoPlay={autoplayPronunciation} src={question.audioUrl} aria-label="Diktant audiosi" />}
+      {question && (round.kind === 'meaning_match' || round.kind === 'word_rush') &&
+        <div className="practice-pronunciation"><Speak key={index} text={question.prompt} autoplay={autoplayPronunciation} /></div>}
       {memory && !memoryStarted && <button type="button" className="button primary" onClick={() => { setMemoryStarted(true); setPreview(true); }}><Eye size={18} /> Ko‘rsatish</button>}
       {memory && memoryStarted && (isGrid ? <div className="memory-grid" aria-label="Xotira kataklari">
         {Array.from({ length: (round.payload.gridSize ?? 4) ** 2 }, (_, cell) => <button key={cell} type="button"

@@ -14,6 +14,9 @@ import {
   primaryKey,
 } from 'drizzle-orm/pg-core';
 
+import type { Gender } from '../../../domain/entities/User';
+import type { ReviewMode } from '../../../domain/repositories/ILearningRepository';
+
 export const cefrLevels = pgEnum('cefr_level', [
   'A1',
   'A2',
@@ -52,6 +55,19 @@ export const users = pgTable('users', {
   email: varchar({ length: 255 }).notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+  avatarUrl: text('avatar_url'),
+  avatarPublicId: text('avatar_public_id'),
+  bio: varchar({ length: 280 }),
+  bioFormat: text('bio_format'),
+  countryCode: varchar('country_code', { length: 2 }),
+  city: varchar({ length: 100 }),
+  location: varchar({ length: 100 }),
+  gender: varchar({ length: 20 }).$type<Gender>(),
+  phoneNumber: varchar('phone_number', { length: 16 }),
+  profilePublic: boolean('profile_public').notNull().default(false),
+  profileSharing: boolean('profile_sharing').notNull().default(false),
+  publicStatistics: boolean('public_statistics').notNull().default(false),
+  publicCefr: boolean('public_cefr').notNull().default(false),
   role: text('role').$type<'user' | 'admin'>().notNull().default('user'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').$onUpdate(() => new Date()),
@@ -63,9 +79,15 @@ export const learnerProfiles = pgTable('learner_profiles', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   level: cefrLevels('level').notNull(),
+  studyLevel: cefrLevels('study_level'),
   timezone: text('timezone').notNull().default('UTC'),
   streakDay: integer('streak_day').notNull(),
   dailyNewWords: integer('daily_new_words').notNull(),
+  dailyStudyMinutes: integer('daily_study_minutes').notNull().default(15),
+  reviewMode: varchar('review_mode', { length: 8 }).$type<ReviewMode>().notNull().default('spaced'),
+  studyReminderEnabled: boolean('study_reminder_enabled').notNull().default(false),
+  studyReminderTime: varchar('study_reminder_time', { length: 5 }).notNull().default('19:00'),
+  autoplayPronunciation: boolean('autoplay_pronunciation').notNull().default(false),
   feedbackAudioEnabled: boolean('feedback_audio_enabled')
     .notNull()
     .default(false),
@@ -199,6 +221,7 @@ export const authSessions = pgTable('auth_sessions', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   tokenHash: char('token_hash', { length: 64 }).notNull().unique(),
+  userAgent: varchar('user_agent', { length: 512 }),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()

@@ -1,0 +1,58 @@
+:root[data-theme][data-accent] {
+  --appearance-ink: color-mix(in srgb, var(--appearance-fill) 80%, black);
+  --appearance-soft: color-mix(in srgb, var(--appearance-color) 13%, var(--white));
+  --blue: var(--appearance-fill);
+  --blue-dark: color-mix(in srgb, var(--appearance-fill) 80%, black);
+  --radiant: var(--appearance-fill);
+}
+
+:root[data-theme='dark'][data-accent] {
+  --appearance-ink: color-mix(in srgb, var(--appearance-color) 40%, white);
+  --appearance-soft: color-mix(in srgb, var(--appearance-color) 18%, var(--night-surface));
+  --blue: var(--appearance-ink);
+  --night-accent: var(--appearance-fill);
+  --night-accent-hover: color-mix(in srgb, var(--appearance-fill) 90%, black);
+  --night-focus: var(--appearance-ink);
+  --night-link: var(--appearance-ink);
+  --night-selection: var(--appearance-soft);
+}
+
+:root[data-theme][data-accent] .app-shell {
+  --shell-accent: var(--appearance-fill);
+  --shell-accent-ink: var(--appearance-ink);
+}
+:root[data-theme][data-accent] .settings-sheet {
+  --settings-accent: var(--appearance-fill);
+  --settings-focus: var(--appearance-ink);
+}
+:root[data-theme][data-accent] .learning-preferences-form {
+  --learning-selection: var(--appearance-soft);
+  --learning-selection-ink: var(--appearance-ink);
+}
+:root[data-theme][data-accent] .app-shell :is(.primary, .forecast-track > span) { background: var(--appearance-fill); }
+:root[data-theme][data-accent] .app-shell :is(.text-link, .tile-action, .forecast-count) { color: var(--appearance-ink); }
+:root[data-theme][data-accent] .app-shell :focus-visible { outline-color: var(--appearance-ink); }
+
+:root[data-text-size='small'] { font-size: 93.75%; }
+:root[data-text-size='large'] { font-size: 112.5%; }
+
+:root[data-density='compact'] { --density-gap: 10px; --density-card-padding: 12px; --density-row-padding: 10px; }
+:root[data-density='comfortable'] { --density-gap: 20px; --density-card-padding: 21px; --density-row-padding: 20px; }
+:root:is([data-density='compact'], [data-density='comfortable']) .app-shell :is(.activity-grid, .catalog-grid, .learning-preferences-form) {
+  gap: var(--density-gap);
+}
+:root:is([data-density='compact'], [data-density='comfortable']) .app-shell :is(.activity-tile, .catalog-word, .rail .panel) {
+  padding: var(--density-card-padding);
+}
+:root:is([data-density='compact'], [data-density='comfortable']) .app-shell .learning-section-body > .settings-form-row {
+  padding-block: var(--density-row-padding);
+}
+
+:root:is([data-animations='false'], [data-reduced-motion='true']) .app-shell {
+  &, *, *::before, *::after, dialog::backdrop {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-reduced-motion='true'] .app-shell :is(.activity-tile:hover, .button:active, .app-control:active) { transform: none; }

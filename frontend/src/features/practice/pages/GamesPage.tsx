@@ -11,7 +11,7 @@ const groups = [
 
 export function GamesPage({ busy, scores, onActivity }: { busy: boolean; scores: GameScore[]; onActivity: (kind: Activity) => void }) {
   return <div className="container screen inner-screen games-page">
-    <div className="page-intro"><span className="tile-icon violet"><Gamepad2 size={27} /></span><h1>O‘yinlar va mashqlar</h1>
+    <div className="page-intro"><span className="tile-icon violet"><Gamepad2 size={27} /></span><h1 lang="en">Games</h1>
       <p>So‘z boyligingizni kengaytiring yoki xotirangizni sinab ko‘ring.</p></div>
     <nav className="game-jump" aria-label="O‘yin bo‘limlari">
       {groups.map(({ id, title, icon: Icon }) => <a className="filter" href={'#games-' + id} key={id}><Icon size={16} />{title}</a>)}

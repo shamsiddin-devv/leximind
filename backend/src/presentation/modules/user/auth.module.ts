@@ -15,6 +15,7 @@ import {
 } from '../../../domain/repositories/IAuthRepository';
 import { TOKEN_SERVICE } from '../../../domain/services/ITokenService';
 import { AuthController } from './auth.controller';
+import { AccountSessions } from '../../../application/use-cases/user/AccountSessions';
 import { AccountActions } from '../../../application/use-cases/user/AccountActions';
 import { AccountActionRepository } from '../../../infrastructure/auth/AccountActionRepository';
 import { AccountActionMailer } from '../../../infrastructure/auth/AccountActionMailer';
@@ -26,6 +27,11 @@ import { AccountEmailWorker } from '../../../infrastructure/auth/AccountEmailWor
     AccountActionRepository,
     AccountActionMailer,
     AccountEmailWorker,
+    {
+      provide: AccountSessions,
+      useFactory: (sessions: IAuthRepository) => new AccountSessions(sessions),
+      inject: [AUTH_REPOSITORY],
+    },
     {
       provide: AccountActions,
       useFactory: (

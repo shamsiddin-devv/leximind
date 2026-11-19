@@ -14,6 +14,17 @@ import {
 } from 'class-validator';
 import { type GameKind, gameKinds } from '../../../domain/entities/Challenge';
 import { IReviewRating } from '../../../domain/services/IReviewRatingService';
+import { CEFR_LEVELS, type CefrLevel } from '../../../domain/entities/Word';
+import type { SessionData } from '../../../domain/entities/LearningSession';
+import { reviewModes, studyReminderTimePattern, type ReviewMode } from '../../../domain/repositories/ILearningRepository';
+import { PaginationDto } from '../../pagination.dto';
+
+export class SessionHistoryDto extends PaginationDto {
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsIn(['in_progress', 'completed', 'cancelled'])
+  status?: SessionData['status'];
+}
+
 export class ProfileDto {
   @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
   @IsBoolean()
@@ -27,6 +38,33 @@ export class ProfileDto {
   @Min(1)
   @Max(100)
   dailyNewWords?: number;
+
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsInt()
+  @Min(5)
+  @Max(180)
+  dailyStudyMinutes?: number;
+
+  @ValidateIf((_object: unknown, value: unknown) => value != null)
+  @IsIn(CEFR_LEVELS)
+  studyLevel?: CefrLevel | null;
+
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsIn(reviewModes)
+  reviewMode?: ReviewMode;
+
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsBoolean()
+  studyReminderEnabled?: boolean;
+
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsString()
+  @Matches(studyReminderTimePattern)
+  studyReminderTime?: string;
+
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsBoolean()
+  autoplayPronunciation?: boolean;
 }
 export class StartSessionDto {
   @ValidateIf((_object: unknown, value: unknown) => value !== undefined)

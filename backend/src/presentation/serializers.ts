@@ -17,6 +17,19 @@ export const userView = (u: User) => ({
   emailVerifiedAt: u.emailVerifiedAt,
   createdAt: u.createdAt,
 });
+export const ownUserView = (u: User) => ({
+  ...userView(u),
+  avatarUrl: u.avatar?.url ?? null,
+  bio: u.bio,
+  bioFormat: u.bioFormat,
+  countryCode: u.countryCode,
+  city: u.city,
+  location: u.location,
+  gender: u.gender,
+  phoneNumber: u.phoneNumber,
+  hasProfileBadge: u.hasProfileBadge,
+  privacy: u.privacy,
+});
 export const wordView = (w: Word) => ({
   id: w.id,
   text: w.text,

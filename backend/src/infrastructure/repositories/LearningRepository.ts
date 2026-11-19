@@ -17,8 +17,11 @@ import { IReviewRating } from '../../domain/services/IReviewRatingService';
 import { NotFoundError } from '../../domain/errors/NotFoundError';
 const sessionColumns =
   'id,user_id AS "userId",status,started_at AS "startedAt",ended_at AS "endedAt"';
-const profileColumns =
-  'user_id AS "userId",level,timezone,streak_day AS "streakDay",daily_new_words AS "dailyNewWords",feedback_audio_enabled AS "feedbackAudioEnabled",xp_multiplier AS "xpMultiplier",last_session_at AS "lastSessionAt"';
+const profileColumns = `user_id AS "userId",level,study_level AS "studyLevel",timezone,streak_day AS "streakDay",
+  daily_new_words AS "dailyNewWords",daily_study_minutes AS "dailyStudyMinutes",review_mode AS "reviewMode",
+  study_reminder_enabled AS "studyReminderEnabled",study_reminder_time AS "studyReminderTime",
+  feedback_audio_enabled AS "feedbackAudioEnabled",autoplay_pronunciation AS "autoplayPronunciation",
+  xp_multiplier AS "xpMultiplier",last_session_at AS "lastSessionAt"`;
 const cardColumns =
   'id,user_id AS "userId",word_id AS "wordId",stability,difficulty,due,reps,lapses,state,last_review_at AS "lastReviewedAt",paused_at AS "pausedAt",created_at AS "createdAt"';
 const reviewColumns =
@@ -51,7 +54,9 @@ class PgLearningTransaction implements LearningTransaction {
   }
   async updateProfile(p: Profile) {
     await this.c.query(
-      'UPDATE learner_profiles SET timezone=$2,daily_new_words=$3,streak_day=$4,last_session_at=$5,feedback_audio_enabled=$6,updated_at=now() WHERE user_id=$1',
+      `UPDATE learner_profiles SET timezone=$2,daily_new_words=$3,streak_day=$4,last_session_at=$5,
+       feedback_audio_enabled=$6,daily_study_minutes=$7,study_level=$8,review_mode=$9,study_reminder_enabled=$10,
+       study_reminder_time=$11,autoplay_pronunciation=$12,updated_at=now() WHERE user_id=$1`,
       [
         p.userId,
         p.timezone,
@@ -59,6 +64,12 @@ class PgLearningTransaction implements LearningTransaction {
         p.streakDay,
         p.lastSessionAt,
         p.feedbackAudioEnabled,
+        p.dailyStudyMinutes,
+        p.studyLevel,
+        p.reviewMode,
+        p.studyReminderEnabled,
+        p.studyReminderTime,
+        p.autoplayPronunciation,
       ],
     );
     return p;
@@ -92,7 +103,7 @@ class PgLearningTransaction implements LearningTransaction {
       await this.c.query<SessionTask>(
         `SELECT t.id,t.session_id AS "sessionId",t.card_id AS "cardId",
                 t.order_index AS "orderIndex",t.completed,t.correct,w.id AS "wordId",
-                w.text,s.definition,s.translation_uz AS "translationUz"
+                w.text,w.audio_url AS "audioUrl",s.definition,s.translation_uz AS "translationUz"
          FROM session_tasks t
          JOIN sessions owner ON owner.id=t.session_id
          JOIN cards c ON c.id=t.card_id AND c.user_id=owner.user_id
@@ -195,18 +206,19 @@ export class LearningRepository implements ILearningRepository {
       c.release();
     }
   }
-  async history(userId: string, page: number, limit: number) {
+  async history(userId: string, page: number, limit: number, status?: SessionData['status']) {
+    const conditions = ' FROM sessions WHERE user_id=$1 AND ($2::text IS NULL OR status=$2)';
     const data = (
       await this.pool.query<SessionData>(
         'SELECT ' +
           sessionColumns +
-          ' FROM sessions WHERE user_id=$1 ORDER BY started_at DESC,id LIMIT $2 OFFSET $3',
-        [userId, limit, (page - 1) * limit],
+          conditions + ' ORDER BY started_at DESC,id LIMIT $3 OFFSET $4',
+        [userId, status ?? null, limit, (page - 1) * limit],
       )
     ).rows;
     const { rows } = await this.pool.query<{ total: number }>(
-      'SELECT count(*)::integer AS total FROM sessions WHERE user_id=$1',
-      [userId],
+      'SELECT count(*)::integer AS total' + conditions,
+      [userId, status ?? null],
     );
     return { data, total: rows[0].total };
   }
@@ -328,8 +340,29 @@ export class LearningRepository implements ILearningRepository {
         due: number;
         reviews: number;
         sessions: number;
+        learnedWords: number;
+        accuracy: number | null;
+        studyMinutes: number;
       }>(
-        "SELECT (SELECT count(*)::integer FROM cards WHERE user_id=$1) AS cards,(SELECT count(*)::integer FROM cards WHERE user_id=$1 AND paused_at IS NULL AND due<=now()) AS due,(SELECT count(*)::integer FROM review_logs r JOIN cards c ON c.id=r.card_id WHERE c.user_id=$1) AS reviews,(SELECT count(*)::integer FROM sessions WHERE user_id=$1 AND status='completed') AS sessions",
+        `WITH completed AS (
+           SELECT id, started_at, ended_at FROM sessions WHERE user_id=$1 AND status='completed'
+         ), session_summary AS (
+           SELECT count(*)::integer AS sessions,
+                  floor(coalesce(sum(extract(epoch FROM greatest(ended_at - started_at, interval '0 seconds'))), 0) / 60)::integer AS "studyMinutes"
+           FROM completed
+         ), answers AS (
+           SELECT count(DISTINCT c.word_id) FILTER (WHERE t.correct)::integer AS "learnedWords",
+                  round(100.0 * count(*) FILTER (WHERE t.correct) / nullif(count(t.correct), 0))::integer AS accuracy
+           FROM completed s
+           JOIN session_tasks t ON t.session_id=s.id AND t.completed
+           JOIN cards c ON c.id=t.card_id AND c.user_id=$1
+         )
+         SELECT
+           (SELECT count(*)::integer FROM cards WHERE user_id=$1) AS cards,
+           (SELECT count(*)::integer FROM cards WHERE user_id=$1 AND paused_at IS NULL AND due<=now()) AS due,
+           (SELECT count(*)::integer FROM review_logs r JOIN cards c ON c.id=r.card_id WHERE c.user_id=$1) AS reviews,
+           session_summary.*, answers.*
+         FROM session_summary CROSS JOIN answers`,
         [userId],
       )
     ).rows[0];

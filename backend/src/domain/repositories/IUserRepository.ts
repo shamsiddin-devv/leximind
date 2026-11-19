@@ -14,6 +14,9 @@ export interface IUserRepository {
     expectedHash: string,
   ): Promise<boolean>;
   create(data: User, passwordHash: string): Promise<User>;
-  edit(id: string, change: (current: User) => void): Promise<User>;
-  delete(id: string): Promise<void>;
+  edit(
+    id: string,
+    change: (current: User, passwordHash: string) => void | Promise<void>,
+  ): Promise<User>;
+  delete(id: string, expectedHash: string): Promise<{ avatarPublicId: string | null } | null>;
 }

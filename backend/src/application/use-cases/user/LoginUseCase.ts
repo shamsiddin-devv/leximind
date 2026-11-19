@@ -13,7 +13,7 @@ export class LoginUseCase {
     private readonly ttlSeconds: number,
     private readonly dummyHash: string,
   ) {}
-  async execute(email: string, password: string) {
+  async execute(email: string, password: string, userAgent?: string) {
     const user = await this.users.findByEmail(new Email(email).toString());
     const stored = user?.id
       ? await this.users.findPasswordHashByUserId(user.id)
@@ -28,6 +28,7 @@ export class LoginUseCase {
       this.tokens.digest(accessToken),
       expiresAt,
       stored,
+      userAgent,
     );
     if (!created)
       throw new UnauthorizedError('Credentials changed; sign in again.');

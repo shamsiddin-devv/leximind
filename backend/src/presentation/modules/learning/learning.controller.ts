@@ -19,6 +19,7 @@ import { cardView } from '../../serializers';
 import {
   ProfileDto,
   StartSessionDto,
+  SessionHistoryDto,
   ReviewDto,
   StartGameDto,
   SubmitAnswersDto,
@@ -54,9 +55,9 @@ export class LearningController {
   }
   @Get('sessions') history(
     @CurrentUser() u: Identity,
-    @Query() q: PaginationDto,
+    @Query() q: SessionHistoryDto,
   ) {
-    return this.learning.history(u.id, q.page, q.limit);
+    return this.learning.history(u.id, q.page, q.limit, q.status);
   }
   @Get('sessions/:id') session(
     @CurrentUser() u: Identity,

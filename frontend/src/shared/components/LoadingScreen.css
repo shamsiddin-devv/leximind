@@ -1,0 +1,48 @@
+.loading-screen {
+  display: grid;
+  place-items: center;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  padding: 16px;
+  box-sizing: border-box;
+  color-scheme: light;
+  background: var(--paper, #faf9f6);
+  color: var(--muted, #626978);
+}
+
+/* Keep the same SVG mounted from the initial HTML through the React fallbacks. */
+#app-loading {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+#root:empty + #app-loading { display: grid; }
+#root:has([data-app-loading]) + #app-loading { display: grid; }
+
+.loading-screen-status {
+  inline-size: min(100%, 420px);
+}
+
+.loading-screen-status img {
+  display: block;
+  inline-size: 100%;
+  block-size: auto;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .loading-screen-status { animation: loading-reveal 150ms ease-out 80ms both; }
+}
+
+@keyframes loading-reveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+:root[data-theme='dark'] .loading-screen {
+  color-scheme: dark;
+  background: var(--paper, #111313);
+  color: var(--muted, #a4a7ac);
+}

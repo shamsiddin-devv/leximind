@@ -1,33 +1,39 @@
 import { useEffect, useId, useState } from 'react';
 import { BookOpen, Check, Plus, Search } from 'lucide-react';
+import { navigate, useRoute } from '../../../app/router';
 import { api, explain } from '../../../shared/services/api';
-import { levels, type Level, type Page, type Word } from '../../../shared/types/api';
+import { levels, type Page, type Word } from '../../../shared/types/api';
 import { Notice, Speak } from '../../../shared/components/UI';
+import { listWords, vocabularyHref, wordSearchLength } from '../wordSearch';
+
+const pageSize = 12;
+type CatalogLookup = { key: string; result?: Page<Word>; error?: string };
 
 export function Catalog({ token, onChange }: { token: string; onChange: () => void }) {
-  const [query, setQuery] = useState('');
-  const [level, setLevel] = useState<Level | ''>('');
-  const [page, setPage] = useState(1);
-  const [result, setResult] = useState<Page<Word>>();
-  const [error, setError] = useState('');
+  const { searchParams } = useRoute();
+  const query = searchParams.get('search')?.slice(0, wordSearchLength) ?? '';
+  const level = levels.find((item) => item === searchParams.get('level')) ?? '';
+  const requestedPage = Number(searchParams.get('page'));
+  const page = Number.isInteger(requestedPage) && requestedPage >= 1 && requestedPage <= 100_000 ? requestedPage : 1;
+  const [lookup, setLookup] = useState<CatalogLookup>();
   const [added, setAdded] = useState<Record<string, 'saving' | 'saved'>>({});
   const [message, setMessage] = useState('');
   const [refresh, retry] = useState(0);
   const searchId = useId();
+  const key = JSON.stringify([query.trim(), level, page, refresh]);
+  const result = lookup?.key === key ? lookup.result : undefined;
+  const error = lookup?.key === key ? lookup.error : undefined;
 
   useEffect(() => {
     const abort = new AbortController();
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams({ page: String(page), limit: '12' });
-      if (query.trim()) params.set('search', query.trim());
-      if (level) params.set('cefrLevel', level);
-      void api<Page<Word>>('/words?' + params, { token, signal: abort.signal }).then(setResult)
-        .catch((failure) => { if (!abort.signal.aborted) setError(explain(failure)); });
+      void listWords({ query, level, page, limit: pageSize, token, signal: abort.signal })
+        .then((result) => { if (!abort.signal.aborted) setLookup({ key, result }); })
+        .catch((failure) => { if (!abort.signal.aborted) setLookup({ key, error: explain(failure) }); });
     }, 200);
     return () => { window.clearTimeout(timer); abort.abort(); };
-  }, [token, query, level, page, refresh]);
+  }, [token, query, level, page, key]);
 
-  function reset(nextPage = 1) { setPage(nextPage); setError(''); setResult(undefined); }
   const words = result?.data;
   async function add(word: Word) {
     setMessage('');
@@ -44,16 +50,16 @@ export function Catalog({ token, onChange }: { token: string; onChange: () => vo
   }
 
   return <div className="container screen inner-screen">
-    <div className="page-intro"><span className="tile-icon blue"><BookOpen size={26} /></span><h1>Lug‘at</h1>
+    <div className="page-intro"><span className="tile-icon blue"><BookOpen size={26} /></span><h1 lang="en">Vocabulary</h1>
       <p>Inglizcha so‘zlarni toping va takrorlash uchun kartalaringizga qo‘shing.</p></div>
     <div className="catalog-toolbar">
-      <label className="search-box" htmlFor={searchId}><Search size={19} /><input id={searchId} type="search" aria-label="So‘z qidirish" placeholder="So‘z qidiring…" maxLength={80} value={query}
-        onChange={(event) => { setQuery(event.target.value); reset(); }} /></label>
+      <label className="search-box" htmlFor={searchId}><Search size={19} /><input id={searchId} type="search" aria-label="So‘z qidirish" placeholder="So‘z qidiring…" maxLength={wordSearchLength} value={query}
+        onChange={(event) => navigate(vocabularyHref(event.target.value, level), true)} /></label>
       <div className="filters" aria-label="CEFR darajasi">{(['', ...levels] as const).map((item) => <button key={item} className={`filter ${level === item ? 'active' : ''}`}
-        aria-pressed={level === item} onClick={() => { if (level !== item) { setLevel(item); reset(); } }}>{item || 'Hammasi'}</button>)}</div>
+        aria-pressed={level === item} onClick={() => { if (level !== item) navigate(vocabularyHref(query, item), true); }}>{item || 'Hammasi'}</button>)}</div>
     </div>
     {message && <Notice>{message}</Notice>}
-    {error && <div className="notice-stack"><Notice error>{error}</Notice><button className="button secondary" onClick={() => { reset(page); retry((n) => n + 1); }}>Qayta urinish</button></div>}
+    {error && <div className="notice-stack"><Notice error>{error}</Notice><button className="button secondary" onClick={() => retry((n) => n + 1)}>Qayta urinish</button></div>}
     {!error && !words && <p className="empty" role="status">Lug‘at yuklanmoqda…</p>}
     {words && (words.length ? <div className="catalog-grid">{words.map((word) => <article className="panel catalog-word" key={word.id}>
       <div className="word-top"><span className="level">{word.cefrLevel}</span><Speak url={word.audioUrl} text={word.text} /></div>
@@ -64,10 +70,10 @@ export function Catalog({ token, onChange }: { token: string; onChange: () => vo
         {added[word.id] === 'saving' ? 'Saqlanmoqda…' : added[word.id] === 'saved' ? 'Qo‘shildi' : 'Karta qo‘shish'}
       </button>
     </article>)}</div> : <p className="empty" role="status">Mos so‘z topilmadi.</p>)}
-    {result && result.total > 12 && <div className="pagination">
-      <button className="button secondary" disabled={page === 1} onClick={() => reset(page - 1)}>Oldingi</button>
-      <span>{page} / {Math.ceil(result.total / 12)}</span>
-      <button className="button secondary" disabled={page * 12 >= result.total} onClick={() => reset(page + 1)}>Keyingi</button>
+    {result && result.total > pageSize && <div className="pagination">
+      <button className="button secondary" disabled={page === 1} onClick={() => navigate(vocabularyHref(query, level, page - 1), true)}>Oldingi</button>
+      <span>{page} / {Math.ceil(result.total / pageSize)}</span>
+      <button className="button secondary" disabled={page * pageSize >= result.total} onClick={() => navigate(vocabularyHref(query, level, page + 1), true)}>Keyingi</button>
     </div>}
   </div>;
 }

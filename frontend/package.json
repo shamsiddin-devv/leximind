@@ -11,10 +11,12 @@
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5",
+    "@fontsource-variable/plus-jakarta-sans": "^5",
     "lucide-react": "^0.577",
+    "quill": "2.0.2",
+    "quill-delta": "^5.1.0",
     "react": "^19",
-    "react-dom": "^19",
-    "@fontsource-variable/plus-jakarta-sans": "^5"
+    "react-dom": "^19"
   },
   "devDependencies": {
     "@types/node": "^24",

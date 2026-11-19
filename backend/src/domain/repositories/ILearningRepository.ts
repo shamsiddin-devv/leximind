@@ -30,16 +30,30 @@ export interface StudySnapshot {
   forecast: { date: string; count: number }[];
   difficultWords: { wordId: string; text: string; againCount: number }[];
 }
+export const reviewModes = ['spaced', 'random'] as const;
+export type ReviewMode = (typeof reviewModes)[number];
+export const studyReminderTimePattern = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+
 export interface Profile {
   userId: string;
   level: CefrLevel;
+  studyLevel: CefrLevel | null;
   timezone: string;
   streakDay: number;
   dailyNewWords: number;
+  dailyStudyMinutes: number;
+  reviewMode: ReviewMode;
+  studyReminderEnabled: boolean;
+  studyReminderTime: string;
+  autoplayPronunciation: boolean;
   feedbackAudioEnabled: boolean;
   xpMultiplier: number;
   lastSessionAt: Date | null;
 }
+export type ProfilePreferences = Pick<Profile,
+  'studyLevel' | 'timezone' | 'dailyNewWords' | 'dailyStudyMinutes' | 'reviewMode' |
+  'studyReminderEnabled' | 'studyReminderTime' | 'feedbackAudioEnabled' | 'autoplayPronunciation'
+>;
 export interface SessionTask {
   id: string;
   sessionId: string;
@@ -49,6 +63,7 @@ export interface SessionTask {
   correct: boolean | null;
   wordId: string;
   text: string;
+  audioUrl: string | null;
   definition: string;
   translationUz: string;
 }
@@ -83,6 +98,7 @@ export interface ILearningRepository {
     userId: string,
     page: number,
     limit: number,
+    status?: SessionData['status'],
   ): Promise<{ data: SessionData[]; total: number }>;
   reviews(
     userId: string,
@@ -108,5 +124,13 @@ export interface ILearningRepository {
   studySnapshot(userId: string): Promise<StudySnapshot | null>;
   statistics(
     userId: string,
-  ): Promise<{ cards: number; due: number; reviews: number; sessions: number }>;
+  ): Promise<{
+    cards: number;
+    due: number;
+    reviews: number;
+    sessions: number;
+    learnedWords: number;
+    accuracy: number | null;
+    studyMinutes: number;
+  }>;
 }

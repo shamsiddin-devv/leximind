@@ -34,6 +34,7 @@ const auth = () => ({ Authorization: 'Bearer ' + token });
 const other = () => ({ Authorization: 'Bearer ' + otherToken });
 const successfulRoutes = new Set();
 const sentAccountEmails = [];
+const uploadedAvatars = new Set();
 before(async () => {
   adminPool = new Pool({ connectionString: base });
   await adminPool.query('CREATE DATABASE "' + database + '"');
@@ -64,6 +65,20 @@ before(async () => {
   const {
     AccountEmailWorker,
   } = require('../dist/src/infrastructure/auth/AccountEmailWorker');
+  const {
+    CloudinaryAvatarStorage,
+  } = require('../dist/src/infrastructure/media/CloudinaryAvatarStorage');
+  CloudinaryAvatarStorage.prototype.upload = async function () {
+    const publicId = 'LexiMind/' + randomUUID();
+    uploadedAvatars.add(publicId);
+    return {
+      publicId,
+      url: 'https://res.cloudinary.com/test/image/upload/' + publicId + '.jpg',
+    };
+  };
+  CloudinaryAvatarStorage.prototype.remove = async function (publicId) {
+    uploadedAvatars.delete(publicId);
+  };
   const { configureApp } = require('../dist/src/presentation/configure-app');
   app = await NestFactory.create(AppModule, {
     logger: false,
@@ -228,6 +243,71 @@ test('complete API and database lifecycle', async (t) => {
       await api.post('/api/words').set(auth()).send({}).expect(403);
     },
   );
+  await t.test(
+    'persists and replaces an avatar for the authenticated user',
+    async () => {
+      const image =
+        'data:image/jpeg;base64,' +
+        Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64');
+      await api.put('/api/users/me/avatar').send({ image }).expect(401);
+      await api
+        .put('/api/users/me/avatar')
+        .set(auth())
+        .send({ image: 'invalid' })
+        .expect(400);
+
+      const first = (
+        await api
+          .put('/api/users/me/avatar')
+          .set(auth())
+          .send({ image })
+          .expect(200)
+      ).body;
+      assert.match(first.avatarUrl, /\/LexiMind\//);
+      const second = (
+        await api
+          .put('/api/users/me/avatar')
+          .set(auth())
+          .send({ image })
+          .expect(200)
+      ).body;
+      assert.notEqual(second.avatarUrl, first.avatarUrl);
+      assert.equal(uploadedAvatars.size, 1);
+      assert.equal(
+        (await api.get('/api/users/me').set(auth()).expect(200)).body.avatarUrl,
+        second.avatarUrl,
+      );
+
+      const removed = await api
+        .delete('/api/users/me/avatar')
+        .set(auth())
+        .expect(200);
+      assert.equal(removed.body.avatarUrl, null);
+      assert.equal(uploadedAvatars.size, 0);
+    },
+  );
+  await t.test('persists a formatted bio and structured location without breaking legacy updates', async () => {
+    const fields = { bio: 'Learning English', countryCode: 'UZ', city: 'Samarqand' };
+    const bioFormat = JSON.stringify([{ insert: fields.bio, attributes: { bold: true, underline: true, color: '#615bfe' } }, { insert: '\n', attributes: { align: 'center', list: 'bullet' } }]);
+    await api.patch('/api/users/me').set(auth())
+      .send({ city: 'Samarqand' }).expect(400);
+    await api.patch('/api/users/me').set(auth())
+      .send({ ...fields, bioFormat: JSON.stringify([{ insert: 'wrong\n' }]) }).expect(400);
+    await api.patch('/api/users/me').set(auth())
+      .send({ ...fields, bioFormat: JSON.stringify([{ insert: fields.bio + '\n', attributes: { link: 'https://example.test' } }]) }).expect(400);
+    await api.patch('/api/users/me').set(auth()).send({ ...fields, bioFormat }).expect(200);
+    const saved = (await api.get('/api/users/me').set(auth()).expect(200)).body;
+    for (const [key, value] of Object.entries({ ...fields, bioFormat })) assert.equal(saved[key], value);
+    assert.match(saved.location, /^Samarqand, /);
+    const legacy = (await api.patch('/api/users/me').set(auth())
+      .send({ location: 'Old town', bio: 'Plain bio' }).expect(200)).body;
+    assert.equal(legacy.location, 'Old town');
+    assert.equal(legacy.countryCode, null);
+    assert.equal(legacy.city, null);
+    assert.equal(legacy.bioFormat, null);
+    await api.patch('/api/users/me').set(auth()).send({ location: null, bio: null }).expect(200);
+  });
+
   await t.test('validates profile and persists changes', async () => {
     await api
       .patch('/api/profile')
@@ -255,12 +335,37 @@ test('complete API and database lifecycle', async (t) => {
       .set(auth())
       .send({ level: 'C2' })
       .expect(400);
+    const defaults = (await api.get('/api/profile').set(auth()).expect(200)).body;
+    assert.equal(defaults.dailyStudyMinutes, 15);
+    assert.equal(defaults.studyLevel, null);
+    assert.equal(defaults.reviewMode, 'spaced');
+    assert.equal(defaults.studyReminderEnabled, false);
+    assert.equal(defaults.autoplayPronunciation, false);
+    for (const invalid of [
+      { dailyStudyMinutes: 4 }, { dailyStudyMinutes: 181 }, { reviewMode: 'ordered' },
+      { studyLevel: 'Z9' }, { studyReminderTime: '24:00' }, { studyReminderEnabled: 'true' },
+    ]) {
+      await api.patch('/api/profile').set(auth()).send(invalid).expect(400);
+    }
+    const preferences = {
+      timezone: 'Asia/Tashkent', dailyNewWords: 3, dailyStudyMinutes: 25,
+      studyLevel: 'B1', reviewMode: 'random', studyReminderEnabled: true,
+      studyReminderTime: '18:30', autoplayPronunciation: true,
+    };
     const r = await api
       .patch('/api/profile')
       .set(auth())
-      .send({ timezone: 'Asia/Tashkent', dailyNewWords: 3 })
+      .send(preferences)
       .expect(200);
-    assert.equal(r.body.dailyNewWords, 3);
+    const saved = (await api.get('/api/profile').set(auth()).expect(200)).body;
+    for (const [key, value] of Object.entries(preferences)) {
+      assert.equal(r.body[key], value);
+      assert.equal(saved[key], value);
+    }
+    assert.equal(saved.level, defaults.level);
+    const reset = await api.patch('/api/profile').set(auth()).send({ studyLevel: null, studyReminderEnabled: false }).expect(200);
+    assert.equal(reset.body.studyLevel, null);
+    assert.equal(reset.body.studyReminderTime, '18:30');
   });
   await t.test('creates catalog words with senses and audio', async () => {
     await pool.query("UPDATE users SET role='admin' WHERE id=$1", [userId]);
@@ -598,6 +703,9 @@ test('complete API and database lifecycle', async (t) => {
         .body;
       assert.equal(stats.reviews, 1);
       assert.equal(stats.sessions, 1);
+      assert.equal(stats.learnedWords, 1);
+      assert.equal(stats.accuracy, 100);
+      assert.ok(Number.isInteger(stats.studyMinutes) && stats.studyMinutes >= 0);
       assert.equal(
         (await api.get('/api/reviews').set(auth()).expect(200)).body.total,
         1,
@@ -765,6 +873,15 @@ test('complete API and database lifecycle', async (t) => {
           .expect(200)
       ).body;
       assert.equal(repeated.endedAt, cancelled.endedAt);
+      const historyPath = '/api/sessions?status=cancelled&limit=1';
+      const { body: filtered } = await api.get(historyPath).set(auth()).expect(200);
+      assert.equal(filtered.total, 1);
+      assert.deepEqual(filtered.data.map(({ id }) => id), [cancelled.id]);
+      const { body: nextPage } = await api.get(historyPath + '&page=2').set(auth()).expect(200);
+      assert.deepEqual(nextPage, { total: 1, data: [] });
+      const { body: otherHistory } = await api.get(historyPath).set(other()).expect(200);
+      assert.deepEqual(otherHistory, { total: 0, data: [] });
+      await api.get('/api/sessions?status=unknown').set(auth()).expect(400);
       await api
         .post(path + '/complete')
         .set(auth())
@@ -1061,6 +1178,10 @@ test('complete API and database lifecycle', async (t) => {
   await t.test(
     'completes account, catalog, bulk card and learning history routes',
     async () => {
+      await api.patch('/api/users/me').set(auth())
+        .send({ email: 'renamed@example.com' }).expect(400);
+      await api.patch('/api/users/me').set(auth())
+        .send({ email: 'renamed@example.com', currentPassword: 'wrong' }).expect(400);
       const responses = await Promise.all([
         api
           .patch('/api/users/me')
@@ -1069,7 +1190,7 @@ test('complete API and database lifecycle', async (t) => {
         api
           .patch('/api/users/me')
           .set(auth())
-          .send({ email: 'renamed@example.com' }),
+          .send({ email: 'renamed@example.com', currentPassword: password }),
       ]);
       assert.deepEqual(
         responses.map((response) => response.status),
@@ -1264,6 +1385,18 @@ test('complete API and database lifecycle', async (t) => {
     async () => {
       const current = (await api.get('/api/users/me').set(auth()).expect(200))
         .body;
+      const details = {
+        bio: 'I learn English every day.',
+        location: 'Toshkent',
+        gender: 'other',
+        phoneNumber: '+998901234567',
+      };
+      await api.patch('/api/users/me').set(auth())
+        .send({ phoneNumber: 'abc' }).expect(400);
+      const saved = (await api.patch('/api/users/me').set(auth())
+        .send(details).expect(200)).body;
+      for (const key of Object.keys(details)) assert.equal(saved[key], details[key]);
+      assert.equal(saved.hasProfileBadge, false);
       await api
         .post('/api/auth/email-verification/request')
         .send({ email: 'absent@example.com' })
@@ -1290,6 +1423,14 @@ test('complete API and database lifecycle', async (t) => {
         (await api.get('/api/users/me').set(auth()).expect(200)).body
           .emailVerifiedAt,
       );
+      const verified = (await api.get('/api/users/me').set(auth()).expect(200)).body;
+      assert.equal(verified.hasProfileBadge, true);
+      const incomplete = (await api.patch('/api/users/me').set(auth())
+        .send({ gender: 'undisclosed' }).expect(200)).body;
+      assert.equal(incomplete.hasProfileBadge, false);
+      const restored = (await api.patch('/api/users/me').set(auth())
+        .send({ gender: details.gender }).expect(200)).body;
+      assert.equal(restored.hasProfileBadge, true);
       await api
         .post('/api/auth/password-reset/request')
         .send({ email: current.email })
@@ -1327,8 +1468,77 @@ test('complete API and database lifecycle', async (t) => {
     assert.ok(!response.text.includes(userId));
   });
 
+  await t.test('lists and revokes only the caller’s device sessions', async () => {
+    await api.get('/api/auth/sessions').expect(401);
+    otherToken = (await api.post('/api/auth/login')
+      .send({ email: 'other@example.com', password: 'Change8!' }).expect(200)).body.accessToken;
+    const { email } = (await api.get('/api/users/me').set(auth()).expect(200)).body;
+    const agent = 'Mozilla/5.0 (Windows NT 10.0) Chrome/132.0';
+    const second = (await api.post('/api/auth/login').set('User-Agent', agent)
+      .send({ email, password: 'Reset88!' }).expect(200)).body;
+    const secondAuth = { Authorization: 'Bearer ' + second.accessToken };
+    const devices = (await api.get('/api/auth/sessions').set(auth()).expect(200)).body;
+    assert.equal(devices.length, 2);
+    assert.equal(devices.filter((device) => device.current).length, 1);
+    const otherDevice = devices.find((device) => device.userAgent === agent);
+    assert.equal(otherDevice.current, false);
+    assert.deepEqual(Object.keys(otherDevice).sort(), ['createdAt', 'current', 'expiresAt', 'id', 'userAgent']);
+    await api.delete('/api/auth/sessions/' + otherDevice.id).set(other()).expect(204);
+    await api.get('/api/users/me').set(secondAuth).expect(200);
+    await api.delete('/api/auth/sessions/' + otherDevice.id).set(auth()).expect(204);
+    await api.get('/api/users/me').set(secondAuth).expect(401);
+    const remaining = (await api.get('/api/auth/sessions').set(auth()).expect(200)).body;
+    assert.equal(remaining.length, 1);
+    assert.equal(remaining[0].current, true);
+  });
+
+  await t.test('honors sharing and field-level privacy in public profiles', async () => {
+    const endpoint = '/api/users/shared/' + userId;
+    await api.get(endpoint).expect(404);
+    await api.patch('/api/users/me').set(auth()).send({ profilePublic: null }).expect(400);
+    await api.patch('/api/users/me').set(auth()).send({ profilePublic: true }).expect(200);
+    await api.get(endpoint).expect(404);
+
+    const { body: saved } = await api.patch('/api/users/me').set(auth())
+      .send({ profileSharing: true, publicCefr: true, publicStatistics: true }).expect(200);
+    assert.deepEqual(saved.privacy, {
+      profilePublic: true, profileSharing: true, publicStatistics: true, publicCefr: true,
+    });
+    assert.deepEqual((await api.get('/api/users/me').set(auth()).expect(200)).body.privacy, saved.privacy);
+    const { body: shared } = await api.get(endpoint).expect('Cache-Control', 'no-store').expect(200);
+    assert.deepEqual(Object.keys(shared).sort(), ['avatarUrl', 'fullName', 'hasProfileBadge', 'level', 'statistics']);
+    assert.deepEqual(Object.keys(shared.statistics).sort(), ['learnedWords', 'streakDay']);
+
+    await api.patch('/api/users/me').set(auth())
+      .send({ publicCefr: false, publicStatistics: false }).expect(200);
+    const { body: limited } = await api.get(endpoint).expect(200);
+    assert.deepEqual(Object.keys(limited).sort(), ['avatarUrl', 'fullName', 'hasProfileBadge']);
+    await api.patch('/api/users/me').set(auth()).send({ profileSharing: false }).expect(200);
+    await api.get(endpoint).expect(404);
+    await api.patch('/api/users/me').set(auth())
+      .send({ profileSharing: true, profilePublic: false }).expect(200);
+    await api.get(endpoint).expect(404);
+  });
+
+  await t.test('signs out other devices while preserving the current account session', async () => {
+    const { email } = (await api.get('/api/users/me').set(auth()).expect(200)).body;
+    const { body: device } = await api.post('/api/auth/login')
+      .send({ email, password: 'Reset88!' }).expect(200);
+    await api.delete('/api/auth/sessions/others').expect(401);
+    await api.delete('/api/auth/sessions/others').set(auth()).expect(204);
+    await api.get('/api/users/me').set('Authorization', 'Bearer ' + device.accessToken).expect(401);
+    await api.get('/api/users/me').set(other()).expect(200);
+    const { body: remaining } = await api.get('/api/auth/sessions').set(auth()).expect(200);
+    assert.equal(remaining.length, 1);
+    assert.equal(remaining[0].current, true);
+  });
+
   await t.test('deleting account cascades personal state', async () => {
-    await api.delete('/api/users/me').set(auth()).expect(204);
+    await api.delete('/api/users/me').set(auth()).expect(400);
+    await api.delete('/api/users/me').set(auth())
+      .send({ currentPassword: 'wrong' }).expect(400);
+    await api.delete('/api/users/me').set(auth())
+      .send({ currentPassword: 'Reset88!' }).expect(204);
     assert.equal(
       (
         await pool.query(
@@ -1362,7 +1572,7 @@ test('complete API and database lifecycle', async (t) => {
       const missing = operations.filter(
         (operation) => !successfulRoutes.has(operation),
       );
-      assert.equal(operations.length, 61);
+      assert.equal(operations.length, 67);
       assert.deepEqual(missing, []);
     },
   );

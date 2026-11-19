@@ -1,4 +1,4 @@
-import { Body, Controller, Post, HttpCode } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, HttpCode } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public, CurrentUser } from '../../security';
@@ -9,6 +9,7 @@ import { LogoutUseCase } from '../../../application/use-cases/user/LogoutUseCase
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
 import { userView } from '../../serializers';
+import { AccountSessions } from '../../../application/use-cases/user/AccountSessions';
 import { AccountActions } from '../../../application/use-cases/user/AccountActions';
 import {
   ConfirmEmailDto,
@@ -23,6 +24,7 @@ export class AuthController {
     private readonly register: CreateUserUseCase,
     private readonly signOut: LogoutUseCase,
     private readonly accountActions: AccountActions,
+    private readonly sessions: AccountSessions,
   ) {}
   @Public()
   @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -36,12 +38,29 @@ export class AuthController {
   @Post('login')
   @ApiOperation({ security: [] })
   @HttpCode(200)
-  signIn(@Body() dto: LoginDto) {
-    return this.login.execute(dto.email, dto.password);
+  signIn(@Body() dto: LoginDto, @Headers('user-agent') userAgent?: string) {
+    return this.login.execute(dto.email, dto.password, userAgent);
   }
   @Post('logout') @HttpCode(204) async logout(@CurrentUser() user: Identity) {
     await this.signOut.execute(user);
   }
+  @Get('sessions') listSessions(@CurrentUser() user: Identity) {
+    return this.sessions.list(user);
+  }
+
+  @Delete('sessions/others') @HttpCode(204) async revokeOtherSessions(
+    @CurrentUser() user: Identity,
+  ) {
+    await this.sessions.revokeOthers(user);
+  }
+
+  @Delete('sessions/:id') @HttpCode(204) async revokeSession(
+    @CurrentUser() user: Identity,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.sessions.revoke(user, id);
+  }
+
   @Public()
   @ApiOperation({ security: [] })
   @Throttle({ default: { limit: 3, ttl: 60_000 } })

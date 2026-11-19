@@ -1,11 +1,45 @@
-import { useEffect, useSyncExternalStore, type AnchorHTMLAttributes } from 'react';
+import { useEffect, useSyncExternalStore, type ComponentProps } from 'react';
 
 export const routes = {
-  home: '/', login: '/kirish', register: '/royxatdan-otish', recover: '/parolni-tiklash',
-  account: '/akkaunt-amali', demo: '/namuna', dashboard: '/organish', vocabulary: '/lugat', games: '/oyinlar', profile: '/profil',
+  home: '/', login: '/login', register: '/register', recover: '/reset-password',
+  account: '/account-action', demo: '/demo', dashboard: '/dashboard', vocabulary: '/vocabulary', games: '/games', profile: '/profile',
+  learningSessions: '/learning-sessions', reviewCenter: '/review-center', studyPlan: '/study-plan',
+  statistics: '/statistics', topics: '/topics', achievements: '/achievements', leaderboard: '/leaderboard',
+  learningCalendar: '/learning-calendar', collections: '/my-collections', mistakes: '/mistakes-notebook', settings: '/settings',
+  settingsAccount: '/settings/account', settingsPassword: '/settings/password', settingsNotifications: '/settings/notifications', settingsAppearance: '/settings/appearance',
+  settingsLearning: '/settings/learning-preferences', settingsCustomization: '/settings/ui-customization', settingsPrivacy: '/settings/privacy-security',
+  settingsVerifyEmail: '/settings/privacy-security/verify-email',
+  settingsProfileBadge: '/settings/privacy-security/profile-badge',
+  sharedProfile: '/shared-profile',
 } as const;
+export function settingsParent(path: string) {
+  return path === routes.settingsVerifyEmail || path === routes.settingsProfileBadge ? routes.settingsPrivacy : path;
+}
 const locationEvent = 'leximind:navigation';
-const legacyPaths: Record<string, string> = { '#organish': routes.dashboard, '#lugat': routes.vocabulary, '#oyinlar': routes.games };
+const legacyPaths = new Map([
+  ['/kirish', routes.login],
+  ['/royxatdan-otish', routes.register],
+  ['/parolni-tiklash', routes.recover],
+  ['/akkaunt-amali', routes.account],
+  ['/namuna', routes.demo],
+  ['/organish', routes.dashboard],
+  ['/lugat', routes.vocabulary],
+  ['/oyinlar', routes.games],
+  ['/profil', routes.profile],
+  ['/oquv-sessiyalari', routes.learningSessions],
+  ['/takrorlash-markazi', routes.reviewCenter],
+  ['/oquv-rejasi', routes.studyPlan],
+  ['/statistika', routes.statistics],
+  ['/mavzular', routes.topics],
+  ['/yutuqlar', routes.achievements],
+  ['/reyting', routes.leaderboard],
+  ['/oquv-taqvimi', routes.learningCalendar],
+  ['/toplamlarim', routes.collections],
+  ['/xatolar-daftari', routes.mistakes],
+  [routes.settings, routes.settingsAccount],
+  ['/sozlamalar', routes.settingsAccount],
+]);
+const legacyHashes: Record<string, string> = { '#organish': routes.dashboard, '#lugat': routes.vocabulary, '#oyinlar': routes.games };
 
 function snapshot() { return location.pathname + location.search + location.hash; }
 
@@ -23,12 +57,14 @@ function subscribe(onChange: () => void) {
 export function useRoute() {
   const url = new URL(useSyncExternalStore(subscribe, snapshot), location.origin);
   const path = url.pathname.replace(/\/+$/, '') || '/';
-  const legacy = path === '/' ? legacyPaths[url.hash] : undefined;
   const fragment = new URLSearchParams(url.hash.slice(1));
   const action = fragment.get('action');
   const token = fragment.get('token');
   const accountLink = token && (action === 'verify_email' || action === 'reset_password') ? { action, token } : undefined;
-  return { path: accountLink ? routes.account : legacy ?? path, legacy, accountLink };
+  const hashRoute = path === routes.home ? legacyHashes[url.hash] : undefined;
+  const canonicalPath = accountLink ? routes.account : hashRoute ?? legacyPaths.get(path) ?? path;
+  const legacy = canonicalPath === path ? undefined : canonicalPath + url.search + (hashRoute ? '' : url.hash);
+  return { path: canonicalPath, legacy, accountLink, searchParams: url.searchParams };
 }
 
 export function navigate(to: string, replace = false) {
@@ -44,7 +80,7 @@ export function Redirect({ to }: { to: string }) {
   return null;
 }
 
-export function Link({ href = '/', children, onClick, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) {
+export function Link({ href = '/', children, onClick, ...props }: ComponentProps<'a'>) {
   return <a {...props} href={href} onClick={(event) => {
     onClick?.(event);
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || props.target || !href.startsWith('/') || href.startsWith('//')) return;

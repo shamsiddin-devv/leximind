@@ -25,7 +25,7 @@ export function DemoPage() {
     try { localStorage.setItem(progressKey, JSON.stringify({ day: dateKey(new Date()), count })); } catch { /* The demo can run without storage. */ }
   }} onClose={() => setRound(undefined)} soundEnabled={false} />;
   return <div className="container screen inner-screen">
-    <div className="page-intro"><span className="tile-icon violet"><FlaskConical size={24} /></span><h1>Sinov mashqlari</h1><p>Tarjima yoki imlo mashqini akkauntsiz sinab ko‘ring.</p></div>
+    <div className="page-intro"><span className="tile-icon violet"><FlaskConical size={24} /></span><h1 lang="en">Practice Demo</h1><p>Tarjima yoki imlo mashqini akkauntsiz sinab ko‘ring.</p></div>
     <section className="panel demo-progress" aria-label="Bugungi sinov natijasi">
       <span className="mini-icon blue"><Target size={19} /></span><span>Bugungi eng yaxshi natija</span>
       <strong>{best} / 5</strong>

@@ -86,7 +86,7 @@ export class DrizzleUserRepository implements IUserRepository {
       return true;
     });
   }
-  edit(id: string, change: (current: User) => void) {
+  edit(id: string, change: (current: User, passwordHash: string) => void | Promise<void>) {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .select()
@@ -95,11 +95,24 @@ export class DrizzleUserRepository implements IUserRepository {
         .for('update');
       if (!row) throw new NotFoundError('User not found.');
       const user = this.toDomain(row);
-      change(user);
+      await change(user, row.passwordHash);
       const emailChanged = row.email !== user.email.toString();
+      const privacy = user.privacy;
       if (
         row.fullName === user.fullName.trim() &&
-        row.email === user.email.toString()
+        !emailChanged &&
+        row.bio === user.bio &&
+        row.bioFormat === user.bioFormat &&
+        row.countryCode === user.countryCode &&
+        row.city === user.city &&
+        row.location === user.location &&
+        row.gender === user.gender &&
+        row.phoneNumber === user.phoneNumber &&
+        row.profilePublic === privacy.profilePublic &&
+        row.profileSharing === privacy.profileSharing &&
+        row.publicStatistics === privacy.publicStatistics &&
+        row.publicCefr === privacy.publicCefr &&
+        row.avatarPublicId === (user.avatar?.publicId ?? null)
       )
         return user;
       const [updated] = await tx
@@ -107,7 +120,17 @@ export class DrizzleUserRepository implements IUserRepository {
         .set({
           fullName: user.fullName.trim(),
           email: user.email.toString(),
-          emailVerifiedAt: emailChanged ? null : row.emailVerifiedAt,
+          emailVerifiedAt: user.emailVerifiedAt,
+          bio: user.bio,
+          bioFormat: user.bioFormat,
+          countryCode: user.countryCode,
+          city: user.city,
+          location: user.location,
+          gender: user.gender,
+          phoneNumber: user.phoneNumber,
+          ...privacy,
+          avatarUrl: user.avatar?.url ?? null,
+          avatarPublicId: user.avatar?.publicId ?? null,
         })
         .where(eq(users.id, id))
         .returning();
@@ -119,8 +142,12 @@ export class DrizzleUserRepository implements IUserRepository {
       return this.toDomain(updated);
     });
   }
-  async delete(id: string) {
-    await this.db.delete(users).where(eq(users.id, id));
+  async delete(id: string, expectedHash: string) {
+    const [deleted] = await this.db
+      .delete(users)
+      .where(and(eq(users.id, id), eq(users.passwordHash, expectedHash)))
+      .returning({ avatarPublicId: users.avatarPublicId });
+    return deleted ?? null;
   }
   private toDomain(r: typeof users.$inferSelect) {
     return new User({
@@ -129,6 +156,21 @@ export class DrizzleUserRepository implements IUserRepository {
       email: new Email(r.email),
       createdAt: r.createdAt,
       emailVerifiedAt: r.emailVerifiedAt,
+      bio: r.bio,
+      bioFormat: r.bioFormat,
+      countryCode: r.countryCode,
+      city: r.city,
+      location: r.location,
+      gender: r.gender,
+      phoneNumber: r.phoneNumber,
+      profilePublic: r.profilePublic,
+      profileSharing: r.profileSharing,
+      publicStatistics: r.publicStatistics,
+      publicCefr: r.publicCefr,
+      avatar:
+        r.avatarUrl && r.avatarPublicId
+          ? { url: r.avatarUrl, publicId: r.avatarPublicId }
+          : null,
     });
   }
 }

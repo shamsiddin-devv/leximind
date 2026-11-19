@@ -1,12 +1,38 @@
 import { BadRequestError } from '../errors/BadRequestError';
+import type { Avatar } from '../services/IAvatarStorage';
 import { Email } from '../value-objects/Email';
+import { normalizeBioFormat } from '../value-objects/BioFormatting';
 
-export interface IUserProps {
+const countryNames = new Intl.DisplayNames(['uz', 'en'], { type: 'region' });
+
+export const genders = ['female', 'male', 'other', 'undisclosed'] as const;
+export type Gender = (typeof genders)[number];
+export const phoneNumberPattern = /^[+][1-9][0-9]{7,14}$/;
+
+export type ProfilePrivacy = {
+  profilePublic: boolean;
+  profileSharing: boolean;
+  publicStatistics: boolean;
+  publicCefr: boolean;
+};
+
+export type UserDetails = Partial<ProfilePrivacy> & {
+  bio?: string | null;
+  bioFormat?: string | null;
+  location?: string | null;
+  countryCode?: string | null;
+  city?: string | null;
+  gender?: Gender | null;
+  phoneNumber?: string | null;
+};
+
+export interface IUserProps extends UserDetails {
   id?: string;
   fullName: string;
   email: Email;
   createdAt?: Date;
   emailVerifiedAt?: Date | null;
+  avatar?: Avatar | null;
 }
 
 export class User {
@@ -21,10 +47,7 @@ export class User {
   }
 
   update(
-    props: Partial<{
-      fullName: string;
-      email: string;
-    }>,
+    props: UserDetails & { fullName?: string; email?: string },
   ): void {
     if (props.fullName !== undefined) {
       if (!props.fullName.trim() || props.fullName.trim().length > 255)
@@ -33,8 +56,46 @@ export class User {
     }
     if (props.email !== undefined) {
       const checkingEmail = new Email(props.email);
+      if (checkingEmail.toString() !== this.props.email.toString()) this.props.emailVerifiedAt = null;
       this.props.email = checkingEmail;
     }
+    if (props.bio !== undefined) {
+      const bio = props.bio?.trim() || null;
+      if (bio !== this.bio) this.props.bioFormat = null;
+      this.props.bio = bio;
+    }
+    if (props.bioFormat !== undefined) {
+      this.props.bioFormat = props.bioFormat === null ? null : normalizeBioFormat(props.bioFormat, this.bio);
+    }
+    if (props.countryCode !== undefined || props.city !== undefined) {
+      this.updatePlace(props.countryCode, props.city);
+    } else if (props.location !== undefined && (props.location?.trim() || null) !== this.location) {
+      this.props.location = props.location?.trim() || null;
+      this.props.countryCode = null;
+      this.props.city = null;
+    }
+    if (props.gender !== undefined) this.props.gender = props.gender;
+    if (props.phoneNumber !== undefined) this.props.phoneNumber = props.phoneNumber;
+    if (props.profilePublic !== undefined) this.props.profilePublic = props.profilePublic;
+    if (props.profileSharing !== undefined) this.props.profileSharing = props.profileSharing;
+    if (props.publicStatistics !== undefined) this.props.publicStatistics = props.publicStatistics;
+    if (props.publicCefr !== undefined) this.props.publicCefr = props.publicCefr;
+  }
+
+  private updatePlace(countryCode: string | null | undefined, city: string | null | undefined) {
+    const country = countryCode === undefined ? this.countryCode : countryCode;
+    const nextCity = city === undefined ? (country === this.countryCode ? this.city : null) : city?.trim() || null;
+    if (country !== null && !/^[A-Z]{2}$/.test(country)) throw new BadRequestError('Invalid country code.');
+    if (nextCity && !country) throw new BadRequestError('A city requires a country.');
+    this.props.countryCode = country;
+    this.props.city = nextCity;
+    if (!country) {
+      this.props.location = null;
+      return;
+    }
+    const label = countryNames.of(country) ?? country;
+    const place = nextCity ? nextCity + ', ' + label : label;
+    this.props.location = Array.from(place).length <= 100 ? place : label;
   }
 
   get id() {
@@ -46,8 +107,32 @@ export class User {
   get email() {
     return this.props.email;
   }
+  setAvatar(avatar: Avatar | null) {
+    this.props.avatar = avatar;
+  }
+  get avatar() {
+    return this.props.avatar ?? null;
+  }
   get emailVerifiedAt() {
     return this.props.emailVerifiedAt ?? null;
+  }
+  get bio() { return this.props.bio ?? null; }
+  get bioFormat() { return this.props.bioFormat ?? null; }
+  get countryCode() { return this.props.countryCode ?? null; }
+  get city() { return this.props.city ?? null; }
+  get location() { return this.props.location ?? null; }
+  get gender() { return this.props.gender ?? null; }
+  get phoneNumber() { return this.props.phoneNumber ?? null; }
+  get privacy(): ProfilePrivacy {
+    return {
+      profilePublic: this.props.profilePublic ?? false,
+      profileSharing: this.props.profileSharing ?? false,
+      publicStatistics: this.props.publicStatistics ?? false,
+      publicCefr: this.props.publicCefr ?? false,
+    };
+  }
+  get hasProfileBadge() {
+    return Boolean(this.emailVerifiedAt && this.location && this.gender && this.gender !== 'undisclosed' && this.phoneNumber);
   }
   get createdAt() {
     return this.props.createdAt;

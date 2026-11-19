@@ -10,15 +10,15 @@ type Mode = 'login' | 'register' | 'recover' | 'reset' | 'verify';
 const minimumPasswordLength = 8;
 
 const copy = {
-  login: { title: 'Xush kelibsiz!', description: 'Takrorlash rejangiz va natijalaringizga qayting.', action: 'Kirish' },
-  register: { title: 'Ro‘yxatdan o‘ting', description: 'Shaxsiy lug‘atingizni yarating va birinchi mashqni boshlang.', action: 'Akkaunt yaratish' },
-  recover: { title: 'Parolni tiklash', description: 'Email manzilingizni kiriting. Tiklash havolasini shu manzilga yuboramiz.', action: 'Havola yuborish' },
-  reset: { title: 'Yangi parol yarating', description: 'LexiMind akkauntingiz uchun yangi parol kiriting.', action: 'Parolni saqlash' },
-  verify: { title: 'Emailni tasdiqlash', description: 'Email manzilingizni tasdiqlash uchun quyidagi tugmani bosing.', action: 'Emailni tasdiqlash' },
+  login: { title: 'Log In', description: 'Takrorlash rejangiz va natijalaringizga qayting.', action: 'Kirish' },
+  register: { title: 'Sign Up', description: 'Shaxsiy lug‘atingizni yarating va birinchi mashqni boshlang.', action: 'Akkaunt yaratish' },
+  recover: { title: 'Reset Password', description: 'Email manzilingizni kiriting. Tiklash havolasini shu manzilga yuboramiz.', action: 'Havola yuborish' },
+  reset: { title: 'Set New Password', description: 'LexiMind akkauntingiz uchun yangi parol kiriting.', action: 'Parolni saqlash' },
+  verify: { title: 'Verify Email', description: 'Email manzilingizni tasdiqlash uchun quyidagi tugmani bosing.', action: 'Emailni tasdiqlash' },
 };
 
-export function AuthPage({ mode, link, onLogin, onConfirmed }: {
-  mode: Mode; link?: AccountLink; onLogin: (session: SessionToken) => void; onConfirmed: (action: AccountLink['action']) => void;
+export function AuthPage({ mode, link, signedIn, onLogin, onConfirmed }: {
+  mode: Mode; link?: AccountLink; signedIn?: boolean; onLogin: (session: SessionToken) => void; onConfirmed: (action: AccountLink['action']) => void;
 }) {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -105,7 +105,7 @@ export function AuthPage({ mode, link, onLogin, onConfirmed }: {
     <section className="auth-content" aria-labelledby="auth-title">
       <Link className="auth-back text-link" href={mode === 'login' || register ? routes.home : routes.login}><ArrowLeft size={16} /> {mode === 'login' || register ? 'Bosh sahifa' : 'Kirish sahifasi'}</Link>
       <div className="auth-heading"><span className="tile-icon blue">{mode === 'verify' ? <Mail size={23} /> : <KeyRound size={23} />}</span>
-        <h1 id="auth-title">{content.title}</h1><p>{content.description}</p></div>
+        <h1 id="auth-title" lang="en">{content.title}</h1><p>{content.description}</p></div>
       <form className="account-form auth-form" onSubmit={(event) => void submit(event)}>
         {register && !created && <label htmlFor="full-name">Ism va familiya<input id="full-name" name="fullName" autoComplete="name" required maxLength={255} enterKeyHint="next" /></label>}
         {needsEmail && !complete && !created && <label htmlFor="email">Email manzili
@@ -124,7 +124,9 @@ export function AuthPage({ mode, link, onLogin, onConfirmed }: {
         {error && <Notice error>{error}</Notice>}
         {message && <Notice>{message}</Notice>}
         {complete || created
-          ? <Link className="button primary" href={routes.login}>Kirish sahifasiga <ArrowRight size={18} /></Link>
+          ? <Link className="button primary" href={mode === 'verify' && signedIn ? routes.settingsVerifyEmail : routes.login}>
+              {mode === 'verify' && signedIn ? 'Tasdiqlash sahifasiga' : 'Kirish sahifasiga'} <ArrowRight size={18} />
+            </Link>
           : <button className="button primary" disabled={busy} type="submit">{busy ? 'Yuborilmoqda…' : content.action} <ArrowRight size={18} /></button>}
       </form>
       {(mode === 'login' || register) && <p className="auth-switch">{register ? 'Akkauntingiz bormi?' : 'LexiMind’da yangimisiz?'}{' '}

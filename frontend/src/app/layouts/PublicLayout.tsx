@@ -9,9 +9,9 @@ export function PublicLayout({ children, signedIn = false }: { children: ReactNo
       <div className="container public-header-inner">
         <Brand />
         <nav className="public-nav" aria-label="Ochiq sahifalar">
-          {signedIn ? <Link className="button primary" href={routes.dashboard}>O‘quv paneli <ArrowRight size={17} /></Link> : <>
-            <Link className="public-login" href={routes.login}>Kirish</Link>
-            <Link className="button primary" href={routes.register}>Ro‘yxatdan o‘tish <ArrowRight size={16} /></Link>
+          {signedIn ? <Link className="button primary" href={routes.dashboard} lang="en">Dashboard <ArrowRight size={17} /></Link> : <>
+            <Link className="public-login" href={routes.login} lang="en">Log In</Link>
+            <Link className="button primary" href={routes.register} lang="en">Sign Up <ArrowRight size={16} /></Link>
           </>}
         </nav>
       </div>

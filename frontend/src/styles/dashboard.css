@@ -93,3 +93,6 @@
   .daily-hero h2 { font-size: clamp(1.68rem, 7vw, 2.5rem); }
   .summary-strip .mini-icon { display: none; }
 }
+.goal-study-time { display: flex; align-items: center; gap: 5px; margin-block-start: 4px; color: var(--muted); }
+.study-reminder { align-items: center; }
+.study-reminder .button { min-height: 30px; padding: 4px 6px; margin-inline-start: auto; color: inherit; }

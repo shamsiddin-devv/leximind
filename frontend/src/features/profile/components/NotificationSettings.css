@@ -1,0 +1,33 @@
+.notification-intro, .notification-note {
+  color: var(--muted);
+  font-size: .87rem;
+  line-height: 1.5;
+}
+
+.notification-intro {
+  margin-block-start: -13px;
+  padding-block-end: 15px;
+  border-block-end: 1px solid var(--line);
+}
+
+.notification-master {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 12px;
+}
+
+.notification-master .settings-field-label { padding-block: 0; }
+.notification-master .settings-row-label, .notification-row .settings-row-label { cursor: pointer; }
+.notification-preferences .learning-section-body > .notification-row { padding-block: 10px; }
+.notification-label { display: flex; align-items: center; gap: 12px; min-inline-size: 0; }
+.notification-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 36px;
+  block-size: 36px;
+  border-radius: 10px;
+  color: var(--learning-selection-ink);
+  background: var(--learning-selection);
+}

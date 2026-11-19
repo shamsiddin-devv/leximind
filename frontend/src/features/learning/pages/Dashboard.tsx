@@ -1,26 +1,19 @@
-import { ArrowRight, BookOpen, CalendarDays, Check, CircleHelp, Flame, Layers3, Play, RotateCcw, Sparkles, Target } from 'lucide-react';
+import { ArrowRight, BookOpen, CalendarDays, Check, CircleHelp, Clock3, Flame, Layers3, Play, RotateCcw, Sparkles, Target } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { Link, routes } from '../../../app/router';
 import { Speak } from '../../../shared/components/UI';
-import type { Activity, Plan, Profile, Session, Statistics } from '../../../shared/types/api';
-import { dateKey } from '../../../shared/utils/date';
+import type { Activity, Plan, Profile, SessionSummary, Statistics } from '../../../shared/types/api';
+import { dateKey, uzbekMonths } from '../../../shared/utils/date';
 import { activities, demoWords } from '../../practice/activities';
 import { ActivityTile } from '../../practice/components/ActivityTile';
+import { describeDailySession } from '../dailySession';
 
 type Props = {
-  name: string; profile?: Profile; plan?: Plan; history: Session[]; stats?: Statistics; busy: boolean;
+  name: string; profile?: Profile; plan?: Plan; history: SessionSummary[]; stats?: Statistics; busy: boolean;
   onStart: () => void; onActivity: (kind: Activity) => void;
 };
 const days = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
-const months = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
 const weekDay = (date: Date) => (date.getUTCDay() + 6) % 7;
-const dailyActions: Record<Plan['nextAction'], [string, string, string]> = {
-  RESUME_SESSION: ['Mashqni davom ettiring.', 'Faol sessiyangiz bor. Qolgan kartalarni hozir takrorlashingiz mumkin.', 'Mashqni davom ettirish'],
-  START_SESSION: ['Har kuni bir qadam.', 'Takrorlash kuni kelgan kartalaringizni mustahkamlang.', 'Mashqni boshlash'],
-  ADD_OR_RESUME_CARDS: ['Birinchi kartangizni yarating.', 'Lug‘atdan o‘rganmoqchi bo‘lgan so‘zlaringizni tanlang.', 'So‘zlarni tanlash'],
-  CAUGHT_UP: ['Bugungi kartalar tugadi.', 'Keyingi takrorlashgacha o‘yin orqali so‘z boyligingizni sinang.', 'O‘yinlarni ko‘rish'],
-  DAILY_NEW_LIMIT_REACHED: ['Bugungi maqsadga yetdingiz.', 'Yangi so‘zlar limiti bajarildi. Mashqni o‘yin bilan davom ettirishingiz mumkin.', 'O‘yinlarni ko‘rish'],
-};
 
 export function Dashboard({ name, profile, plan, history, stats, busy, onStart, onActivity }: Props) {
   const today = new Date(dateKey(new Date(), profile?.timezone) + 'T12:00:00Z');
@@ -31,7 +24,8 @@ export function Dashboard({ name, profile, plan, history, stats, busy, onStart, 
   const ratio = Math.min(1, count / goal);
   const finishedDays = new Set(history.flatMap((session) => session.status === 'completed' && session.endedAt ? [dateKey(new Date(session.endedAt), profile?.timezone)] : []));
   if (profile?.lastSessionAt) finishedDays.add(dateKey(new Date(profile.lastSessionAt), profile.timezone));
-  const [title, detail, action] = plan ? dailyActions[plan.nextAction] : ['Har kuni bir qadam.', 'Shaxsiy mashq rejangiz yuklanmoqda.', 'Mashqni boshlash'];
+  const randomPractice = profile?.reviewMode === 'random' && !plan?.activeSessionId;
+  const [title, detail, action] = describeDailySession(profile, plan);
   const forecast = plan?.forecast ?? [];
   const maxForecast = Math.max(1, ...forecast.map((item) => item.count));
 
@@ -41,7 +35,7 @@ export function Dashboard({ name, profile, plan, history, stats, busy, onStart, 
         <p>Bugungi mashqlaringiz va o‘quv natijalaringiz.</p></div>
       <div className="dashboard-tags">
         {profile && <span className="date-pill"><BookOpen size={16} /> {profile.level} daraja</span>}
-        <span className="date-pill"><CalendarDays size={16} /> {today.getUTCDate()}-{months[today.getUTCMonth()]}</span>
+        <span className="date-pill"><CalendarDays size={16} /> {today.getUTCDate()}-{uzbekMonths[today.getUTCMonth()]}</span>
       </div>
     </div>
     <div className="dashboard-grid">
@@ -52,7 +46,7 @@ export function Dashboard({ name, profile, plan, history, stats, busy, onStart, 
           <div className="hero-content">
             <span className="hero-label"><Sparkles size={14} /> KUNLIK MASHQ</span>
             <h2 id="daily-title">{title}</h2>
-            <p>{plan?.nextAction === 'START_SESSION' ? `Takrorlashga tayyor ${plan.availableNow} ta kartangiz bor.` : detail}</p>
+            <p>{!randomPractice && plan?.nextAction === 'START_SESSION' ? `Takrorlashga tayyor ${plan.availableNow} ta kartangiz bor.` : detail}</p>
             <button className="button white hero-button" onClick={onStart} disabled={busy || !plan}>
               <Play size={16} fill="currentColor" />{busy ? 'Yuklanmoqda…' : action}<ArrowRight size={18} />
             </button>
@@ -96,7 +90,8 @@ export function Dashboard({ name, profile, plan, history, stats, busy, onStart, 
         </section>
         <section className="panel goal">
           <div><div className="panel-label"><span className="mini-icon blue"><Target size={20} /></span><h2>Kunlik maqsad</h2></div>
-            <p><strong>{count}</strong><span> / {goal} yangi so‘z</span></p></div>
+            <p><strong>{count}</strong><span> / {goal} yangi so‘z</span></p>
+            {profile && <small className="goal-study-time"><Clock3 size={15} aria-hidden="true" /> Kuniga {profile.dailyStudyMinutes} daqiqa</small>}</div>
           <div className="goal-ring" style={{ '--fill': `${ratio * 100}%` } as CSSProperties} role="progressbar" aria-label="Kunlik maqsad" aria-valuemin={0} aria-valuenow={Math.min(count, goal)} aria-valuemax={goal}>
             <span>{Math.round(ratio * 100)}%</span></div>
         </section>

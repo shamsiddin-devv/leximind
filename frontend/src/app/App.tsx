@@ -1,36 +1,41 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useCallback, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { AuthPage, type AccountLink } from '../features/auth/pages/AuthPage';
 import { useSession } from '../features/auth/hooks/useSession';
 import { LandingPage } from '../features/landing/pages/LandingPage';
+import { LoadingScreen } from '../shared/components/LoadingScreen';
 import { Notice } from '../shared/components/UI';
 import { PublicLayout } from './layouts/PublicLayout';
-import { Link, navigate, Redirect, routes, useRoute } from './router';
+import { navigationPages } from './navigation';
+import { Link, navigate, Redirect, routes, settingsParent, useRoute } from './router';
 
 const Workspace = lazy(() => import('./Workspace'));
 const DemoPage = lazy(() => import('../features/landing/pages/DemoPage').then((module) => ({ default: module.DemoPage })));
-const protectedPaths = new Set<string>([routes.dashboard, routes.vocabulary, routes.games, routes.profile]);
-
-function Loading() {
-  return <div className="container inner-screen"><p className="empty" role="status">Yuklanmoqda…</p></div>;
-}
+const SharedProfile = lazy(() => import('../features/profile/pages/SharedProfile'));
+const protectedPaths = new Set<string>(navigationPages.keys());
 
 export function App() {
   const { path, legacy, accountLink } = useRoute();
   const session = useSession();
+  const { clear, token } = session;
+  const clearCurrent = useCallback(() => { if (token) clear(token); }, [clear, token]);
+  const protectedPage = protectedPaths.has(settingsParent(path));
+  const sharedProfileId = path.startsWith(routes.sharedProfile + '/') ? path.slice(routes.sharedProfile.length + 1) : '';
+  const signInPage = path === routes.login || path === routes.register;
+  const restoringSession = Boolean(session.token && !session.user);
 
   useEffect(() => {
-    document.title = ({
-      [routes.home]: 'LexiMind — Ingliz tilini o‘rganing', [routes.login]: 'Kirish — LexiMind',
-      [routes.register]: 'Ro‘yxatdan o‘tish — LexiMind', [routes.recover]: 'Parolni tiklash — LexiMind',
-      [routes.dashboard]: 'O‘quv paneli — LexiMind', [routes.vocabulary]: 'Lug‘at — LexiMind',
-      [routes.games]: 'O‘yinlar — LexiMind', [routes.profile]: 'Profil — LexiMind', [routes.demo]: 'Sinov mashqlari — LexiMind',
-      [routes.account]: 'Akkaunt amallari — LexiMind',
-    } as Record<string, string>)[path] ?? 'LexiMind';
+    const pageTitle = ({
+      [routes.home]: 'Home', [routes.login]: 'Log In', [routes.register]: 'Sign Up',
+      [routes.recover]: 'Reset Password', [routes.profile]: 'Profile', [routes.demo]: 'Practice Demo',
+      [routes.account]: accountLink?.action === 'verify_email' ? 'Verify Email' : 'Reset Password',
+      [routes.settingsVerifyEmail]: 'Verify Email', [routes.settingsProfileBadge]: 'Profile Badge',
+    } as Record<string, string>)[path];
+    document.title = (pageTitle ?? navigationPages.get(path)?.label ?? (sharedProfileId ? 'Shared Profile' : 'Page Not Found')) + ' — LexiMind';
     window.scrollTo(0, 0);
     const frame = requestAnimationFrame(() => document.getElementById('main')?.focus({ preventScroll: true }));
     return () => cancelAnimationFrame(frame);
-  }, [path]);
+  }, [path, accountLink?.action, sharedProfileId]);
 
   function confirmed(action: AccountLink['action']) {
     if (action === 'reset_password') session.clear();
@@ -38,32 +43,36 @@ export function App() {
   }
 
   let content;
-  if (legacy) content = <Redirect to={legacy} />;
-  else if (protectedPaths.has(path)) {
-    if (!session.token) content = <Redirect to={routes.login} />;
-    else if (session.user) content = <Suspense fallback={<PublicLayout><Loading /></PublicLayout>}>
-      <Workspace key={session.token} path={path} token={session.token} user={session.user} onUserChange={session.updateUser} onSessionLost={session.clear}
-        onLogout={() => { session.clear(); navigate(routes.home, true); }} />
-    </Suspense>;
-    else content = <PublicLayout>{session.error ? <div className="container inner-screen">
+  if (legacy) content = <><Redirect to={legacy} /><LoadingScreen /></>;
+  else if (restoringSession && !session.error) content = <LoadingScreen />;
+  else if (restoringSession && (protectedPage || signInPage)) content = <main id="main" className="loading-screen" tabIndex={-1}>
+    <div className="container">
       <Notice error>{session.error}</Notice><div className="notice-stack session-actions">
         <button className="button primary" onClick={session.retry}>Qayta urinish</button>
-        <button className="button secondary" onClick={session.clear}>Kirish sahifasiga</button>
-      </div></div> : <Loading />}</PublicLayout>;
-  } else if (path === routes.login || path === routes.register || path === routes.recover) {
-    if (session.user && path !== routes.recover) content = <Redirect to={routes.dashboard} />;
+        <button className="button secondary" onClick={() => { session.clear(); navigate(routes.login, true); }}>Kirish sahifasiga</button>
+      </div>
+    </div>
+  </main>;
+  else if (protectedPage) {
+    if (session.token && session.user) content = <Workspace key={session.token} path={path} token={session.token} user={session.user}
+      accountAccess={{ accounts: session.accounts, addAccount: session.addAccount, switchAccount: session.switchAccount }}
+      onUserChange={session.updateUser} onSessionLost={clearCurrent} onLogout={() => { if (clear(session.token)) navigate(routes.home, true); }} />;
+    else content = <><Redirect to={routes.login} /><LoadingScreen /></>;
+  } else if (signInPage || path === routes.recover) {
+    if (session.user && signInPage) content = <><Redirect to={routes.dashboard} /><LoadingScreen /></>;
     else content = <PublicLayout><AuthPage key={path} mode={path === routes.login ? 'login' : path === routes.register ? 'register' : 'recover'}
       onLogin={session.establish} onConfirmed={confirmed} /></PublicLayout>;
   } else if (path === routes.account && accountLink) {
     const link: AccountLink = { token: accountLink.token, action: accountLink.action === 'verify_email' ? 'verify_email' : 'reset_password' };
     content = <PublicLayout signedIn={Boolean(session.user)}><AuthPage key={link.action + link.token}
-      mode={link.action === 'verify_email' ? 'verify' : 'reset'} link={link} onLogin={session.establish} onConfirmed={confirmed} /></PublicLayout>;
+      mode={link.action === 'verify_email' ? 'verify' : 'reset'} link={link} signedIn={Boolean(session.user)} onLogin={session.establish} onConfirmed={confirmed} /></PublicLayout>;
   } else {
     content = <PublicLayout signedIn={Boolean(session.user)}>
       {path === routes.home ? <LandingPage signedIn={Boolean(session.user)} />
-        : path === routes.demo ? <Suspense fallback={<Loading />}><DemoPage /></Suspense>
-        : <div className="container inner-screen page-intro"><h1>Sahifa topilmadi</h1><p><Link className="text-link" href={routes.home}>Bosh sahifa <ArrowRight size={16} /></Link></p></div>}
+        : path === routes.demo ? <DemoPage />
+        : sharedProfileId ? <SharedProfile key={sharedProfileId} id={sharedProfileId} />
+        : <div className="container inner-screen page-intro"><h1 lang="en">Page Not Found</h1><p><Link className="text-link" href={routes.home}>Bosh sahifa <ArrowRight size={16} /></Link></p></div>}
     </PublicLayout>;
   }
-  return <><a href="#main" className="skip-link" onClick={(event) => { event.preventDefault(); document.getElementById('main')?.focus(); }}>Asosiy mazmunga o‘tish</a>{content}</>;
+  return <><a href="#main" className="skip-link" onClick={(event) => { event.preventDefault(); document.getElementById('main')?.focus(); }}>Asosiy mazmunga o‘tish</a><Suspense fallback={<LoadingScreen />}>{content}</Suspense></>;
 }
