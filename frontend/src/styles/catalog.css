@@ -29,3 +29,5 @@
 .score-history h2 { font-size: 1.2rem; }
 .score-history > div { display: flex; justify-content: space-between; gap: 10px; padding-block: 12px; border-bottom: 1px solid var(--line); }
 .score-history > div:last-child { border: 0; padding-block-end: 0; }
+.catalog-topic-filter { margin-block-end: 16px; }
+.catalog-topic-filter a { display: inline-flex; align-items: center; gap: 6px; }

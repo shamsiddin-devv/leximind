@@ -108,14 +108,14 @@ export function ProfileAvatarEditor({ user, token, onUserChange }: {
       <span className="profile-avatar-camera" aria-hidden="true"><Camera size={16} /></span>
     </button>
     <span className="profile-sr-only" role="status">{message}</span>
-    <dialog className="profile-photo-dialog" ref={dialog} aria-labelledby="profile-photo-title"
+    <dialog className="app-dialog profile-photo-dialog" ref={dialog} aria-labelledby="profile-photo-title"
       aria-describedby="profile-photo-description"
       onCancel={(event) => { if (busy) event.preventDefault(); }}
       onClose={() => { setOpen(false); setSelected(undefined); setUrl(''); setError(''); }}>
-      <header className="profile-upload-heading">
+      <header className="app-dialog-heading">
         <div><h2 id="profile-photo-title">Rasm yuklash</h2>
           <p id="profile-photo-description">Profilingiz uchun rasm tanlang.</p></div>
-        <button className="profile-upload-close" type="button" aria-label="Yopish" disabled={Boolean(busy)}
+        <button className="app-dialog-close" type="button" aria-label="Yopish" disabled={Boolean(busy)}
           onClick={() => dialog.current?.close()}><X size={16} aria-hidden="true" /></button>
       </header>
 
@@ -130,7 +130,7 @@ export function ProfileAvatarEditor({ user, token, onUserChange }: {
             <strong>{selected?.name ?? 'Profil rasmi'}</strong>
             <small>{selected ? formatPhotoSize(selected.size) + ' · Yuklashga tayyor' : 'Profilga biriktirilgan'}</small>
           </div>
-          <button type="button" className="profile-upload-button profile-upload-remove" disabled={Boolean(busy)}
+          <button type="button" className="app-dialog-button profile-upload-remove" disabled={Boolean(busy)}
             aria-label={selected ? 'Tanlangan rasmni olib tashlash' : 'Profil rasmini olib tashlash'}
             onClick={() => { if (selected) { setSelected(undefined); setError(''); } else void save(null); }}>
             <Trash2 size={15} aria-hidden="true" />
@@ -139,12 +139,10 @@ export function ProfileAvatarEditor({ user, token, onUserChange }: {
       </section>}
       {busy && <p className="profile-upload-status" role="status"><LoaderCircle size={15} aria-hidden="true" />{busy}</p>}
       {error && <Notice error>{error}</Notice>}
-      <footer className="profile-upload-actions">
-        <button type="button" className="profile-upload-button" disabled={Boolean(busy)}
-          onClick={() => dialog.current?.close()}>Bekor qilish</button>
-        <button type="button" className="profile-upload-button profile-upload-attach" disabled={!selected || Boolean(busy)}
-          onClick={() => { if (selected) void save(selected.image); }}>Rasmni biriktirish</button>
-      </footer>
+      {selected && <footer className="app-dialog-actions">
+        <button type="button" className="app-dialog-button" data-tone="accent" disabled={Boolean(busy)}
+          onClick={() => void save(selected.image)}>Rasmni biriktirish</button>
+      </footer>}
     </dialog>
   </div>;
 }

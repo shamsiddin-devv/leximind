@@ -1,5 +1,5 @@
 .learning-sessions-page {
-  --session-surface: var(--white);
+  --session-surface: var(--panel-surface);
   --session-soft: color-mix(in srgb, var(--ink) 4%, var(--session-surface));
   --session-icon: var(--appearance-soft, #eeebff);
   --session-accent: var(--appearance-ink, #5039c7);
@@ -9,7 +9,6 @@
   padding-block: 28px 48px;
 }
 :root[data-theme='dark'] .learning-sessions-page {
-  --session-surface: var(--night-surface);
   --session-accent: var(--appearance-ink, var(--night-link));
   --session-icon: var(--appearance-soft, var(--night-highlight));
 }

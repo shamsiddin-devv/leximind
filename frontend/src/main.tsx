@@ -14,6 +14,7 @@ import './styles/profile.css';
 import './styles/public.css';
 import './styles/responsive.css';
 import './styles/dark.css';
+import './styles/dialog.css';
 import './styles/appearance.css';
 
 initializeTheme();

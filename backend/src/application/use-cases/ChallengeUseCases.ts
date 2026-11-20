@@ -12,7 +12,9 @@ import { NotFoundError } from '../../domain/errors/NotFoundError';
 import {
   AnswerFeedback,
   chooseSound,
+  gradeAnswer,
 } from '../../domain/entities/GameFeedback';
+import { notebookCategories, notebookCategory, notebookKinds, type NotebookCategory } from '../../domain/entities/MistakesNotebook';
 export class ChallengeUseCases {
   constructor(
     private readonly repo: IChallengeRepository,
@@ -69,6 +71,10 @@ export class ChallengeUseCases {
       const result = new Challenge(data).submit(answers, new Date());
       await tx.finish(data, result);
       const feedback = result.feedback ?? [];
+      if (notebookCategory(data.kind)) {
+        await tx.recordNotebookMistakes(data, feedback.flatMap((item, index) =>
+          !item.correct && data.payload.questions?.[index] ? [{ index, answer: answers[index], reason: item.mistake }] : []));
+      }
       const firstMistake = feedback.findIndex((item) => !item.correct);
       const index = firstMistake >= 0 ? firstMistake : 0;
       const sound =
@@ -91,6 +97,9 @@ export class ChallengeUseCases {
       if (!replayed) {
         if (result) await tx.finish(data, result);
         else await tx.saveAttempts(data);
+        if (!feedback.correct && notebookCategory(data.kind) && data.payload.questions?.[index]) {
+          await tx.recordNotebookMistakes(data, [{ index, answer, reason: feedback.mistake }]);
+        }
       }
       const sound =
         !replayed && (await tx.audioEnabled(userId))
@@ -113,5 +122,34 @@ export class ChallengeUseCases {
   }
   history(userId: string, assessment: boolean, page: number, limit: number) {
     return this.repo.history(userId, assessment, page, limit);
+  }
+  async notebook(userId: string, page: number, limit: number, category: NotebookCategory | undefined, onlyOpen: boolean) {
+    const { entries, counts } = await this.repo.notebook(userId, page, limit, category ? notebookKinds[category] : null, onlyOpen);
+    const summary = notebookCategories.map((key) => {
+      const byCategory = counts.filter((count) => notebookCategory(count.kind) === key);
+      return {
+        category: key,
+        total: byCategory.reduce((total, count) => total + count.total, 0),
+        resolved: byCategory.reduce((total, count) => total + count.resolved, 0),
+      };
+    });
+    const matching = category ? summary.filter((item) => item.category === category) : summary;
+    return {
+      data: entries.map((entry) => ({ ...entry, category: notebookCategory(entry.kind) })),
+      total: matching.reduce((total, count) => total + count.total - (onlyOpen ? count.resolved : 0), 0),
+      summary,
+    };
+  }
+  async setNotebookResolved(userId: string, id: string, resolved: boolean) {
+    const updated = await this.repo.setNotebookResolved(userId, id, resolved);
+    if (!updated) throw new NotFoundError('Mistake not found.');
+    return updated;
+  }
+  async practiceNotebook(userId: string, id: string, answer: string) {
+    const entry = await this.repo.notebookEntry(userId, id);
+    if (!entry) throw new NotFoundError('Mistake not found.');
+    const feedback = gradeAnswer(answer, entry.expectedAnswer, entry.question.input);
+    if (!feedback.correct) return { correct: false, resolvedAt: entry.resolvedAt };
+    return { correct: true, ...await this.setNotebookResolved(userId, id, true) };
   }
 }

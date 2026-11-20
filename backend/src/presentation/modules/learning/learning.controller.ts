@@ -8,6 +8,7 @@ import {
   Query,
   ParseUUIDPipe,
   HttpCode,
+  Header,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../security';
@@ -18,12 +19,17 @@ import { PaginationDto } from '../../pagination.dto';
 import { cardView } from '../../serializers';
 import {
   ProfileDto,
+  LearningCalendarDto,
+  LeaderboardDto,
   StartSessionDto,
   SessionHistoryDto,
   ReviewDto,
   StartGameDto,
   SubmitAnswersDto,
   SubmitAttemptDto,
+  MistakesNotebookDto,
+  ResolveMistakeDto,
+  RetryMistakeDto,
 } from './learning.dto';
 @Controller()
 export class LearningController {
@@ -43,15 +49,62 @@ export class LearningController {
   @Get('statistics') statistics(@CurrentUser() u: Identity) {
     return this.learning.statistics(u.id);
   }
+  @Get('statistics/analytics')
+  analytics(@CurrentUser() u: Identity) {
+    return this.learning.analytics(u.id);
+  }
+  @Get('learning-calendar')
+  calendar(@CurrentUser() u: Identity, @Query() query: LearningCalendarDto) {
+    return this.learning.calendar(u.id, query.month);
+  }
+  @Get('topics')
+  topics(@CurrentUser() u: Identity) {
+    return this.learning.topics(u.id);
+  }
+  @Get('achievements')
+  achievements(@CurrentUser() u: Identity) {
+    return this.learning.achievements(u.id);
+  }
+  @Get('leaderboard')
+  @Header('Cache-Control', 'no-store')
+  leaderboard(@CurrentUser() u: Identity, @Query() query: LeaderboardDto) {
+    return this.learning.leaderboard(u.id, query.period);
+  }
   @Get('study-plan')
   studyPlan(@CurrentUser() u: Identity) {
     return this.learning.studyPlan(u.id);
+  }
+  @Get('mistakes-notebook')
+  @Header('Cache-Control', 'no-store')
+  notebook(@CurrentUser() u: Identity, @Query() query: MistakesNotebookDto) {
+    return this.challenges.notebook(u.id, query.page, query.limit, query.category, query.onlyOpen === 'true');
+  }
+  @Patch('mistakes-notebook/:id')
+  resolveMistake(
+    @CurrentUser() u: Identity,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ResolveMistakeDto,
+  ) {
+    return this.challenges.setNotebookResolved(u.id, id, dto.resolved);
+  }
+  @Post('mistakes-notebook/:id/retry')
+  @HttpCode(200)
+  retryMistake(
+    @CurrentUser() u: Identity,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RetryMistakeDto,
+  ) {
+    return this.challenges.practiceNotebook(u.id, id, dto.answer);
+  }
+  @Get('review-center')
+  reviewCenter(@CurrentUser() u: Identity) {
+    return this.learning.reviewCenter(u.id);
   }
   @Post('sessions') start(
     @CurrentUser() u: Identity,
     @Body() dto: StartSessionDto,
   ) {
-    return this.learning.start(u.id, dto.limit);
+    return this.learning.start(u.id, dto.limit, dto.queue);
   }
   @Get('sessions') history(
     @CurrentUser() u: Identity,

@@ -9,6 +9,7 @@ import {
   Query,
   ParseUUIDPipe,
   HttpCode,
+  Header,
 } from '@nestjs/common';
 import { CreateCardUseCase } from '../../../application/use-cases/card/CreateCardUseCase';
 import { CreateManyCardsUseCase } from '../../../application/use-cases/card/create-many-cards/CreateManyCardsUseCase';
@@ -17,6 +18,7 @@ import { Card } from '../../../domain/entities/Card';
 import type { Identity } from '../../../domain/repositories/IAuthRepository';
 import { CurrentUser } from '../../security';
 import { cardView } from '../../serializers';
+import { PaginationDto } from '../../pagination.dto';
 import { CreateCardDto, BulkCardsDto } from './dto/create-card.dto';
 import { SearchCardFilterDto } from './dto/search-card-filter.dto';
 import { UpdateCardDto } from './dto/update-card.dto';
@@ -33,6 +35,11 @@ export class CardController {
   ) {
     const r = await this.owned.list(u.id, { ...q, dueBefore: new Date() });
     return { ...r, data: r.data.map(cardView) };
+  }
+  @Get('collection')
+  @Header('Cache-Control', 'no-store')
+  collection(@CurrentUser() u: Identity, @Query() q: PaginationDto) {
+    return this.owned.collection(u.id, q.page, q.limit);
   }
   @Get(':id') async byId(
     @CurrentUser() u: Identity,

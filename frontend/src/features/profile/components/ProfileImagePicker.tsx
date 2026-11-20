@@ -89,7 +89,7 @@ export function ProfileImagePicker({ id, busy, url, onUrlChange, onSelect }: {
           select(event.currentTarget.files?.[0]);
           event.currentTarget.value = '';
         }} />
-      <button type="button" className="profile-upload-button profile-upload-small" disabled={busy}
+      <button type="button" className="app-dialog-button profile-upload-small" disabled={busy}
         aria-describedby={id + '-hint'} onClick={() => fileInput.current?.click()}>Rasm tanlash</button>
     </div>
 
@@ -102,7 +102,7 @@ export function ProfileImagePicker({ id, busy, url, onUrlChange, onSelect }: {
       <div className="profile-upload-url">
         <input id={id + '-url'} type="url" inputMode="url" value={url} placeholder="Rasm havolasini kiriting"
           disabled={busy} onChange={(event) => onUrlChange(event.target.value)} />
-        <button type="submit" className="profile-upload-button profile-upload-small"
+        <button type="submit" className="app-dialog-button profile-upload-small"
           disabled={!url.trim() || busy}>Yuklash</button>
       </div>
     </form>

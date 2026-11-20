@@ -344,7 +344,6 @@
     background: transparent;
   }
   .app-drawer[open] { display: block; }
-  .app-drawer::backdrop { background: #22264b53; }
   .app-drawer-panel {
     display: flex;
     flex-direction: column;
@@ -445,7 +444,6 @@
 @keyframes app-popover-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 :root[data-theme='dark'] :is(.app-sidebar, .app-sidebar-panel, .app-drawer-panel) { background: var(--night-surface); }
-:root[data-theme='dark'] .app-drawer::backdrop { background: #0008; }
 :root[data-theme='dark'] .app-account-avatar { background: var(--night-selection); color: var(--night-link); }
 :root[data-theme='dark'] .app-nav-link:hover:not([aria-current='page'], [aria-current='location'], [data-active], :where(.app-nav-logout *)),
 :root[data-theme='dark'] .app-drawer .app-control:hover { background: var(--night-highlight); color: var(--ink); }

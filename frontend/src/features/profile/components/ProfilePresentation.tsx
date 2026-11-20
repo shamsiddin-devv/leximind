@@ -1,7 +1,7 @@
 import { useId, type CSSProperties, type ReactNode } from 'react';
 import { Award, BadgeCheck, BookOpen, ChartNoAxesColumn, CircleCheck, Clock3, Flame, Mail, Target, Zap } from 'lucide-react';
 import type { Plan, Profile, Statistics, User } from '../../../shared/types/api';
-import { profileMetrics, type ProfileAppearance, type ProfileMetric } from '../data/profileAppearance';
+import { profileBannerSource, profileMetrics, type ProfileAppearance, type ProfileMetric } from '../data/profileAppearance';
 import './ProfilePresentation.css';
 
 type ProfileData = { user: User; profile?: Profile; statistics?: Statistics; forecast?: Plan['forecast'] };
@@ -22,28 +22,32 @@ function profileMetricValue(id: ProfileMetric, statistics?: Statistics, profile?
   return typeof value === 'number' ? number.format(value) : value;
 }
 
-export function ProfileCover({ appearance, user, profile, avatar, photoAction }: {
-  appearance: ProfileAppearance; user: User; profile?: Profile; avatar: ReactNode; photoAction?: ReactNode;
+export function ProfileCover({ appearance, user, profile, avatar, toolbar, bannerAction, preview }: {
+  appearance: ProfileAppearance; user: User; profile?: Profile; avatar: ReactNode;
+  toolbar?: ReactNode; bannerAction?: ReactNode; preview?: boolean;
 }) {
   const id = useId();
+  const Heading = preview ? 'h3' : 'h1';
+  const vertical = appearance.layout === 'vertical';
   const style = { '--cover-position': appearance.position, '--cover-overlay': appearance.overlay / 100 } as CSSProperties;
   return <section className="panel profile-overview customized-profile-cover" data-height={appearance.height} style={style} aria-labelledby={id}>
-    <img className="profile-cover" src={appearance.banner} alt="" width={1620} height={540} />
+    <img className="profile-cover" src={profileBannerSource(appearance.banner, appearance.layout)} alt="" />
     <div className="profile-overview-content">
+      {toolbar}
       <div className="profile-hero-identity">
         {avatar}
         <div className="profile-identity">
-          <h3 id={id}>{user.fullName}
+          <Heading id={id}>{user.fullName}
             {user.hasProfileBadge && <BadgeCheck size={21} className="profile-verified-badge" aria-label="Tasdiqlangan profil" />}
-          </h3>
-          {appearance.content.email && <p className="profile-cover-email">
-            {appearance.layout === 'horizontal' && <Mail size={15} aria-hidden="true" />} {user.email}
+          </Heading>
+          {(!preview || appearance.content.email) && <p className="profile-cover-email">
+            {!vertical && <Mail size={15} aria-hidden="true" />} {user.email}
           </p>}
           {profile && <p className="profile-cefr"><BookOpen size={14} aria-hidden="true" /> {profile.level} CEFR</p>}
-          {appearance.content.bio && user.bio && <p className="customized-profile-bio">{user.bio}</p>}
+          {preview && appearance.content.bio && user.bio && <p className="customized-profile-bio">{user.bio}</p>}
         </div>
       </div>
-      {photoAction}
+      {bannerAction}
     </div>
   </section>;
 }

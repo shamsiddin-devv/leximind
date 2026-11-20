@@ -28,38 +28,17 @@
   --settings-danger-hover: #382827;
 }
 
-main:has(> .settings-sheet--unified) {
-  --preference-surface: #f9fbf9;
-  --preference-raised: #eff3ef;
-  --preference-tile: #e8eee9;
-  --preference-control-edge: #b3bcb4;
-  --line: #dbe4db;
-  --paper: var(--preference-raised);
-  background: var(--preference-surface);
-}
-
-:root[data-theme='dark'] main:has(> .settings-sheet--unified) {
-  --preference-surface: #101410;
-  --preference-raised: #1f251f;
-  --preference-tile: #272d27;
-  --preference-control-edge: #5c675e;
-  --line: #272f28;
-}
-
-:root .settings-sheet.settings-sheet--unified {
-  --settings-control: var(--preference-surface);
-  --settings-control-edge: var(--preference-control-edge);
-}
-
-.settings-sheet--unified .customization-preview-frame {
-  background: var(--preference-surface);
+.settings-sheet--unified {
+  --preference-surface: var(--panel-surface);
+  --preference-raised: color-mix(in oklab, var(--ink) 3%, var(--preference-surface));
+  --preference-tile: color-mix(in srgb, var(--ink) 7%, var(--preference-raised));
 }
 
 .settings-sheet h1 { font-size: clamp(1.8rem, 3vw, 2.25rem); font-weight: 795; letter-spacing: -.052em; line-height: 1.15; }
 .settings-form-section { display: grid; min-inline-size: 0; }
 .settings-form-section h2 { font-size: 1.03rem; letter-spacing: -.022em; font-weight: 780; }
 .settings-form-section > h2, .settings-section-heading { margin-block-end: 12px; }
-.settings-section-heading p, .settings-profile-header p, .settings-form-section > p, .settings-account-danger p, .account-delete-dialog > p {
+.settings-section-heading p, .settings-profile-header p, .settings-form-section > p, .settings-account-danger p {
   color: var(--muted);
   font-size: .87rem;
   line-height: 1.5;
@@ -162,20 +141,7 @@ main:has(> .settings-sheet--unified) {
 .settings-account-danger { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; border-block-start: 1px solid var(--line); padding-block-start: 18px; }
 .account-delete-button { background: transparent; color: var(--settings-danger); border-color: var(--line); }
 .account-delete-button:hover:not(:disabled) { background: var(--settings-danger-hover); border-color: currentColor; }
-.account-delete-dialog {
-  inline-size: min(440px, calc(100% - 32px));
-  max-block-size: calc(100dvh - 32px);
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--settings-control);
-  color: var(--ink);
-}
-.account-delete-dialog[open] { display: grid; gap: 12px; }
-.account-delete-dialog::backdrop { background: #0008; }
-.account-delete-dialog > header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.account-delete-dialog > header h2 { font-size: 1.08rem; }
-.settings-dialog-actions { padding: 0; }
+.account-delete-dialog { --dialog-width: 440px; --dialog-gap: 12px; }
 
 @media (max-width: 620px) {
   .settings-sheet { gap: 20px; padding-block: 20px 36px; }

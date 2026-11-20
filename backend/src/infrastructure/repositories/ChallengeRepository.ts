@@ -14,8 +14,11 @@ import {
   ChallengeResult,
   QuizWord,
 } from '../../domain/entities/Challenge';
+import type { NotebookCount, NotebookEntry, NotebookMistake } from '../../domain/entities/MistakesNotebook';
 const columns =
   'id,user_id AS "userId",kind,payload,answers,attempts,created_at AS "createdAt",expires_at AS "expiresAt",completed_at AS "completedAt",result';
+const notebookColumns = `id,kind,question,submitted_answer AS "submittedAnswer",
+  expected_answer AS "expectedAnswer",reason,occurred_at AS "occurredAt",resolved_at AS "resolvedAt"`;
 class PgChallengeTransaction implements ChallengeTransaction {
   constructor(private readonly c: PoolClient) {}
   async get(id: string, userId: string) {
@@ -77,6 +80,18 @@ class PgChallengeTransaction implements ChallengeTransaction {
       [userId],
     );
     return rows[0]?.enabled ?? false;
+  }
+
+  async recordNotebookMistakes(data: ChallengeData, mistakes: readonly NotebookMistake[]) {
+    if (!mistakes.length) return;
+    await this.c.query(
+      `INSERT INTO mistake_notebook_entries(user_id,challenge_id,question_index,kind,question,expected_answer,submitted_answer,reason)
+       SELECT c.user_id,c.id,f.index,c.kind,c.payload->'questions'->f.index,c.answers->>f.index,f.answer,f.reason
+       FROM challenges c CROSS JOIN jsonb_to_recordset($3::jsonb) AS f(index integer,answer text,reason text)
+       WHERE c.user_id=$1 AND c.id=$2 AND c.payload->'questions'->f.index->>'prompt' IS NOT NULL
+       ON CONFLICT (challenge_id,question_index) DO NOTHING`,
+      [data.userId, data.id, JSON.stringify(mistakes)],
+    );
   }
 
   private async recordMistakes(d: ChallengeData, r: ChallengeResult) {
@@ -213,5 +228,39 @@ export class ChallengeRepository implements IChallengeRepository {
       [userId, assessment],
     );
     return { data, total: c.rows[0].total };
+  }
+  async notebook(userId: string, page: number, limit: number, kinds: readonly ChallengeKind[] | null, onlyOpen: boolean) {
+    const [entries, counts] = await Promise.all([
+      this.pool.query<NotebookEntry>(
+        `SELECT ${notebookColumns} FROM mistake_notebook_entries
+         WHERE user_id=$1 AND ($2::text[] IS NULL OR kind=ANY($2))
+           AND (NOT $3::boolean OR resolved_at IS NULL)
+         ORDER BY occurred_at DESC,id LIMIT $4 OFFSET $5`,
+        [userId, kinds, onlyOpen, limit, (page - 1) * limit],
+      ),
+      this.pool.query<NotebookCount>(
+        `SELECT kind,count(*)::integer AS total,
+           count(*) FILTER(WHERE resolved_at IS NOT NULL)::integer AS resolved
+         FROM mistake_notebook_entries WHERE user_id=$1 GROUP BY kind`,
+        [userId],
+      ),
+    ]);
+    return { entries: entries.rows, counts: counts.rows };
+  }
+  async notebookEntry(userId: string, id: string) {
+    const { rows } = await this.pool.query<NotebookEntry>(
+      `SELECT ${notebookColumns} FROM mistake_notebook_entries WHERE user_id=$1 AND id=$2`,
+      [userId, id],
+    );
+    return rows[0] ?? null;
+  }
+  async setNotebookResolved(userId: string, id: string, resolved: boolean) {
+    const { rows } = await this.pool.query<{ resolvedAt: Date | null }>(
+      `UPDATE mistake_notebook_entries
+       SET resolved_at=CASE WHEN $3 THEN coalesce(resolved_at, now()) ELSE NULL END
+       WHERE user_id=$1 AND id=$2 RETURNING resolved_at AS "resolvedAt"`,
+      [userId, id, resolved],
+    );
+    return rows[0] ?? null;
   }
 }

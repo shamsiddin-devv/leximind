@@ -10,11 +10,21 @@ import {
   AssessmentResult,
   GameScore,
   StudySnapshot,
+  ReviewOverview,
+  ReviewQueue,
+  LearningAnalytics,
+  LearningCalendar,
+  TopicProgress,
+  Leaderboard,
+  LeaderboardPeriod,
 } from '../../domain/repositories/ILearningRepository';
 import { SessionData } from '../../domain/entities/LearningSession';
 import { Card } from '../../domain/entities/Card';
+import { achievementRules, type AchievementProgress } from '../../domain/entities/Achievement';
 import { IReviewRating } from '../../domain/services/IReviewRatingService';
 import { NotFoundError } from '../../domain/errors/NotFoundError';
+import { learningAnalyticsQuery, learningCalendarQuery, learningAchievementsQuery } from './learningAnalyticsQuery';
+import { leaderboardQuery } from './leaderboardQuery';
 const sessionColumns =
   'id,user_id AS "userId",status,started_at AS "startedAt",ended_at AS "endedAt"';
 const profileColumns = `user_id AS "userId",level,study_level AS "studyLevel",timezone,streak_day AS "streakDay",
@@ -103,7 +113,8 @@ class PgLearningTransaction implements LearningTransaction {
       await this.c.query<SessionTask>(
         `SELECT t.id,t.session_id AS "sessionId",t.card_id AS "cardId",
                 t.order_index AS "orderIndex",t.completed,t.correct,w.id AS "wordId",
-                w.text,w.audio_url AS "audioUrl",s.definition,s.translation_uz AS "translationUz"
+                w.text,w.topic,w.cefr_level AS "cefrLevel",w.audio_url AS "audioUrl",
+                s.definition,s.translation_uz AS "translationUz"
          FROM session_tasks t
          JOIN sessions owner ON owner.id=t.session_id
          JOIN cards c ON c.id=t.card_id AND c.user_id=owner.user_id
@@ -117,17 +128,18 @@ class PgLearningTransaction implements LearningTransaction {
       )
     ).rows;
   }
-  async dueCards(userId: string, limit: number, newLimit: number) {
+  async dueCards(userId: string, limit: number, newLimit: number, queue: ReviewQueue = 'today') {
     const r = await this.c.query<ConstructorParameters<typeof Card>[0]>(
       `SELECT ${cardColumns} FROM cards
        WHERE user_id=$1 AND paused_at IS NULL AND due<=now()
+         AND ($4='today' OR ($4='new' AND state='NEW') OR ($4='learning' AND state IN ('LEARNING','RELEARNING')))
          AND (state<>'NEW' OR id IN (
            SELECT id FROM cards
            WHERE user_id=$1 AND paused_at IS NULL AND state='NEW' AND due<=now()
            ORDER BY due,id LIMIT GREATEST(0,$3::integer-(${firstReviewsToday}))
          ))
        ORDER BY (state='NEW'),due,id LIMIT $2 FOR UPDATE`,
-      [userId, limit, newLimit],
+      [userId, limit, newLimit, queue],
     );
     return r.rows.map(
       (row) =>
@@ -301,6 +313,24 @@ export class LearningRepository implements ILearningRepository {
          FROM learner_profiles WHERE user_id=$1
        ), active_cards AS (
          SELECT due,state FROM cards WHERE user_id=$1 AND paused_at IS NULL
+       ), completed_days AS (
+         SELECT (s.ended_at AT TIME ZONE 'UTC' AT TIME ZONE ctx.timezone)::date AS day,
+                sum(extract(epoch FROM greatest(
+                  s.ended_at - greatest(
+                    s.started_at,
+                    ctx.today::timestamp AT TIME ZONE ctx.timezone AT TIME ZONE 'UTC'
+                  ),
+                  interval '0 seconds'
+                ))) AS study_seconds
+         FROM sessions s CROSS JOIN context ctx
+         WHERE s.user_id=$1 AND s.status='completed' AND s.ended_at <= ctx.utc_now
+         GROUP BY 1
+       ), streak_groups AS (
+         SELECT day, day - (row_number() OVER (ORDER BY day))::integer AS consecutive_group
+         FROM completed_days
+       ), streaks AS (
+         SELECT max(day) AS last_day, count(*)::integer AS length
+         FROM streak_groups GROUP BY consecutive_group
        ), scheduled AS (
          SELECT (c.due AT TIME ZONE 'UTC' AT TIME ZONE ctx.timezone)::date AS day, count(*)::integer AS count
          FROM active_cards c CROSS JOIN context ctx
@@ -323,6 +353,29 @@ export class LearningRepository implements ILearningRepository {
               (SELECT count(*)::integer FROM active_cards WHERE due<=ctx.utc_now AND state='NEW') AS "dueNew",
               ctx.daily_new_words AS "dailyNewLimit",
               (${firstReviewsToday}) AS "dailyNewReviewed",
+              jsonb_build_object(
+                'today', ctx.today::text,
+                'weekStart', date_trunc('week', ctx.today::timestamp)::date::text,
+                'completedDays', coalesce(
+                  (SELECT jsonb_agg(day::text ORDER BY day)
+                   FROM completed_days WHERE day >= date_trunc('week', ctx.today::timestamp)::date),
+                  '[]'::jsonb
+                ),
+                'studyMinutesToday', coalesce(
+                  (SELECT floor(study_seconds / 60)::integer FROM completed_days WHERE day=ctx.today), 0
+                ),
+                'currentStreak', coalesce(
+                  (SELECT max(length) FROM streaks WHERE last_day >= ctx.today - 1), 0
+                ),
+                'longestStreak', coalesce((SELECT max(length) FROM streaks), 0),
+                'gameKindsToday', coalesce(
+                  (SELECT jsonb_agg(DISTINCT g.game_type) FROM game_scores g
+                   WHERE g.user_id=$1
+                     AND g."playedAt" >= (ctx.today::timestamp AT TIME ZONE ctx.timezone AT TIME ZONE 'UTC')
+                     AND g."playedAt" <= ctx.utc_now),
+                  '[]'::jsonb
+                )
+              ) AS activity,
               (SELECT jsonb_agg(jsonb_build_object('date',(ctx.today+i)::text,'count',coalesce(s.count,0)) ORDER BY i)
                FROM generate_series(0,6) AS days(i)
                LEFT JOIN scheduled s ON s.day=ctx.today+i) AS forecast,
@@ -331,6 +384,91 @@ export class LearningRepository implements ILearningRepository {
       [userId],
     );
     return rows[0] ?? null;
+  }
+
+  async reviewOverview(userId: string) {
+    const { rows } = await this.pool.query<ReviewOverview>(
+      `WITH allowance AS (
+         SELECT greatest(0,daily_new_words-(${firstReviewsToday})) AS remaining
+         FROM learner_profiles WHERE user_id=$1
+       ), active_cards AS (
+         SELECT c.id,c.state,c.due,c.last_review_at,w.text,w.topic,w.cefr_level
+         FROM cards c JOIN words w ON w.id=c.word_id
+         WHERE c.user_id=$1 AND c.paused_at IS NULL
+       ), due_cards AS (
+         SELECT *, row_number() OVER (PARTITION BY state ORDER BY due,id) AS position
+         FROM active_cards WHERE due<=now()
+       ), eligible AS (
+         SELECT * FROM due_cards WHERE state<>'NEW' OR position<=(SELECT remaining FROM allowance)
+       ), queue_names AS (
+         SELECT name FROM (VALUES ('today'),('new'),('learning')) AS queue(name)
+       ), ranked_queues AS (
+         SELECT name,e.id,e.text,e.topic,e.cefr_level,
+           row_number() OVER (PARTITION BY name ORDER BY (e.state='NEW'),e.due,e.id) AS position
+         FROM queue_names
+         LEFT JOIN eligible e ON name='today' OR (name='new' AND state='NEW')
+           OR (name='learning' AND state IN ('LEARNING','RELEARNING'))
+       ), queues AS (
+         SELECT name, count(id)::integer AS count,
+           (jsonb_agg(jsonb_build_object('text',text,'topic',topic,'cefrLevel',cefr_level))
+             FILTER (WHERE position=1 AND id IS NOT NULL))->0 AS first
+         FROM ranked_queues
+         GROUP BY name
+       ), topic_counts AS (
+         SELECT a.topic, count(*)::integer AS total, count(e.id)::integer AS due
+         FROM active_cards a LEFT JOIN eligible e ON e.id=a.id GROUP BY a.topic
+       )
+       SELECT count(*)::integer AS "activeCards",
+         count(*) FILTER (WHERE state='NEW')::integer AS "newCards",
+         count(*) FILTER (WHERE state IN ('LEARNING','RELEARNING'))::integer AS "learningCards",
+         count(*) FILTER (WHERE state='REVIEW')::integer AS "masteredCards",
+         floor(max(extract(epoch FROM (due-last_review_at))) / 60)::integer AS "longestIntervalMinutes",
+         min(due) FILTER (WHERE due>now()) AS "nextDueAt",
+         (SELECT jsonb_object_agg(name,jsonb_build_object('count',count,'first',first)) FROM queues) AS queues,
+         (SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY due DESC,total DESC,topic),'[]') FROM topic_counts t) AS topics
+       FROM active_cards`,
+      [userId],
+    );
+    return rows[0];
+  }
+
+  async analytics(userId: string) {
+    const { rows } = await this.pool.query<LearningAnalytics>(learningAnalyticsQuery, [userId]);
+    return rows[0] ?? null;
+  }
+  async calendar(userId: string, month?: string) {
+    const { rows } = await this.pool.query<LearningCalendar>(learningCalendarQuery, [userId, month ?? null]);
+    return rows[0] ?? null;
+  }
+  async topics(userId: string) {
+    const { rows } = await this.pool.query<TopicProgress>(
+      `WITH learned AS (
+         SELECT c.word_id::text AS word_id
+         FROM cards c JOIN review_logs r ON r.card_id=c.id
+         WHERE c.user_id=$1 AND r.rating<>'AGAIN'
+         UNION
+         SELECT entry.word_id
+         FROM challenges g
+         CROSS JOIN LATERAL jsonb_array_elements_text(g.payload->'wordIds')
+           WITH ORDINALITY AS entry(word_id, position)
+         WHERE g.user_id=$1 AND g.completed_at IS NOT NULL AND g.kind<>'assessment'
+           AND g.result->'feedback'->(entry.position::integer-1)->>'correct'='true'
+       )
+       SELECT w.topic, count(*)::integer AS total, count(l.word_id)::integer AS learned,
+         mode() WITHIN GROUP (ORDER BY w.cefr_level) AS "cefrLevel"
+       FROM words w LEFT JOIN learned l ON w.id::text=l.word_id
+       WHERE w.topic IS NOT NULL GROUP BY w.topic ORDER BY w.topic`,
+      [userId],
+    );
+    return rows;
+  }
+  async achievements(userId: string) {
+    const { rows } = await this.pool.query<AchievementProgress>(learningAchievementsQuery, [userId, JSON.stringify(achievementRules)]);
+    return rows;
+  }
+  async leaderboard(userId: string, period: LeaderboardPeriod) {
+    const { rows } = await this.pool.query<Leaderboard>(leaderboardQuery, [userId, period]);
+    return rows[0];
   }
 
   async statistics(userId: string) {

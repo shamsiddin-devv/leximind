@@ -3,16 +3,11 @@ import { ArrowUpRight, Search, X } from 'lucide-react';
 import { Link, navigate } from '../../../app/router';
 import { explain } from '../../../shared/services/api';
 import type { Word } from '../../../shared/types/api';
+import { isDialogBackdropPress } from '../../../shared/utils/dialog';
 import { listWords, vocabularyHref, wordSearchLength } from '../wordSearch';
 import './VocabularySearch.css';
 
 type SearchPreview = { term: string; words?: Word[]; total?: number; error?: string };
-
-function isBackdropPress(event: MouseEvent<HTMLDialogElement>) {
-  if (event.target !== event.currentTarget) return false;
-  const { left, right, top, bottom } = event.currentTarget.getBoundingClientRect();
-  return event.clientX < left || event.clientX > right || event.clientY < top || event.clientY > bottom;
-}
 
 export function VocabularySearch({ token, onNavigate }: { token: string; onNavigate: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -95,19 +90,20 @@ export function VocabularySearch({ token, onNavigate }: { token: string; onNavig
       <Search size={18} strokeWidth={1.6} aria-hidden="true" />
       <span>Qidirish</span>
     </button>
-    <dialog ref={dialog} id="app-vocabulary-search" className="app-search-dialog" aria-labelledby="app-vocabulary-search-title" closedby="any"
+    <dialog ref={dialog} id="app-vocabulary-search" className="app-dialog app-search-dialog" data-backdrop="clear"
+      aria-labelledby="app-vocabulary-search-title" closedby="any"
       onPointerDown={(event) => {
-        if (!('closedBy' in HTMLDialogElement.prototype)) pressedBackdrop.current = event.button === 0 && isBackdropPress(event);
+        if (!('closedBy' in HTMLDialogElement.prototype)) pressedBackdrop.current = event.button === 0 && isDialogBackdropPress(event);
       }}
       onClick={(event) => {
-        if (pressedBackdrop.current && isBackdropPress(event)) event.currentTarget.close();
+        if (pressedBackdrop.current && isDialogBackdropPress(event)) event.currentTarget.close();
         pressedBackdrop.current = false;
       }}
       onKeyDown={moveFocus} onClose={() => { pressedBackdrop.current = false; setQuery(''); setPreview(undefined); }}>
-      <div className="app-search-heading">
+      <div className="app-dialog-heading">
         <h2 id="app-vocabulary-search-title">Lug‘atdan qidirish</h2>
-        <button type="button" className="app-control app-search-close" aria-label="Qidiruvni yopish" onClick={() => dialog.current?.close()}>
-          <X size={18} aria-hidden="true" />
+        <button type="button" className="app-dialog-close" aria-label="Qidiruvni yopish" onClick={() => dialog.current?.close()}>
+          <X size={16} aria-hidden="true" />
         </button>
       </div>
       <form role="search" aria-label="Qidiruv oynasi" className="app-search-form" onSubmit={submitSearch}>
@@ -116,7 +112,7 @@ export function VocabularySearch({ token, onNavigate }: { token: string; onNavig
           <input ref={input} type="search" name="search" aria-label="So‘z qidiring" placeholder="Qidirish" autoComplete="off"
             maxLength={wordSearchLength} value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
-        <button type="submit" className="button primary" disabled={!term}>Qidirish</button>
+        <button type="submit" className="app-dialog-button" data-tone="accent" disabled={!term}>Qidirish</button>
       </form>
       {term && <div className="app-search-results">
         <p className="app-search-status" role="status">

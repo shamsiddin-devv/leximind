@@ -1,28 +1,36 @@
 import { Settings2 } from 'lucide-react';
 import { ProfileHero } from '../components/ProfileHero';
-import { AccountDetails, LearningPreferences } from '../components/ProfileSettingsPanels';
-import type { Profile, Statistics, User } from '../../../shared/types/api';
+import { AccountDetails, LearningPreferences, ProfileSectionHeading } from '../components/ProfileSettingsPanels';
+import type { Profile, User } from '../../../shared/types/api';
+import type { ProfileAppearanceState } from '../hooks/useProfileAppearance';
+import type { PreferenceSave } from '../hooks/usePreferenceSave';
 
 type ProfileProps = {
   user: User;
   profile?: Profile;
-  statistics?: Statistics;
   token: string;
+  appearance: ProfileAppearanceState;
   onUserChange: (user: User) => void;
-  onProfileChange: (profile: Profile) => void;
+  preferences: PreferenceSave;
 };
 
-export function ProfilePage({ user, profile, statistics, token, onUserChange, onProfileChange }: ProfileProps) {
+export function ProfilePage({ user, profile, token, appearance, onUserChange, preferences }: ProfileProps) {
+  const vertical = appearance.saved.layout === 'vertical';
   return <div className="container screen inner-screen profile-page">
-    <ProfileHero key={user.id} user={user} profile={profile} statistics={statistics} token={token} onUserChange={onUserChange} />
-    <div className="profile-panels">
-      <AccountDetails user={user} token={token} onUserChange={onUserChange} />
-      {profile
-        ? <LearningPreferences profile={profile} token={token} onProfileChange={onProfileChange} />
-        : <section className="panel profile-panel" aria-labelledby="preferences-title">
-          <div className="panel-label"><span className="mini-icon profile-panel-icon"><Settings2 size={17} aria-hidden="true" /></span><h2 id="preferences-title">O‘quv sozlamalari</h2></div>
-          <p>O‘quv ma’lumotlari hozircha mavjud emas.</p>
-        </section>}
+    <div className="customized-profile-layout" data-layout={appearance.saved.layout}>
+      <ProfileHero key={user.id} user={user} profile={profile} token={token}
+        appearance={appearance} onUserChange={onUserChange} />
+      <div className="customized-profile-main profile-details">
+        <div className="profile-panels">
+          <AccountDetails user={user} token={token} onUserChange={onUserChange} vertical={vertical} />
+          {profile
+            ? <LearningPreferences profile={profile} preferences={preferences} />
+            : <section className="profile-panel" aria-labelledby="preferences-title">
+              <ProfileSectionHeading id="preferences-title" icon={Settings2} title="O‘quv sozlamalari" description="Kundalik o‘qish tartibini sozlang." />
+              <p>O‘quv ma’lumotlari hozircha mavjud emas.</p>
+            </section>}
+        </div>
+      </div>
     </div>
   </div>;
 }

@@ -517,6 +517,17 @@ test('complete API and database lifecycle', async (t) => {
       assert.equal(r.body.wordId, wordId);
       assert.equal(r.body.userId, userId);
       assert.equal(r.body.state, 'NEW');
+      await api.get('/api/cards/collection').expect(401);
+      const { body: collection } = await api.get('/api/cards/collection?limit=1').set(auth())
+        .expect('Cache-Control', 'no-store').expect(200);
+      assert.equal(collection.total, 1);
+      assert.equal(collection.data[0].id, cardId);
+      assert.equal(collection.data[0].text, 'apple');
+      assert.equal(collection.data[0].progress, 0);
+      assert.equal(collection.data[0].mastered, false);
+      assert.deepEqual((await api.get('/api/cards/collection?page=2&limit=1').set(auth()).expect(200)).body, {
+        data: [], total: 1,
+      });
       await api.post('/api/cards').set(auth()).send({ wordId }).expect(409);
       await api
         .post('/api/cards')
@@ -548,12 +559,27 @@ test('complete API and database lifecycle', async (t) => {
       (await api.get('/api/cards').set(other()).expect(200)).body.total,
       0,
     );
+    assert.deepEqual((await api.get('/api/cards/collection').set(other()).expect(200)).body, { data: [], total: 0 });
   });
   await t.test(
     'concurrent session start returns one active session',
     async () => {
+      await api.get('/api/review-center').expect(401);
+      const overview = (await api.get('/api/review-center').set(auth()).expect(200)).body;
+      assert.equal(overview.newCards, 1);
+      assert.equal(overview.session, null);
+      assert.equal(overview.queues.today.count, 1);
+      assert.deepEqual(overview.queues.new.first, { text: 'apple', cefrLevel: 'A1', topic: null });
+      assert.equal(overview.queues.learning.count, 0);
+      assert.deepEqual(overview.topics, [{ topic: null, total: 1, due: 1 }]);
+      const otherOverview = (await api.get('/api/review-center').set(other()).expect(200)).body;
+      assert.equal(otherOverview.activeCards, 0);
+      assert.deepEqual(otherOverview.topics, []);
+      assert.deepEqual(otherOverview.queues.today, { count: 0, first: null });
+      await api.post('/api/sessions').set(auth()).send({ queue: 'invalid' }).expect(400);
+      await api.post('/api/sessions').set(auth()).send({ queue: 'learning' }).expect(409);
       const responses = await Promise.all([
-        api.post('/api/sessions').set(auth()).send({}),
+        api.post('/api/sessions').set(auth()).send({ queue: 'new', limit: 5 }),
         api.post('/api/sessions').set(auth()).send({}),
       ]);
       assert.deepEqual(
@@ -563,6 +589,9 @@ test('complete API and database lifecycle', async (t) => {
       assert.equal(responses[0].body.id, responses[1].body.id);
       session = responses[0].body;
       assert.equal(session.tasks.length, 1);
+      const activeOverview = (await api.get('/api/review-center').set(auth()).expect(200)).body;
+      assert.equal(activeOverview.session.id, session.id);
+      assert.equal(activeOverview.session.tasks[0].cefrLevel, 'A1');
       const taskPath =
         '/api/sessions/' + session.id + '/tasks/' + session.tasks[0].id;
       await api.get(taskPath).set(other()).expect(404);
@@ -673,6 +702,8 @@ test('complete API and database lifecycle', async (t) => {
       assert.ok(c.lastReviewedAt);
       assert.ok(Math.abs(Date.parse(c.lastReviewedAt) - Date.now()) < 30_000);
       assert.ok(new Date(c.due) > new Date(c.lastReviewedAt));
+      const { body: collection } = await api.get('/api/cards/collection').set(auth()).expect(200);
+      assert.equal(collection.data[0].progress, 100);
       assert.equal(
         (
           await pool.query(
@@ -706,6 +737,71 @@ test('complete API and database lifecycle', async (t) => {
       assert.equal(stats.learnedWords, 1);
       assert.equal(stats.accuracy, 100);
       assert.ok(Number.isInteger(stats.studyMinutes) && stats.studyMinutes >= 0);
+      const { rows: historical } = await pool.query(
+        `INSERT INTO sessions(user_id,status,started_at,ended_at)
+         SELECT $1,'completed',(now() AT TIME ZONE 'UTC') - n * interval '1 day' - interval '5 minutes',
+                (now() AT TIME ZONE 'UTC') - n * interval '1 day'
+         FROM generate_series(3,5) AS days(n) RETURNING id`,
+        [userId],
+      );
+      try {
+        const { body: plan } = await api.get('/api/study-plan').set(auth()).expect(200);
+        assert.equal(plan.activity.currentStreak, 1);
+        assert.equal(plan.activity.longestStreak, 3);
+        assert.equal(new Date(plan.activity.weekStart + 'T12:00:00Z').getUTCDay(), 1);
+        assert.ok(plan.activity.completedDays.every((day) =>
+          plan.activity.weekStart <= day && day <= plan.activity.today));
+        assert.ok(Number.isInteger(plan.activity.studyMinutesToday) && plan.activity.studyMinutesToday >= 0);
+        await api.get('/api/statistics/analytics').expect(401);
+        const analytics = (await api.get('/api/statistics/analytics').set(auth()).expect(200)).body;
+        assert.equal(analytics.today, plan.activity.today);
+        assert.equal(analytics.totalXp, 10);
+        assert.equal(analytics.activeWords, 1);
+        assert.equal(analytics.accuracy, 100);
+        assert.deepEqual(analytics.skills, { vocabulary: 100 });
+        assert.equal(analytics.weeks.length, 12);
+        assert.equal(analytics.weeks.at(-1).date, plan.activity.weekStart);
+        assert.equal(analytics.weeks.at(-1).newWords, 1);
+        assert.equal(analytics.days.length, 84);
+        assert.equal(analytics.months.length, 6);
+        assert.equal(analytics.days.filter(({ studySeconds }) => studySeconds === 300).length, 3);
+        assert.ok(analytics.studySeconds >= 900);
+        const otherAnalytics = (await api.get('/api/statistics/analytics').set(other()).expect(200)).body;
+        assert.equal(otherAnalytics.totalXp, 0);
+        assert.equal(otherAnalytics.accuracy, null);
+        assert.deepEqual(otherAnalytics.skills, {});
+        await api.get('/api/learning-calendar').expect(401);
+        await api.get('/api/learning-calendar?month=2026-13').set(auth()).expect(400);
+        const calendar = (await api.get('/api/learning-calendar').set(auth()).expect(200)).body;
+        assert.equal(calendar.today, plan.activity.today);
+        assert.equal(calendar.monthStart, calendar.today.slice(0, 7) + '-01');
+        const today = calendar.days.find(({ date }) => date === calendar.today);
+        assert.equal(today.active, true);
+        assert.equal(today.sessions, 1);
+        assert.equal(today.newWords, 1);
+        assert.equal(today.xp, 10);
+        const otherCalendar = (await api.get('/api/learning-calendar').set(other()).expect(200)).body;
+        assert.ok(otherCalendar.days.every(({ active }) => !active));
+        const leapCalendar = (await api.get('/api/learning-calendar?month=2024-02').set(auth()).expect(200)).body;
+        assert.equal(leapCalendar.monthStart, '2024-02-01');
+        assert.equal(leapCalendar.days.length, 29);
+        assert.equal(leapCalendar.days.at(-1).date, '2024-02-29');
+        await api.get('/api/achievements').expect(401);
+        const achievements = (await api.get('/api/achievements').set(auth()).expect(200)).body;
+        assert.equal(achievements.length, 12);
+        const byId = new Map(achievements.map((item) => [item.id, item]));
+        assert.equal(byId.get('first-step').rewardXp, 50);
+        assert.equal(byId.get('perfect-session').earnedOn, calendar.today);
+        assert.equal(byId.get('streak-30').progress, 3);
+        assert.equal(byId.get('streak-30').earnedOn, null);
+        assert.equal(byId.get('words-1000').progress, 1);
+        assert.equal(byId.get('social').progress, null);
+        const otherAchievements = (await api.get('/api/achievements').set(other()).expect(200)).body;
+        assert.ok(otherAchievements.every(({ earnedOn }) => earnedOn === null));
+      } finally {
+        await pool.query('DELETE FROM sessions WHERE user_id=$1 AND id=ANY($2::uuid[])',
+          [userId, historical.map(({ id }) => id)]);
+      }
       assert.equal(
         (await api.get('/api/reviews').set(auth()).expect(200)).body.total,
         1,
@@ -742,6 +838,10 @@ test('complete API and database lifecycle', async (t) => {
         (await api.get('/api/profile').set(auth()).expect(200)).body.level,
         'C2',
       );
+      const levelAward = (await api.get('/api/achievements').set(auth()).expect(200)).body
+        .find(({ id }) => id === 'level-b2');
+      assert.equal(levelAward.progress, 6);
+      assert.match(levelAward.earnedOn, /^\d{4}-\d{2}-\d{2}$/);
     },
   );
   await t.test(
@@ -1012,6 +1112,28 @@ test('complete API and database lifecycle', async (t) => {
       assert.equal(first.sound.url, '/api/feedback-audio/bruh.wav?v=4');
       assert.equal(duplicate.sound, undefined);
       assert.equal(duplicate.result.score, 0);
+      await api.get('/api/mistakes-notebook').expect(401);
+      await api.get('/api/mistakes-notebook?onlyOpen=invalid').set(auth()).expect(400);
+      const { body: notebook } = await api.get('/api/mistakes-notebook?category=grammar&onlyOpen=true')
+        .set(auth()).expect('Cache-Control', 'no-store').expect(200);
+      const matching = notebook.data.filter(({ submittedAnswer }) => submittedAnswer === 'appel');
+      assert.equal(matching.length, 1);
+      const [mistake] = matching;
+      assert.equal(mistake.expectedAnswer, 'apple');
+      assert.equal(mistake.resolvedAt, null);
+      const mistakePath = '/api/mistakes-notebook/' + mistake.id;
+      assert.equal((await api.get('/api/mistakes-notebook').set(other()).expect(200)).body.total, 0);
+      await api.patch(mistakePath).set(other()).send({ resolved: true }).expect(404);
+      await api.post(mistakePath + '/retry').set(other()).send({ answer: 'apple' }).expect(404);
+      assert.deepEqual((await api.post(mistakePath + '/retry').set(auth()).send({ answer: 'appel' }).expect(200)).body,
+        { correct: false, resolvedAt: null });
+      assert.ok((await api.patch(mistakePath).set(auth()).send({ resolved: true }).expect(200)).body.resolvedAt);
+      assert.equal((await api.get('/api/mistakes-notebook?onlyOpen=true').set(auth()).expect(200)).body.data
+        .some(({ id }) => id === mistake.id), false);
+      assert.equal((await api.patch(mistakePath).set(auth()).send({ resolved: false }).expect(200)).body.resolvedAt, null);
+      const { body: retried } = await api.post(mistakePath + '/retry').set(auth()).send({ answer: 'Apple' }).expect(200);
+      assert.equal(retried.correct, true);
+      assert.ok(retried.resolvedAt);
       assert.equal(
         (
           await pool.query(
@@ -1103,6 +1225,13 @@ test('complete API and database lifecycle', async (t) => {
       assert.equal(resumed.nextIndex, 1);
       assert.equal(resumed.attempts[0].mistake, 'skipped');
       assert.equal(resumed.payload.wordIds, undefined);
+      const { rows: [partialMistake] } = await pool.query(
+        'SELECT id,reason,submitted_answer FROM mistake_notebook_entries WHERE challenge_id=$1', [mutedRound.id]);
+      assert.equal(partialMistake.reason, 'skipped');
+      assert.equal(partialMistake.submitted_answer, '');
+      await pool.query('DELETE FROM challenges WHERE id=$1', [mutedRound.id]);
+      assert.equal((await api.get('/api/mistakes-notebook?category=spelling').set(auth()).expect(200)).body.data
+        .some(({ id }) => id === partialMistake.id), true);
     },
   );
 
@@ -1355,6 +1484,7 @@ test('complete API and database lifecycle', async (t) => {
     ).body;
     assert.notEqual(first.data[0].id, next.data[0].id);
     await pool.query('DELETE FROM rate_limits');
+    const beforeDictation = (await api.get('/api/statistics/analytics').set(auth()).expect(200)).body;
     const round = (
       await api
         .post('/api/games')
@@ -1378,6 +1508,25 @@ test('complete API and database lifecycle', async (t) => {
         .expect(200)
     ).body;
     assert.equal(result.correctCount, 1);
+    const afterDictation = (await api.get('/api/statistics/analytics').set(auth()).expect(200)).body;
+    assert.equal(afterDictation.totalXp, beforeDictation.totalXp + result.score);
+    assert.equal(afterDictation.skills.listening, 100);
+    await api.get('/api/topics').expect(401);
+    const topics = (await api.get('/api/topics').set(auth()).expect(200)).body;
+    assert.deepEqual(topics.find(({ topic }) => topic === 'food'), { topic: 'food', total: 1, learned: 1, cefrLevel: 'A1' });
+    const topicPractice = (await api.post('/api/games').set(auth())
+      .send({ gameType: 'type_word', topic: 'food' }).expect(201)).body;
+    assert.deepEqual(topicPractice.payload.questions.map(({ prompt }) => prompt), ['bodring']);
+    const plan = (await api.get('/api/study-plan').set(auth()).expect(200)).body;
+    assert.ok(plan.activity.gameKindsToday.includes('sentence_dictation'));
+    const learner = (await api.post('/api/auth/login')
+      .send({ email: 'other@example.com', password: 'Change8!' }).expect(200)).body;
+    const otherPlan = (await api.get('/api/study-plan')
+      .set('Authorization', 'Bearer ' + learner.accessToken).expect(200)).body;
+    assert.ok(!otherPlan.activity.gameKindsToday.includes('sentence_dictation'));
+    const otherTopics = (await api.get('/api/topics')
+      .set('Authorization', 'Bearer ' + learner.accessToken).expect(200)).body;
+    assert.equal(otherTopics.find(({ topic }) => topic === 'food').learned, 0);
   });
 
   await t.test(
@@ -1494,7 +1643,14 @@ test('complete API and database lifecycle', async (t) => {
 
   await t.test('honors sharing and field-level privacy in public profiles', async () => {
     const endpoint = '/api/users/shared/' + userId;
+    const leaderboard = '/api/leaderboard';
     await api.get(endpoint).expect(404);
+    await api.get(leaderboard).expect(401);
+    await api.get(leaderboard + '?period=unsupported').set(auth()).expect(400);
+    const { body: privateRanking } = await api.get(leaderboard).set(auth()).expect('Cache-Control', 'no-store').expect(200);
+    assert.ok(privateRanking.own.xp > 0);
+    assert.equal(privateRanking.own.rank, null);
+    assert.equal(privateRanking.entries.some(({ id }) => id === userId), false);
     await api.patch('/api/users/me').set(auth()).send({ profilePublic: null }).expect(400);
     await api.patch('/api/users/me').set(auth()).send({ profilePublic: true }).expect(200);
     await api.get(endpoint).expect(404);
@@ -1507,12 +1663,30 @@ test('complete API and database lifecycle', async (t) => {
     assert.deepEqual((await api.get('/api/users/me').set(auth()).expect(200)).body.privacy, saved.privacy);
     const { body: shared } = await api.get(endpoint).expect('Cache-Control', 'no-store').expect(200);
     assert.deepEqual(Object.keys(shared).sort(), ['avatarUrl', 'fullName', 'hasProfileBadge', 'level', 'statistics']);
-    assert.deepEqual(Object.keys(shared.statistics).sort(), ['learnedWords', 'streakDay']);
+    assert.deepEqual(Object.keys(shared.statistics).sort(), [
+      'accuracy', 'learnedWords', 'sessions', 'streakDay', 'studySeconds', 'weeklyXp', 'xp',
+    ]);
+    assert.equal(shared.statistics.weeklyXp.length, 12);
+    const { body: publicRanking } = await api.get(leaderboard + '?period=all').set(other()).expect(200);
+    const rankedUser = publicRanking.entries.find(({ id }) => id === userId);
+    assert.ok(rankedUser);
+    assert.equal(rankedUser.rank, 1);
+    assert.equal(rankedUser.canViewProfile, true);
+    assert.equal(rankedUser.xp, shared.statistics.xp);
+    assert.deepEqual(Object.keys(rankedUser).sort(), [
+      'avatarUrl', 'canViewProfile', 'fullName', 'hasProfileBadge', 'id', 'rank', 'streak', 'xp',
+    ]);
+    for (const period of ['month', 'week', 'today']) {
+      const { body: partial } = await api.get(leaderboard + '?period=' + period).set(auth()).expect(200);
+      assert.ok(partial.own.xp <= publicRanking.entries[0].xp);
+    }
 
     await api.patch('/api/users/me').set(auth())
       .send({ publicCefr: false, publicStatistics: false }).expect(200);
     const { body: limited } = await api.get(endpoint).expect(200);
     assert.deepEqual(Object.keys(limited).sort(), ['avatarUrl', 'fullName', 'hasProfileBadge']);
+    const { body: hiddenRanking } = await api.get(leaderboard).set(other()).expect(200);
+    assert.equal(hiddenRanking.entries.some(({ id }) => id === userId), false);
     await api.patch('/api/users/me').set(auth()).send({ profileSharing: false }).expect(200);
     await api.get(endpoint).expect(404);
     await api.patch('/api/users/me').set(auth())
@@ -1572,7 +1746,7 @@ test('complete API and database lifecycle', async (t) => {
       const missing = operations.filter(
         (operation) => !successfulRoutes.has(operation),
       );
-      assert.equal(operations.length, 67);
+      assert.equal(operations.length, 77);
       assert.deepEqual(missing, []);
     },
   );

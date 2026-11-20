@@ -12,11 +12,6 @@ export type AccountAccess = {
   switchAccount: (id: string) => Promise<void>;
 };
 
-type AccountDialog = 'add' | 'logout';
-const dialogTitles: Record<AccountDialog, string> = {
-  add: 'Akkaunt qo‘shish', logout: 'Akkauntdan chiqish',
-};
-
 function AccountIdentity({ account }: { account: SessionAccount }) {
   return <>
     <UserAvatar className="app-account-avatar sidebar-account-avatar" name={account.fullName} url={account.avatarUrl} />
@@ -27,16 +22,16 @@ function AccountIdentity({ account }: { account: SessionAccount }) {
   </>;
 }
 
-export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, loggingOut, onLogout }: {
+export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, loggingOut, onRequestLogout }: {
   user: SessionAccount; access: AccountAccess; path: string; collapsed: boolean; loggingOut: boolean;
-  onSelect: (event: MouseEvent<HTMLAnchorElement>, href: string) => void; onLogout: () => void;
+  onSelect: (event: MouseEvent<HTMLAnchorElement>, href: string) => void; onRequestLogout: () => void;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const profileLink = useRef<HTMLAnchorElement>(null);
   const settingsLink = useRef<HTMLAnchorElement>(null);
-  const [panel, setPanel] = useState<AccountDialog>();
+  const [addingAccount, setAddingAccount] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const accounts = [user, ...access.accounts.filter((account) => account.id !== user.id)];
@@ -55,14 +50,14 @@ export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, lo
   }, []);
 
   useEffect(() => {
-    if (!panel || !dialog.current || dialog.current.open) return;
+    if (!addingAccount || !dialog.current || dialog.current.open) return;
     dialog.current.showModal();
-    if (panel === 'add') dialog.current.querySelector('input')?.focus({ preventScroll: true });
-  }, [panel]);
+    dialog.current.querySelector('input')?.focus({ preventScroll: true });
+  }, [addingAccount]);
 
   useEffect(() => {
     function shortcut(event: KeyboardEvent) {
-      if (panel || pending || loggingOut || event.defaultPrevented || event.repeat || event.isComposing || !trigger.current?.getClientRects().length ||
+      if (addingAccount || pending || loggingOut || event.defaultPrevented || event.repeat || event.isComposing || !trigger.current?.getClientRects().length ||
         !event.altKey || !event.shiftKey || event.metaKey || event.ctrlKey ||
         (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [contenteditable], dialog'))) return;
       const link = event.code === 'KeyP' ? profileLink.current : event.code === 'KeyS' ? settingsLink.current : null;
@@ -75,16 +70,23 @@ export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, lo
       event.preventDefault();
       menu.current?.hidePopover();
       setError('');
-      setPanel('logout');
+      onRequestLogout();
     }
     window.addEventListener('keydown', shortcut);
     return () => window.removeEventListener('keydown', shortcut);
-  }, [collapsed, panel, pending, loggingOut]);
+  }, [collapsed, addingAccount, pending, loggingOut, onRequestLogout]);
 
-  function openPanel(next: AccountDialog) {
+  function openAddAccount() {
     menu.current?.hidePopover();
     setError('');
-    setPanel(next);
+    setAddingAccount(true);
+  }
+
+  function requestLogout() {
+    menu.current?.hidePopover();
+    trigger.current?.focus({ preventScroll: true });
+    setError('');
+    onRequestLogout();
   }
 
   async function selectAccount(id: string) {
@@ -138,42 +140,35 @@ export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, lo
           <AccountIdentity account={account} />
           <span className="sidebar-account-choice-mark" aria-hidden="true">{account.id === user.id && <Check size={12} />}</span>
         </button>)}
-        {error && !panel && <p className="sidebar-account-error" role="alert">{error}</p>}
+        {error && !addingAccount && <p className="sidebar-account-error" role="alert">{error}</p>}
         <button type="button" className="sidebar-account-action sidebar-account-add" aria-haspopup="dialog" disabled={pending || loggingOut}
-          onClick={() => openPanel('add')}><Plus size={17} aria-hidden="true" />Akkaunt qo‘shish</button>
+          onClick={openAddAccount}><Plus size={17} aria-hidden="true" />Akkaunt qo‘shish</button>
       </div>
       <div className="sidebar-account-group">
         <button type="button" className="sidebar-account-action sidebar-account-signout" aria-haspopup="dialog" aria-keyshortcuts="Alt+Shift+Q"
-          disabled={pending || loggingOut} onClick={() => openPanel('logout')}>
+          disabled={pending || loggingOut} onClick={requestLogout}>
           <LogOut size={16} aria-hidden="true" /><span>{loggingOut ? 'Chiqilmoqda…' : 'Chiqish'}</span><kbd aria-hidden="true">⇧ Alt Q</kbd>
         </button>
       </div>
     </div>
-    <dialog ref={dialog} className="sidebar-account-dialog" aria-labelledby="sidebar-account-dialog-title"
+    <dialog ref={dialog} className="app-dialog sidebar-account-dialog" aria-labelledby="sidebar-account-dialog-title"
       onCancel={(event) => { if (pending) event.preventDefault(); }}
-      onClose={() => { setPanel(undefined); setError(''); trigger.current?.focus({ preventScroll: true }); }}>
-      {panel && <>
-        <header>
-          <h2 id="sidebar-account-dialog-title">{dialogTitles[panel]}</h2>
-          <button type="button" className="icon-button" aria-label="Yopish" disabled={pending} onClick={() => dialog.current?.close()}><X size={18} /></button>
+      onClose={() => { setAddingAccount(false); setError(''); trigger.current?.focus({ preventScroll: true }); }}>
+      {addingAccount && <>
+        <header className="app-dialog-heading">
+          <h2 id="sidebar-account-dialog-title">Akkaunt qo‘shish</h2>
+          <button type="button" className="app-dialog-close" aria-label="Yopish" disabled={pending} onClick={() => dialog.current?.close()}><X size={16} aria-hidden="true" /></button>
         </header>
-        {panel === 'add' && <form className="account-form" onSubmit={(event) => void addAccount(event)}>
-          <p>Boshqa LexiMind akkauntingizga kiring. Joriy seans ham shu brauzer varag‘ida saqlanadi.</p>
-          <label>Email manzili<input type="email" name="email" autoComplete="username" required maxLength={255} disabled={pending} /></label>
-          <label>Parol<input type="password" name="password" autoComplete="current-password" required maxLength={72} disabled={pending} /></label>
+        <form className="app-dialog-form" onSubmit={(event) => void addAccount(event)}>
+          <p className="app-dialog-description">Boshqa LexiMind akkauntingizga kiring. Joriy seans ham shu brauzer varag‘ida saqlanadi.</p>
+          <label className="app-dialog-field">Email manzili<input type="email" name="email" autoComplete="username" required maxLength={255} disabled={pending} /></label>
+          <label className="app-dialog-field">Parol<input type="password" name="password" autoComplete="current-password" required maxLength={72} disabled={pending} /></label>
           {error && <p className="sidebar-account-error" role="alert">{error}</p>}
-          <div className="sidebar-account-dialog-actions">
-            <button type="button" className="button secondary" disabled={pending} onClick={() => dialog.current?.close()}>Bekor qilish</button>
-            <button type="submit" className="button primary" disabled={pending}>{pending ? 'Kirilmoqda…' : 'Kirish'}</button>
+          <div className="app-dialog-actions">
+            <button type="button" className="app-dialog-button" disabled={pending} onClick={() => dialog.current?.close()}>Bekor qilish</button>
+            <button type="submit" className="app-dialog-button" data-tone="accent" disabled={pending}>{pending ? 'Kirilmoqda…' : 'Kirish'}</button>
           </div>
-        </form>}
-        {panel === 'logout' && <>
-          <p>Joriy akkaunt seansi yakunlanadi.</p>
-          <div className="sidebar-account-dialog-actions">
-            <button type="button" className="button secondary" onClick={() => dialog.current?.close()}>Bekor qilish</button>
-            <button type="button" className="button primary" onClick={() => { dialog.current?.close(); onLogout(); }}>Chiqish</button>
-          </div>
-        </>}
+        </form>
       </>}
     </dialog>
   </div>;

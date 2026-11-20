@@ -6,6 +6,7 @@ import {
   Max,
   IsString,
   MaxLength,
+  MinLength,
   Matches,
   IsIn,
   IsArray,
@@ -16,13 +17,46 @@ import { type GameKind, gameKinds } from '../../../domain/entities/Challenge';
 import { IReviewRating } from '../../../domain/services/IReviewRatingService';
 import { CEFR_LEVELS, type CefrLevel } from '../../../domain/entities/Word';
 import type { SessionData } from '../../../domain/entities/LearningSession';
-import { reviewModes, studyReminderTimePattern, type ReviewMode } from '../../../domain/repositories/ILearningRepository';
+import { leaderboardPeriods, reviewModes, reviewQueues, studyReminderTimePattern, type LeaderboardPeriod, type ReviewMode, type ReviewQueue } from '../../../domain/repositories/ILearningRepository';
 import { PaginationDto } from '../../pagination.dto';
+import { notebookCategories, type NotebookCategory } from '../../../domain/entities/MistakesNotebook';
+
+export class MistakesNotebookDto extends PaginationDto {
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsIn(notebookCategories)
+  category?: NotebookCategory;
+
+  @IsIn(['true', 'false'])
+  onlyOpen: 'true' | 'false' = 'false';
+}
+
+export class ResolveMistakeDto {
+  @IsBoolean()
+  resolved!: boolean;
+}
+
+export class RetryMistakeDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(255)
+  answer!: string;
+}
 
 export class SessionHistoryDto extends PaginationDto {
   @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
   @IsIn(['in_progress', 'completed', 'cancelled'])
   status?: SessionData['status'];
+}
+
+export class LearningCalendarDto {
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsString()
+  @Matches(/^(?!0000)[0-9]{4}-(0[1-9]|1[0-2])$/)
+  month?: string;
+}
+export class LeaderboardDto {
+  @IsIn(leaderboardPeriods)
+  period: LeaderboardPeriod = 'all';
 }
 
 export class ProfileDto {
@@ -72,6 +106,10 @@ export class StartSessionDto {
   @Min(1)
   @Max(100)
   limit = 20;
+
+  @ValidateIf((_object: unknown, value: unknown) => value !== undefined)
+  @IsIn(reviewQueues)
+  queue?: ReviewQueue;
 }
 export class ReviewDto {
   @IsIn(['AGAIN', 'HARD', 'GOOD', 'EASY']) rating!: IReviewRating;

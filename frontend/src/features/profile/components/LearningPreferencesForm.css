@@ -3,7 +3,7 @@
   --learning-selection-ink: #5140c6;
   --learning-switch-off: #787785;
   display: grid;
-  gap: 18px;
+  gap: 24px;
   container-type: inline-size;
 }
 
@@ -13,14 +13,7 @@
   --learning-switch-off: #686b73;
 }
 
-.learning-preference-section {
-  padding: 20px 24px 4px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--settings-control);
-}
-
-.learning-preference-section .settings-section-heading { margin-block-end: 9px; }
+.learning-section-body { border-block-start: 1px solid var(--line); }
 
 .learning-section-body > .settings-form-row {
   grid-template-columns: minmax(0, 1fr) auto;
@@ -165,10 +158,9 @@
 :is(.learning-segments, .learning-toggle) input:focus-visible + span { outline: 2px solid var(--settings-focus); outline-offset: 2px; }
 
 .preference-status { color: var(--muted); font-size: .8rem; }
-.preference-status:empty { margin-block-start: -18px; }
+.preference-status:empty { margin-block-start: -24px; }
 
 @container (max-width: 530px) {
-  .learning-preference-section { padding-inline: 16px; }
   .learning-section-body > .learning-selector-row { grid-template-columns: minmax(0, 1fr); }
   .settings-sheet .learning-language { inline-size: min(30cqi, 180px); }
 }

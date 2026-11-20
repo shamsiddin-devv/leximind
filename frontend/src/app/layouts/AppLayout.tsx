@@ -30,12 +30,12 @@ function SidebarGroups({ selected, expanded, panelId, onSelect }: {
   </nav>;
 }
 
-function AccountNavigation({ activePath, compact = false, onSelect, loggingOut, onLogout }: {
+function AccountNavigation({ activePath, compact = false, onSelect, loggingOut, onRequestLogout }: {
   activePath?: string;
   compact?: boolean;
   onSelect: SelectPage;
   loggingOut: boolean;
-  onLogout: () => void;
+  onRequestLogout: () => void;
 }) {
   return <nav className="app-nav-account" aria-label="Akkaunt navigatsiyasi">
     {accountNavigation.map(({ href, label, icon: Icon }) => <Link key={href}
@@ -50,7 +50,7 @@ function AccountNavigation({ activePath, compact = false, onSelect, loggingOut, 
     <div className="app-nav-logout">
       <button type="button" className="app-nav-link" disabled={loggingOut}
         aria-label={compact ? (loggingOut ? 'Chiqilmoqda…' : 'Chiqish') : undefined}
-        title={compact ? 'Chiqish' : undefined} onClick={onLogout}>
+        title={compact ? 'Chiqish' : undefined} aria-haspopup="dialog" onClick={onRequestLogout}>
         <LogOut size={compact ? 20 : 17} strokeWidth={1.7} aria-hidden="true" />
         {!compact && (loggingOut ? 'Chiqilmoqda…' : 'Chiqish')}
       </button>
@@ -142,6 +142,8 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
   const [bell, setBell] = useState({ count: dueCount, ring: dueCount > 0 });
   const drawer = useRef<HTMLDialogElement>(null);
   const closeDrawerButton = useRef<HTMLButtonElement>(null);
+  const logoutDialog = useRef<HTMLDialogElement>(null);
+  const cancelLogoutButton = useRef<HTMLButtonElement>(null);
   const activePath = practicing ? undefined : settingsParent(path);
   const routeGroup = settingsNavigation.items.some((item) => item.href === settingsParent(path)) ? settingsNavigation
     : navigation.find((group) => group.items.some((item) => item.href === path));
@@ -165,6 +167,19 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
     drawer.current.showModal();
     closeDrawerButton.current?.focus({ preventScroll: true });
     setDrawerOpen(true);
+  }
+
+  function requestLogout() {
+    const dialog = logoutDialog.current;
+    if (loggingOut || !dialog || dialog.open) return;
+    dialog.showModal();
+    cancelLogoutButton.current?.focus({ preventScroll: true });
+  }
+
+  function confirmLogout() {
+    logoutDialog.current?.close();
+    drawer.current?.close();
+    onLogout();
   }
 
   function goTo(event: MouseEvent<HTMLAnchorElement>, href: string) {
@@ -257,12 +272,12 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
       <div className="app-rail">
         <SidebarGroups selected={selectedGroup} expanded={!collapsed} panelId="app-sidebar-panel"
           onSelect={(group) => { setGroupSelection({ path, group }); onCollapsedChange(false); }} />
-        <AccountNavigation activePath={activePath} compact onSelect={goToAccount} loggingOut={loggingOut} onLogout={onLogout} />
+        <AccountNavigation activePath={activePath} compact onSelect={goToAccount} loggingOut={loggingOut} onRequestLogout={requestLogout} />
       </div>
       <div id="app-sidebar-panel" className="app-sidebar-panel" inert={collapsed}>
         <SidebarNavigation key={selectedGroup.title} group={selectedGroup} activePath={activePath} onSelect={goTo} />
         <SidebarAccountMenu user={user} access={accountAccess} path={path} collapsed={collapsed}
-          onSelect={goToAccount} loggingOut={loggingOut} onLogout={onLogout} />
+          onSelect={goToAccount} loggingOut={loggingOut} onRequestLogout={requestLogout} />
       </div>
     </aside>
 
@@ -283,7 +298,21 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
           onSelect={(group) => setGroupSelection({ path, group })} />
         <SidebarNavigation id="app-mobile-links" key={selectedGroup.title} group={selectedGroup} activePath={activePath} onSelect={goTo} />
         <AccountNavigation activePath={activePath} onSelect={goToAccount} loggingOut={loggingOut}
-          onLogout={() => { drawer.current?.close(); onLogout(); }} />
+          onRequestLogout={requestLogout} />
+      </div>
+    </dialog>
+    <dialog ref={logoutDialog} className="app-dialog sidebar-account-dialog" aria-labelledby="app-logout-title"
+      aria-describedby="app-logout-description">
+      <header className="app-dialog-heading">
+        <h2 id="app-logout-title">Akkauntdan chiqish</h2>
+        <button type="button" className="app-dialog-close" aria-label="Yopish" onClick={() => logoutDialog.current?.close()}>
+          <X size={16} aria-hidden="true" />
+        </button>
+      </header>
+      <p id="app-logout-description" className="app-dialog-description">Joriy akkaunt seansi yakunlanadi.</p>
+      <div className="app-dialog-actions">
+        <button ref={cancelLogoutButton} type="button" className="app-dialog-button" onClick={() => logoutDialog.current?.close()}>Bekor qilish</button>
+        <button type="button" className="app-dialog-button" data-tone="accent" onClick={confirmLogout}>Chiqish</button>
       </div>
     </dialog>
   </div>;

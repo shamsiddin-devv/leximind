@@ -1,4 +1,3 @@
-.appearance-settings .learning-preference-section { padding-block-end: 10px; }
 .appearance-theme-grid, .appearance-density-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -24,15 +23,15 @@
   gap: 10px;
   height: 100%;
   padding: 10px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 12px;
   background: var(--paper);
   color: var(--ink);
   font-size: .84rem;
   font-weight: 700;
 }
-.appearance-choice input:hover + span { border-color: var(--settings-control-edge); }
-.appearance-choice input:checked + span { border-color: var(--settings-focus); box-shadow: 0 0 0 2px var(--learning-selection); }
+.appearance-choice input:hover + span { background: var(--preference-raised); }
+.appearance-choice input:checked + span { background: var(--learning-selection); }
 .appearance-choice input:focus-visible + span { outline: 2px solid var(--settings-focus); outline-offset: 3px; }
 
 .appearance-theme-preview {

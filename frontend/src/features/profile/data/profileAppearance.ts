@@ -1,8 +1,13 @@
 export const profileBanners = [
-  { image: '/profile-cover.jpg', name: 'Oyli tun' },
-  { image: '/profile-banners/alpine-lake.jpg', name: 'Tog‘ ko‘li' },
-  { image: '/profile-banners/dunes.jpg', name: 'Sahro oqshomi' },
-  { image: '/profile-banners/forest-valley.jpg', name: 'Tumanli vodiy' },
+  { image: '/profile-cover.jpg', portrait: '/profile-banners/moonlit-night-portrait.jpg', name: 'Oyli tun' },
+  { image: '/profile-banners/alpine-lake.jpg', portrait: '/profile-banners/alpine-lake-portrait.jpg', name: 'Tog‘ ko‘li' },
+  { image: '/profile-banners/dunes.jpg', portrait: '/profile-banners/dunes-portrait.jpg', name: 'Sahro oqshomi' },
+  { image: '/profile-banners/forest-valley.jpg', portrait: '/profile-banners/forest-valley-portrait.jpg', name: 'Tumanli vodiy' },
+  { image: '/profile-banners/aurora.jpg', portrait: '/profile-banners/aurora-portrait.jpg', name: 'Qutb yog‘dusi' },
+  { image: '/profile-banners/rainy-city.jpg', portrait: '/profile-banners/rainy-city-portrait.jpg', name: 'Yomg‘irli shahar' },
+  { image: '/profile-banners/ocean-arches.jpg', portrait: '/profile-banners/ocean-arches-portrait.jpg', name: 'Okean darvozasi' },
+  { image: '/profile-banners/amber-library.jpg', portrait: '/profile-banners/amber-library-portrait.jpg', name: 'Qadimiy kutubxona' },
+  { image: '/profile-banners/violet-nebula.jpg', portrait: '/profile-banners/violet-nebula-portrait.jpg', name: 'Binafsha tumanlik' },
 ];
 
 export const defaultBanner = profileBanners[0].image;
@@ -26,6 +31,10 @@ export type ProfileAppearance = {
   statsStyle: 'grid' | 'list';
   metrics: { id: ProfileMetric; visible: boolean }[];
 };
+
+export function profileBannerSource(image: string, layout: ProfileAppearance['layout']) {
+  return layout === 'vertical' ? profileBanners.find((banner) => banner.image === image)?.portrait ?? image : image;
+}
 
 export const defaultProfileAppearance: ProfileAppearance = {
   layout: 'horizontal',

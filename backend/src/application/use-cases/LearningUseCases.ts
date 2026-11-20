@@ -2,6 +2,8 @@ import {
   ILearningRepository,
   LearningTransaction,
   type ProfilePreferences,
+  type ReviewQueue,
+  type LeaderboardPeriod,
   reviewModes,
   studyReminderTimePattern,
 } from '../../domain/repositories/ILearningRepository';
@@ -63,12 +65,12 @@ export class LearningUseCases {
       });
     });
   }
-  start(userId: string, limit: number) {
+  start(userId: string, limit: number, queue?: ReviewQueue) {
     return this.repo.transaction(async (tx) => {
       const p = await tx.profile(userId); // Serialize session creation per learner.
       const active = await tx.activeSession(userId);
       if (active) return { ...active, tasks: await tx.tasks(active.id) };
-      const cards = await tx.dueCards(userId, limit, p.dailyNewWords);
+      const cards = await tx.dueCards(userId, limit, p.dailyNewWords, queue);
       if (!cards.length) throw new ConflictError('No cards are due.');
       const s = await tx.createSession(
         userId,
@@ -76,6 +78,16 @@ export class LearningUseCases {
       );
       return { ...s, tasks: await tx.tasks(s.id) };
     });
+  }
+  async reviewCenter(userId: string) {
+    const [overview, session] = await Promise.all([
+      this.repo.reviewOverview(userId),
+      this.repo.transaction(async (tx) => {
+        const active = await tx.activeSession(userId);
+        return active ? { ...active, tasks: await tx.tasks(active.id) } : null;
+      }),
+    ]);
+    return { ...overview, session };
   }
   get(userId: string, id: string) {
     return this.repo.transaction(async (tx) => {
@@ -195,6 +207,25 @@ export class LearningUseCases {
   }
   statistics(userId: string) {
     return this.repo.statistics(userId);
+  }
+  async analytics(userId: string) {
+    const data = await this.repo.analytics(userId);
+    if (!data) throw new NotFoundError('Profile not found.');
+    return data;
+  }
+  async calendar(userId: string, month?: string) {
+    const data = await this.repo.calendar(userId, month);
+    if (!data) throw new NotFoundError('Profile not found.');
+    return data;
+  }
+  topics(userId: string) {
+    return this.repo.topics(userId);
+  }
+  achievements(userId: string) {
+    return this.repo.achievements(userId);
+  }
+  leaderboard(userId: string, period: LeaderboardPeriod) {
+    return this.repo.leaderboard(userId, period);
   }
   async reviewDetails(userId: string, id: string) {
     const review = await this.repo.reviewById(userId, id);

@@ -12,12 +12,20 @@ import { useProfileAppearance } from '../features/profile/hooks/useProfileAppear
 import { Dashboard } from '../features/learning/pages/Dashboard';
 import { LearningSessionsPage } from '../features/learning/pages/LearningSessionsPage';
 import { StudyPlanPage } from '../features/learning/pages/StudyPlanPage';
+import { StatisticsPage } from '../features/learning/pages/StatisticsPage';
+import { LearningCalendarPage } from '../features/learning/pages/LearningCalendarPage';
+import { AchievementsPage } from '../features/learning/pages/AchievementsPage';
+import { LeaderboardPage } from '../features/learning/pages/LeaderboardPage';
 import { useLearningData } from '../features/learning/hooks/useLearningData';
 import { useStudyReminder } from '../features/learning/hooks/useStudyReminder';
 import { GamesPage } from '../features/practice/pages/GamesPage';
+import { MistakesNotebookPage } from '../features/practice/pages/MistakesNotebookPage';
 import { Practice } from '../features/practice/pages/Practice';
 import { Review } from '../features/review/pages/Review';
+import { ReviewCenterPage } from '../features/review/pages/ReviewCenterPage';
 import { Catalog } from '../features/vocabulary/pages/Catalog';
+import { CollectionsPage } from '../features/vocabulary/pages/CollectionsPage';
+import { TopicsExplorerPage } from '../features/vocabulary/pages/TopicsExplorerPage';
 import { AppLayout } from './layouts/AppLayout';
 import type { AccountAccess } from './layouts/SidebarAccountMenu';
 import { navigationPages, settingsNavigation } from './navigation';
@@ -61,14 +69,14 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
     if (failure instanceof ApiError && failure.status === 401) onSessionLost();
     else setError(explain(failure, messages));
   }
-  async function startActivity(kind: Activity, cefrLevel?: Level) {
+  async function startActivity(kind: Activity, cefrLevel?: Level, topic?: string) {
     if (startRequest.current) return;
     const request = new AbortController();
     startRequest.current = request;
     setBusy(true); setError('');
     try {
       const value = await api<Round>(kind === 'assessment' ? '/assessments' : '/games', {
-        token, method: 'POST', signal: request.signal, ...(kind === 'assessment' ? {} : { body: { gameType: kind, cefrLevel } }),
+        token, method: 'POST', signal: request.signal, ...(kind === 'assessment' ? {} : { body: { gameType: kind, cefrLevel, topic } }),
       });
       if (!request.signal.aborted) { setRound({ source: path, value }); window.scrollTo(0, 0); }
     } catch (failure) {
@@ -140,13 +148,23 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
         autoplayPronunciation={autoplayPronunciation}
         doneActionLabel={path === routes.studyPlan ? 'Rejaga qaytish' : path === routes.learningSessions ? 'Seanslar tarixiga' : undefined} />
       : path === routes.vocabulary ? <Catalog token={token} onChange={reload} />
+      : path === routes.collections ? <CollectionsPage key={user.id} token={token} userId={user.id} />
+      : path === routes.topics ? <TopicsExplorerPage key={user.id} token={token} busy={busy}
+        onStart={(topic) => void startActivity('type_word', undefined, topic)} />
       : path === routes.games ? <GamesPage busy={busy} scores={snapshot?.scores ?? []} onActivity={(kind) => void startActivity(kind)} />
+      : path === routes.mistakes ? <MistakesNotebookPage key={user.id} token={token} />
       : path === routes.learningSessions ? <LearningSessionsPage token={token} profile={snapshot?.profile} plan={snapshot?.plan}
         busy={busy} planFailed={Boolean(dataError)} onStart={() => void daily()} />
       : path === routes.studyPlan ? <StudyPlanPage profile={snapshot?.profile} plan={snapshot?.plan}
-        busy={busy} planFailed={Boolean(dataError)} onStart={() => void daily()} />
-      : path === routes.profile ? <ProfilePage user={user} token={token} profile={snapshot?.profile} statistics={snapshot?.stats}
-        onUserChange={onUserChange} onProfileChange={updateProfile} />
+        busy={busy} planFailed={Boolean(dataError)} onStart={() => void daily()} onPractice={(kind) => void startActivity(kind)} />
+      : path === routes.statistics ? <StatisticsPage key={user.id} token={token} />
+      : path === routes.learningCalendar ? <LearningCalendarPage key={user.id} token={token} streak={snapshot?.plan.activity.currentStreak} />
+      : path === routes.achievements ? <AchievementsPage key={user.id} token={token} />
+      : path === routes.leaderboard ? <LeaderboardPage key={user.id} token={token} />
+      : path === routes.reviewCenter ? <ReviewCenterPage key={user.id} token={token} statistics={snapshot?.stats}
+        autoplayPronunciation={autoplayPronunciation} onReview={reload} />
+      : path === routes.profile ? <ProfilePage user={user} token={token} profile={snapshot?.profile}
+        appearance={profileAppearance} onUserChange={onUserChange} preferences={preferences} />
       : settingsSection ? <SettingsPage key={path} path={path} section={settingsSection} user={user} profile={snapshot?.profile} token={token}
         preferences={preferences} notifications={notifications} appearance={profileAppearance} statistics={snapshot?.stats} forecast={snapshot?.plan.forecast}
         onUserChange={onUserChange} onPasswordChanged={onSessionLost} onDeleted={onLogout} />

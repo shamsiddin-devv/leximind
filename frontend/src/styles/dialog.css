@@ -1,0 +1,114 @@
+.app-dialog {
+  --dialog-surface: var(--white);
+  --dialog-field: #fcfcfd;
+  --dialog-border: #d9dce8;
+  --dialog-accent: var(--appearance-fill, #5040f6);
+  --dialog-focus: var(--appearance-ink, #6753ec);
+  --dialog-danger: #a63740;
+  --dialog-shadow: 0 16px 48px #18203924;
+  inline-size: min(var(--dialog-width, 396px), calc(100% - 32px));
+  max-block-size: calc(100dvh - 32px);
+  padding: 20px;
+  border: 1px solid var(--dialog-border);
+  border-radius: 13px;
+  background: var(--dialog-surface);
+  color: var(--ink);
+  box-shadow: var(--dialog-shadow);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+:root[data-theme='dark'] .app-dialog {
+  --dialog-surface: var(--paper);
+  --dialog-field: var(--panel-surface);
+  --dialog-border: var(--line);
+  --dialog-accent: var(--night-accent);
+  --dialog-focus: var(--night-focus);
+  --dialog-danger: var(--night-error);
+  --dialog-shadow: 0 16px 48px #0006;
+}
+
+.app-dialog[open] { display: grid; gap: var(--dialog-gap, 20px); }
+:is(.app-dialog, .app-drawer)::backdrop { background: rgb(15 18 23 / .32); overflow: hidden; overscroll-behavior: contain; }
+:root[data-theme='dark'] :is(.app-dialog, .app-drawer)::backdrop { background: rgb(0 0 0 / .52); }
+:root .app-dialog[data-backdrop='clear']::backdrop { background: transparent; }
+
+.app-dialog-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.app-dialog .app-dialog-heading h2 { margin: 0; font: 750 .96rem/1.35 'DM Sans Variable', sans-serif; letter-spacing: -.01em; }
+.app-dialog-heading p, .app-dialog-description { color: var(--muted); font-size: .78rem; line-height: 1.5; }
+.app-dialog .app-dialog-heading p { margin-block-start: 4px; }
+
+.app-dialog-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 32px;
+  block-size: 32px;
+  margin: -7px -7px 0 0;
+  border: 0;
+  border-radius: 6px;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+}
+.app-dialog-close:hover:not(:disabled) { background: var(--dialog-field); }
+.app-dialog-close:disabled { opacity: .45; }
+
+.app-dialog-form { display: grid; gap: 12px; }
+.app-dialog-field { display: grid; gap: 5px; font-size: .82rem; font-weight: 650; }
+.app-dialog-field small { color: var(--muted); font-weight: 450; }
+.app-dialog-field :is(input:not([type='range']), select, textarea) {
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--dialog-border);
+  border-radius: 7px;
+  background: var(--dialog-field);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+}
+.app-dialog-field textarea { resize: vertical; }
+.app-dialog-field input[type='range'] { inline-size: 100%; min-block-size: 32px; margin: 0; accent-color: var(--dialog-accent); }
+
+.app-dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.app-dialog-actions > :only-child { grid-column: 1 / -1; }
+.app-dialog-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-block-size: var(--dialog-button-height, 36px);
+  min-inline-size: 0;
+  padding: 5px 10px;
+  border: 1px solid var(--dialog-border);
+  border-radius: 6px;
+  background: var(--dialog-surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 650;
+  text-align: center;
+}
+.app-dialog-button:hover:not(:disabled) { border-color: var(--dialog-focus); }
+.app-dialog-button:disabled { opacity: .57; }
+.app-dialog-button[data-tone='accent'] { border-color: transparent; background: var(--dialog-accent); color: #fff; }
+.app-dialog-button[data-tone='accent']:hover:not(:disabled) { filter: brightness(.94); }
+.app-dialog-button[data-tone='danger'] { color: var(--dialog-danger); }
+.app-dialog :is(button, a, input, textarea, select):focus-visible { outline-color: var(--dialog-focus); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-dialog[open] { animation: app-dialog-enter .18s ease-out; }
+}
+@keyframes app-dialog-enter {
+  from { opacity: 0; transform: translateY(6px); }
+}
+@media (max-width: 480px) {
+  .app-dialog { padding: 16px; }
+  .app-dialog-button { min-block-size: max(var(--dialog-button-height, 36px), 38px); }
+  .app-dialog-field :is(input, select, textarea) { font-size: 1rem; }
+}
+@media (forced-colors: active) {
+  .app-dialog-button[data-tone='accent'] { border-color: ButtonText; }
+}

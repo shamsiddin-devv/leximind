@@ -55,7 +55,7 @@ export function NotificationSettings({ profile, preferences, notifications }: {
 
   return <div className="learning-preferences-form notification-preferences">
     <p className="notification-intro">Qaysi xabarlarni olishni tanlang.</p>
-    <div className="learning-preference-section notification-master">
+    <div className="notification-master">
       <div className="settings-field-label">
         <label className="settings-row-label" htmlFor="notification-all">Barcha bildirishnomalar</label>
         <small id="notification-count">{enabledCount} / {total} yoqilgan</small>

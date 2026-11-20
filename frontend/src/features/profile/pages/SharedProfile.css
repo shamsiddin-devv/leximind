@@ -1,8 +1,110 @@
-.shared-profile { max-inline-size: 720px; display: grid; align-content: start; justify-items: start; gap: 16px; }
-.shared-profile h1 { display: flex; gap: 10px; align-items: center; overflow-wrap: anywhere; min-inline-size: 0; }
-.shared-profile h1 svg { flex-shrink: 0; color: var(--night-link, var(--blue)); }
-.shared-profile-avatar { inline-size: 78px; block-size: 78px; display: grid; place-items: center; overflow: hidden; border-radius: 50%; background: var(--paper); font-size: 1.65rem; font-weight: 800; }
+.shared-profile {
+  max-inline-size: 930px;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding-block: 26px 44px;
+}
+.shared-profile-back {
+  display: inline-flex;
+  justify-self: start;
+  align-items: center;
+  gap: 7px;
+  color: var(--night-link, var(--blue));
+  font-size: .88rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+.shared-profile-back:hover { color: var(--ink); }
+.shared-profile-hero {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 13px;
+  min-height: clamp(244px, 34vw, 355px);
+  padding: 30px 15px;
+  border: 1px solid #51406b;
+  border-radius: 21px;
+  color: #fff;
+  background: linear-gradient(180deg, #110b2299, #1c102c52 41%, #121020 100%),
+    url('/leaderboard-arena.jpg') center 53% / cover, #150e27;
+  text-align: center;
+}
+.shared-profile-hero h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.14;
+  font-size: clamp(1.55rem, 5vw, 2.75rem);
+  text-wrap: balance;
+}
+.shared-profile-hero h1 svg { flex-shrink: 0; color: #7ed7ff; }
+.shared-profile-avatar {
+  inline-size: clamp(78px, 13vw, 112px);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid #dbbdff;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 18%, #7146a3, #2a1e45 78%);
+  box-shadow: 0 0 26px #c27aff80;
+  font-size: clamp(1.65rem, 6vw, 2.65rem);
+  font-weight: 800;
+}
 .shared-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.shared-profile-stats { display: flex; gap: 22px; flex-wrap: wrap; margin: 4px 0 0; padding-block-start: 16px; border-block-start: 1px solid var(--line); }
-.shared-profile-stats dt { color: var(--muted); font-size: .86rem; }
-.shared-profile-stats dd { margin: 5px 0 0; font-weight: 750; }
+.shared-profile-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border: 1px solid #cda1ff5e;
+  border-radius: 999px;
+  background: #42286a;
+  color: #f2e8ff;
+  font-size: .78rem;
+  font-weight: 760;
+}
+.shared-profile-progress { display: grid; gap: 13px; }
+.shared-profile-progress h2, .shared-profile-progress h3 { margin: 0; }
+.shared-profile-progress h2 { font-size: 1.2rem; }
+.shared-profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.shared-profile-stats > div, .shared-profile-activity {
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel-surface);
+}
+.shared-profile-stats > div:first-child {
+  border-color: color-mix(in srgb, var(--blue) 34%, var(--line));
+  background: color-mix(in srgb, var(--blue) 9%, var(--panel-surface));
+}
+.shared-profile-stats dt { display: flex; align-items: center; gap: 7px; color: var(--muted); font-size: .8rem; }
+.shared-profile-stats dt svg { flex-shrink: 0; color: var(--night-link, var(--blue)); }
+.shared-profile-stats dd { margin: 7px 0 0; color: var(--ink); font-size: clamp(1rem, 2.6vw, 1.42rem); font-weight: 800; }
+.shared-profile-activity h3 { font-size: 1rem; }
+.shared-profile-activity p { margin: 5px 0 0; color: var(--muted); font-size: .83rem; }
+.shared-profile-activity p.shared-profile-activity-empty { margin-top: 18px; }
+.shared-profile-weeks {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: clamp(3px, 1vw, 8px);
+  padding: 0;
+  margin: 16px 0 0;
+  list-style: none;
+}
+.shared-profile-weeks li { display: grid; gap: 5px; text-align: center; color: var(--muted); font-size: .64rem; }
+.shared-profile-bar { display: flex; align-items: end; height: 124px; border-radius: 5px; background: color-mix(in srgb, var(--blue) 8%, transparent); }
+.shared-profile-bar span { display: block; width: 100%; border-radius: 5px; background: linear-gradient(0deg, #5635b6, #b784fe); }
+@media (max-width: 570px) {
+  .shared-profile-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shared-profile-weeks li:nth-child(even) > span { visibility: hidden; }
+}

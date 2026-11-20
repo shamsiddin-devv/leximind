@@ -47,7 +47,7 @@
 .icon-button.speak { background: #f1f3ff; color: var(--blue); border-color: #e6ebff; width: 37px; height: 37px; border-radius: 11px; }
 .icon-button.speak:hover { background: #e3e9ff; }
 .text-link { display: inline-flex; align-items: center; gap: 6px; color: #2340c7; font-size: .82rem; font-weight: 800; min-height: 28px; }
-.text-link:hover { color: #112b9f; text-decoration: underline; text-underline-offset: 4px; }
+.text-link:hover { color: #112b9f; }
 .quick-section { margin-block-start: 28px; }
 .section-heading { display: flex; justify-content: space-between; align-items: center; gap: 11px; margin-block-end: 14px; }
 .section-heading h2 { font-size: 1.36rem; font-weight: 850; letter-spacing: -.046em; }

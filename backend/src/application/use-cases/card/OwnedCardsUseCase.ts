@@ -19,4 +19,7 @@ export class OwnedCardsUseCase {
   list(userId: string, filters: CardFilters) {
     return this.repo.findAll({ ...filters, userId });
   }
+  collection(userId: string, page: number, limit: number) {
+    return this.repo.listCollection(userId, page, limit);
+  }
 }

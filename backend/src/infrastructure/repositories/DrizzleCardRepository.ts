@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, asc, count, eq, isNull, lte, SQL } from 'drizzle-orm';
+import { and, asc, count, eq, isNull, lte, sql, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DRIZZLE } from '../db/drizzle/drizzle.provider';
 import { relations } from '../db/drizzle/drizzle.relations';
@@ -13,6 +13,7 @@ import { ConflictError } from '../../domain/errors/ConflictError';
 import { NotFoundError } from '../../domain/errors/NotFoundError';
 import {
   CardFilters,
+  CollectionCard,
   ICardRepository,
 } from '../../domain/repositories/ICardRepository';
 import { Card } from '../../domain/entities/Card';
@@ -89,6 +90,33 @@ export class DrizzleCardRepository implements ICardRepository {
       total: c.total,
       totalPage: Math.ceil(c.total / pageSize),
     };
+  }
+  async listCollection(userId: string, page: number, limit: number) {
+    const [result, counts] = await Promise.all([
+      this.db.execute<CollectionCard>(sql`
+        SELECT c.id, w.text, w.topic, c.created_at AS "createdAt",
+          coalesce(s.translation_uz, '') AS translation,
+          coalesce(s.example_sentence, '') AS example,
+          r.progress, c.state = 'REVIEW' AS mastered
+        FROM (
+          SELECT id, word_id, created_at, state FROM cards
+          WHERE user_id = ${userId}
+          ORDER BY created_at DESC, id
+          LIMIT ${limit} OFFSET ${(page - 1) * limit}
+        ) c JOIN words w ON w.id = c.word_id
+        LEFT JOIN LATERAL (
+          SELECT translation_uz, example_sentence FROM word_senses
+          WHERE word_id = w.id ORDER BY order_index LIMIT 1
+        ) s ON true
+        CROSS JOIN LATERAL (
+          SELECT coalesce(round(100.0 * count(*) FILTER (WHERE rating <> 'AGAIN') / nullif(count(*), 0)), 0)::integer AS progress
+          FROM review_logs WHERE card_id = c.id
+        ) r
+        ORDER BY c.created_at DESC, c.id
+      `),
+      this.db.select({ total: count() }).from(cards).where(eq(cards.userId, userId)),
+    ]);
+    return { data: result.rows, total: counts[0].total };
   }
   async create(c: Card) {
     const [r] = await this.db.insert(cards).values(cardValues(c)).returning();

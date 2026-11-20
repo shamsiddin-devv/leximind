@@ -5,7 +5,7 @@ import type { LearningUseCases } from '../LearningUseCases';
 export class GetSharedProfile {
   constructor(
     private readonly users: IUserRepository,
-    private readonly learning: Pick<LearningUseCases, 'profile' | 'statistics'>,
+    private readonly learning: Pick<LearningUseCases, 'profile' | 'statistics' | 'analytics'>,
   ) {}
 
   async execute(id: string) {
@@ -16,9 +16,10 @@ export class GetSharedProfile {
       throw new NotFoundError('Profile is unavailable.');
     }
 
-    const [profile, statistics] = await Promise.all([
+    const [profile, statistics, analytics] = await Promise.all([
       privacy.publicCefr || privacy.publicStatistics ? this.learning.profile(id) : undefined,
       privacy.publicStatistics ? this.learning.statistics(id) : undefined,
+      privacy.publicStatistics ? this.learning.analytics(id) : undefined,
     ]);
     return {
       fullName: user.fullName,
@@ -28,6 +29,11 @@ export class GetSharedProfile {
       statistics: statistics && profile ? {
         learnedWords: statistics.learnedWords,
         streakDay: profile.streakDay,
+        sessions: statistics.sessions,
+        xp: analytics?.totalXp ?? 0,
+        accuracy: analytics?.accuracy ?? null,
+        studySeconds: analytics?.studySeconds ?? 0,
+        weeklyXp: analytics?.weeks.map(({ date, xp }) => ({ date, xp })) ?? [],
       } : undefined,
     };
   }

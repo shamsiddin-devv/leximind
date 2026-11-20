@@ -22,9 +22,6 @@ export type NavigationGroup = {
   items: NavigationItem[];
 };
 
-const dashboardLink = { href: routes.dashboard, label: 'O‘quv paneliga o‘tish' };
-const vocabularyLink = { href: routes.vocabulary, label: 'Lug‘atni ochish' };
-
 export const navigation: NavigationGroup[] = [
   {
     title: 'Main Navigation',
@@ -41,35 +38,26 @@ export const navigation: NavigationGroup[] = [
     title: 'Progress',
     icon: BarChart3,
     items: [
-      { href: routes.reviewCenter, label: 'Review Center', icon: RotateCcw,
-        intro: { description: 'O‘rgangan so‘zlaringizni mustahkamlash uchun bo‘lim.', related: dashboardLink } },
-      { href: routes.statistics, label: 'Statistics', icon: BarChart3,
-        intro: { description: 'O‘quv natijalaringiz uchun ajratilgan bo‘lim.', related: dashboardLink } },
-      { href: routes.learningCalendar, label: 'Learning Calendar', icon: CalendarDays,
-        intro: { description: 'O‘quv faolligingizni taqvimda ko‘rish uchun bo‘lim.' } },
+      { href: routes.reviewCenter, label: 'Review Center', icon: RotateCcw },
+      { href: routes.statistics, label: 'Statistics', icon: BarChart3 },
+      { href: routes.learningCalendar, label: 'Learning Calendar', icon: CalendarDays },
     ],
   },
   {
     title: 'Explore',
     icon: Compass,
     items: [
-      { href: routes.topics, label: 'Topics Explorer', icon: Compass,
-        intro: { description: 'Inglizcha so‘zlarni mavzular bo‘yicha o‘rganish uchun bo‘lim.', related: vocabularyLink } },
-      { href: routes.achievements, label: 'Achievements', icon: Trophy,
-        intro: { description: 'O‘qish davomida erishgan yutuqlaringiz uchun bo‘lim.' } },
-      { href: routes.leaderboard, label: 'Leaderboard', icon: Crown,
-        intro: { description: 'O‘quvchilar reytingi uchun ajratilgan bo‘lim.' } },
+      { href: routes.topics, label: 'Topics Explorer', icon: Compass },
+      { href: routes.achievements, label: 'Achievements', icon: Trophy },
+      { href: routes.leaderboard, label: 'Leaderboard', icon: Crown },
     ],
   },
   {
     title: 'Personal',
     icon: FolderHeart,
     items: [
-      { href: routes.collections, label: 'My Collections', icon: FolderHeart,
-        intro: { description: 'Shaxsiy so‘z to‘plamlaringiz uchun ajratilgan bo‘lim.', related: vocabularyLink } },
-      { href: routes.mistakes, label: 'Mistakes Notebook', icon: NotebookPen,
-        intro: { description: 'Qayta ishlash kerak bo‘lgan xatolaringiz uchun bo‘lim.',
-          related: { href: routes.games, label: 'O‘yinlar va mashqlarni ochish' } } },
+      { href: routes.collections, label: 'My Collections', icon: FolderHeart },
+      { href: routes.mistakes, label: 'Mistakes Notebook', icon: NotebookPen },
     ],
   },
 ];

@@ -5,6 +5,7 @@
   --muted: #a4a7ac;
   --line: #37393b;
   --night-surface: #191b1c;
+  --panel-surface: var(--night-surface);
   --night-elevated: #222425;
   --night-highlight: #292b2d;
   --night-edge: #55585c;

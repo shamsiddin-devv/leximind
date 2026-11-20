@@ -33,18 +33,18 @@ export function DeleteSettings({ token, userId, onDeleted, privacy = false }: { 
       <p>O‘quv natijalaringiz va akkaunt ma’lumotlaringiz butunlay o‘chiriladi.</p>
     </div>
     <button type="button" className="button account-delete-button" onClick={() => dialog.current?.showModal()}>{privacy && <Trash2 size={16} aria-hidden="true" />}Akkauntni o‘chirish</button>
-    <dialog ref={dialog} className="account-delete-dialog" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-note"
+    <dialog ref={dialog} className="app-dialog account-delete-dialog" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-note"
       onCancel={(event) => { if (busy) event.preventDefault(); }} onClose={() => { form.current?.reset(); setError(''); }}>
-      <header><h2 id="delete-dialog-title">Akkauntni o‘chirish</h2>
-        <button type="button" className="icon-button" aria-label="Yopish" disabled={busy} onClick={() => dialog.current?.close()}><X size={17} /></button>
+      <header className="app-dialog-heading"><h2 id="delete-dialog-title">Akkauntni o‘chirish</h2>
+        <button type="button" className="app-dialog-close" aria-label="Yopish" disabled={busy} onClick={() => dialog.current?.close()}><X size={16} aria-hidden="true" /></button>
       </header>
-      <p id="delete-dialog-note">Tasdiqlash uchun joriy parolingizni kiriting.</p>
-      <form ref={form} className="account-form" onSubmit={(event) => void remove(event)}>
-        <label>Joriy parol<input type="password" name="currentPassword" autoComplete="current-password" maxLength={72} required disabled={busy} /></label>
+      <p id="delete-dialog-note" className="app-dialog-description">Tasdiqlash uchun joriy parolingizni kiriting.</p>
+      <form ref={form} className="app-dialog-form" onSubmit={(event) => void remove(event)}>
+        <label className="app-dialog-field">Joriy parol<input type="password" name="currentPassword" autoComplete="current-password" maxLength={72} required disabled={busy} /></label>
         {error && <Notice error>{error}</Notice>}
-        <div className="settings-form-actions settings-dialog-actions">
-          <button type="button" className="button secondary" disabled={busy} onClick={() => dialog.current?.close()}>Bekor qilish</button>
-          <button className="button account-delete-button" disabled={busy}>{busy ? 'O‘chirilmoqda…' : 'Butunlay o‘chirish'}</button>
+        <div className="app-dialog-actions">
+          <button type="button" className="app-dialog-button" disabled={busy} onClick={() => dialog.current?.close()}>Bekor qilish</button>
+          <button type="submit" className="app-dialog-button" data-tone="danger" disabled={busy}>{busy ? 'O‘chirilmoqda…' : 'Butunlay o‘chirish'}</button>
         </div>
       </form>
     </dialog>

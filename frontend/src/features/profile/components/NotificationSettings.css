@@ -15,7 +15,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-block: 12px;
+  padding-block-end: 16px;
+  border-block-end: 1px solid var(--line);
 }
 
 .notification-master .settings-field-label { padding-block: 0; }

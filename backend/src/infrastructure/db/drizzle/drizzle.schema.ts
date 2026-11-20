@@ -12,7 +12,10 @@ import {
   jsonb,
   char,
   primaryKey,
+  index,
+  check,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 import type { Gender } from '../../../domain/entities/User';
 import type { ReviewMode } from '../../../domain/repositories/ILearningRepository';
@@ -278,3 +281,22 @@ export const gameMistakes = pgTable(
   },
   (table) => [primaryKey({ columns: [table.userId, table.wordId] })],
 );
+
+export const mistakeNotebookEntries = pgTable('mistake_notebook_entries', {
+  id: uuid().defaultRandom().primaryKey(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  challengeId: uuid('challenge_id').references(() => challenges.id, { onDelete: 'set null' }),
+  questionIndex: integer('question_index').notNull(),
+  kind: text().notNull(),
+  question: jsonb().notNull(),
+  expectedAnswer: varchar('expected_answer', { length: 255 }).notNull(),
+  submittedAnswer: varchar('submitted_answer', { length: 255 }),
+  reason: text(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+}, (table) => [
+  unique('mistake_notebook_entries_challenge_id_question_index_key').on(table.challengeId, table.questionIndex),
+  index('mistake_notebook_owner_date').on(table.userId, table.occurredAt.desc(), table.id),
+  check('mistake_notebook_entries_question_index_check', sql`${table.questionIndex} BETWEEN 0 AND 29`),
+  check('mistake_notebook_entries_reason_check', sql`${table.reason} IN ('skipped', 'typo', 'word_order', 'incomplete', 'incorrect')`),
+]);

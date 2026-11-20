@@ -20,8 +20,16 @@ export type User = {
 };
 export type SharedProfileData = {
   fullName: string; avatarUrl: string | null; hasProfileBadge: boolean;
-  level?: Level; statistics?: { learnedWords: number; streakDay: number };
+  level?: Level; statistics?: {
+    learnedWords: number; streakDay: number; sessions: number; xp: number;
+    accuracy: number | null; studySeconds: number; weeklyXp: { date: string; xp: number }[];
+  };
 };
+export type RankingEntry = {
+  id: string; fullName: string; avatarUrl: string | null; hasProfileBadge: boolean; canViewProfile: boolean;
+  xp: number; streak: number; rank: number | null;
+};
+export type Leaderboard = { entries: RankingEntry[]; own: RankingEntry | null; participants: number };
 export type AccountSession = { id: string; userAgent: string | null; createdAt: string; expiresAt: string; current: boolean };
 export type ReviewMode = 'spaced' | 'random';
 export type LearningPreferences = {
@@ -40,6 +48,15 @@ export type Plan = {
   activeSessionId: string | null;
   availableNow: number;
   activeCards: number;
+  activity: {
+    today: string;
+    weekStart: string;
+    completedDays: string[];
+    studyMinutesToday: number;
+    currentStreak: number;
+    longestStreak: number;
+    gameKindsToday: GameKind[];
+  };
   forecast: { date: string; count: number }[];
   difficultWords: { wordId: string; text: string; againCount: number }[];
   dailyNewReviewed: number;
@@ -50,10 +67,20 @@ export type Word = {
   sense: { translationUz: string; definition: string; exampleSentence?: string }[];
 };
 export type Page<T> = { data: T[]; total: number };
-export type Task = { id: string; completed: boolean; text: string; definition: string; translationUz: string; audioUrl?: string | null };
+export type Task = ReviewPrompt & { id: string; completed: boolean; definition: string; translationUz: string; audioUrl?: string | null };
 export type SessionStatus = 'in_progress' | 'completed' | 'cancelled';
 export type SessionSummary = { id: string; status: SessionStatus; startedAt: string; endedAt: string | null };
 export type Session = SessionSummary & { tasks: Task[] };
+export type ReviewQueue = 'today' | 'new' | 'learning';
+export type ReviewPrompt = { text: string; topic: string | null; cefrLevel: Level };
+export type ReviewCenterData = {
+  activeCards: number; newCards: number; learningCards: number; masteredCards: number;
+  longestIntervalMinutes: number | null;
+  nextDueAt: string | null;
+  queues: Record<ReviewQueue, { count: number; first: ReviewPrompt | null }>;
+  topics: { topic: string | null; total: number; due: number }[];
+  session: Session | null;
+};
 export type Rating = 'AGAIN' | 'HARD' | 'GOOD' | 'EASY';
 export type GameKind = 'meaning_match' | 'word_rush' | 'type_word' | 'finish_sentence' | 'build_sentence' | 'word_dictation' | 'sentence_dictation' | 'mistake_words' | 'sequence_memory' | 'word_span' | 'visual_grid';
 export type Activity = GameKind | 'assessment';
@@ -79,3 +106,20 @@ export type Statistics = {
   cards: number; due: number; reviews: number; sessions: number;
   learnedWords?: number; accuracy?: number | null; studyMinutes?: number;
 };
+
+export type LearningSkill = 'vocabulary' | 'grammar' | 'listening' | 'speaking' | 'reading' | 'writing';
+export type LearningAnalytics = {
+  today: string; totalXp: number; activeWords: number; accuracy: number | null; studySeconds: number;
+  weeks: { date: string; xp: number; accuracy: number | null; newWords: number }[];
+  days: { date: string; studySeconds: number }[];
+  months: { date: string; studySeconds: number }[];
+  skills: Partial<Record<LearningSkill, number>>;
+};
+export type LearningCalendarDay = {
+  date: string; studySeconds: number; newWords: number; sessions: number; xp: number; active: boolean;
+};
+export type LearningCalendar = {
+  today: string; monthStart: string; dailyStudyMinutes: number; dailyNewWords: number; days: LearningCalendarDay[];
+};
+export type TopicProgress = { topic: string; total: number; learned: number; cefrLevel: Level };
+export type AchievementProgress = { id: string; target: number; rewardXp: number; progress: number | null; earnedOn: string | null };

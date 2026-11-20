@@ -12,6 +12,7 @@
   text-rendering: optimizeLegibility;
   --paper: #faf9f6;
   --white: #fff;
+  --panel-surface: var(--white);
   --ink: #171c2d;
   --muted: #626978;
   --line: #e8e6df;
