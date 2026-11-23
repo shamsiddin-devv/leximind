@@ -27,6 +27,7 @@ export const ownUserView = (u: User) => ({
   location: u.location,
   gender: u.gender,
   phoneNumber: u.phoneNumber,
+  socialLinks: u.socialLinks,
   hasProfileBadge: u.hasProfileBadge,
   privacy: u.privacy,
 });

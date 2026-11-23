@@ -1,12 +1,20 @@
 export const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
 export type Level = (typeof levels)[number];
-export type ProfilePrivacy = { profilePublic: boolean; profileSharing: boolean; publicStatistics: boolean; publicCefr: boolean };
-export const privateProfile: ProfilePrivacy = { profilePublic: false, profileSharing: false, publicStatistics: false, publicCefr: false };
+export type ProfilePrivacy = {
+  profilePublic: boolean; profileSharing: boolean; publicStatistics: boolean; publicCefr: boolean;
+  publicBio: boolean; publicSocialLinks: boolean;
+};
+export const privateProfile: ProfilePrivacy = {
+  profilePublic: false, profileSharing: false, publicStatistics: false, publicCefr: false,
+  publicBio: false, publicSocialLinks: false,
+};
+export type ProfileSocialLinks = Partial<Record<'telegram' | 'instagram' | 'github' | 'linkedin' | 'x' | 'website', string>>;
 export type User = {
   id: string;
   fullName: string;
   email: string;
   emailVerifiedAt: string | null;
+  createdAt?: string;
   avatarUrl?: string | null;
   bio?: string | null;
   bioFormat?: string | null;
@@ -15,11 +23,13 @@ export type User = {
   location?: string | null;
   gender?: 'female' | 'male' | 'other' | 'undisclosed' | null;
   phoneNumber?: string | null;
+  socialLinks?: ProfileSocialLinks;
   hasProfileBadge?: boolean;
   privacy?: ProfilePrivacy;
 };
 export type SharedProfileData = {
   fullName: string; avatarUrl: string | null; hasProfileBadge: boolean;
+  bio?: string; socialLinks?: ProfileSocialLinks;
   level?: Level; statistics?: {
     learnedWords: number; streakDay: number; sessions: number; xp: number;
     accuracy: number | null; studySeconds: number; weeklyXp: { date: string; xp: number }[];

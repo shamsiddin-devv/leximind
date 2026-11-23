@@ -7,6 +7,7 @@ import { SettingsField } from './SettingsField';
 import type { BioValue } from './BioEditor';
 import { LocationFields } from './LocationFields';
 import { DeleteSettings } from './DeleteSettings';
+import { SocialLinksSettings } from './SocialLinksSettings';
 
 const BioEditor = lazy(() => import('./BioEditor'));
 
@@ -84,7 +85,8 @@ function ProfileDetails({ user, token, onUserChange }: UserFormProps) {
     } finally { setBusy(false); }
   }
 
-  return <form className="settings-form-section settings-profile-form" aria-labelledby="settings-profile-title" onSubmit={(event) => void save(event)}>
+  return <div>
+    <form className="settings-form-section settings-profile-form" aria-labelledby="settings-profile-title" onSubmit={(event) => void save(event)}>
     <header className="settings-profile-header">
       <div>
         <h2 id="settings-profile-title">Shaxsiy ma’lumotlar</h2>
@@ -133,5 +135,7 @@ function ProfileDetails({ user, token, onUserChange }: UserFormProps) {
         <BioEditor id="settings-bio" value={draft.bio} disabled={busy} onChange={(value) => field('bio', value)} />
       </Suspense>
     </SettingsField>
-  </form>;
+    </form>
+    <SocialLinksSettings user={user} token={token} onUserChange={onUserChange} disabled={busy} />
+  </div>;
 }

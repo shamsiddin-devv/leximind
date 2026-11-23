@@ -167,7 +167,7 @@ export function UICustomization({ appearance: { saved, save }, user, profile, st
         <div className="customization-preview-body" tabIndex={0} role="region" aria-label="Profilning jonli ko‘rinishi">
           <div className="customized-profile-layout" data-layout={saved.layout}>
             <div className="customized-profile-hero">
-              <ProfileCover appearance={saved} user={user} profile={profile} preview
+              <ProfileCover appearance={saved} user={user} level={profile?.level} preview
                 toolbar={vertical && <div className="profile-cover-toolbar" aria-hidden="true">
                   <span className="profile-preview-share"><Share2 size={15} /> Share profile</span>
                 </div>}

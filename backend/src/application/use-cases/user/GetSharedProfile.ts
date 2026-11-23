@@ -25,6 +25,8 @@ export class GetSharedProfile {
       fullName: user.fullName,
       avatarUrl: user.avatar?.url ?? null,
       hasProfileBadge: user.hasProfileBadge,
+      bio: privacy.publicBio ? user.bio ?? undefined : undefined,
+      socialLinks: privacy.publicSocialLinks ? user.socialLinks : undefined,
       level: privacy.publicCefr ? profile?.level : undefined,
       statistics: statistics && profile ? {
         learnedWords: statistics.learnedWords,

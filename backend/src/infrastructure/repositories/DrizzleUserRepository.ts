@@ -4,6 +4,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { User } from '../../domain/entities/User';
 import { Email } from '../../domain/value-objects/Email';
+import { socialPlatforms } from '../../domain/value-objects/ProfileSocialLinks';
 import { NotFoundError } from '../../domain/errors/NotFoundError';
 import { DRIZZLE } from '../db/drizzle/drizzle.provider';
 import { relations } from '../db/drizzle/drizzle.relations';
@@ -98,6 +99,7 @@ export class DrizzleUserRepository implements IUserRepository {
       await change(user, row.passwordHash);
       const emailChanged = row.email !== user.email.toString();
       const privacy = user.privacy;
+      const socialLinks = user.socialLinks;
       if (
         row.fullName === user.fullName.trim() &&
         !emailChanged &&
@@ -108,10 +110,13 @@ export class DrizzleUserRepository implements IUserRepository {
         row.location === user.location &&
         row.gender === user.gender &&
         row.phoneNumber === user.phoneNumber &&
+        socialPlatforms.every((key) => row.socialLinks[key] === socialLinks[key]) &&
         row.profilePublic === privacy.profilePublic &&
         row.profileSharing === privacy.profileSharing &&
         row.publicStatistics === privacy.publicStatistics &&
         row.publicCefr === privacy.publicCefr &&
+        row.publicBio === privacy.publicBio &&
+        row.publicSocialLinks === privacy.publicSocialLinks &&
         row.avatarPublicId === (user.avatar?.publicId ?? null)
       )
         return user;
@@ -128,6 +133,7 @@ export class DrizzleUserRepository implements IUserRepository {
           location: user.location,
           gender: user.gender,
           phoneNumber: user.phoneNumber,
+          socialLinks,
           ...privacy,
           avatarUrl: user.avatar?.url ?? null,
           avatarPublicId: user.avatar?.publicId ?? null,
@@ -163,10 +169,13 @@ export class DrizzleUserRepository implements IUserRepository {
       location: r.location,
       gender: r.gender,
       phoneNumber: r.phoneNumber,
+      socialLinks: r.socialLinks,
       profilePublic: r.profilePublic,
       profileSharing: r.profileSharing,
       publicStatistics: r.publicStatistics,
       publicCefr: r.publicCefr,
+      publicBio: r.publicBio,
+      publicSocialLinks: r.publicSocialLinks,
       avatar:
         r.avatarUrl && r.avatarPublicId
           ? { url: r.avatarUrl, publicId: r.avatarPublicId }

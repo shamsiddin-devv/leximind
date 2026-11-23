@@ -66,11 +66,12 @@ export function App() {
     const link: AccountLink = { token: accountLink.token, action: accountLink.action === 'verify_email' ? 'verify_email' : 'reset_password' };
     content = <PublicLayout signedIn={Boolean(session.user)}><AuthPage key={link.action + link.token}
       mode={link.action === 'verify_email' ? 'verify' : 'reset'} link={link} signedIn={Boolean(session.user)} onLogin={session.establish} onConfirmed={confirmed} /></PublicLayout>;
+  } else if (sharedProfileId) {
+    content = <SharedProfile key={sharedProfileId} id={sharedProfileId} token={session.user ? token : undefined} />;
   } else {
     content = <PublicLayout signedIn={Boolean(session.user)}>
       {path === routes.home ? <LandingPage signedIn={Boolean(session.user)} />
         : path === routes.demo ? <DemoPage />
-        : sharedProfileId ? <SharedProfile key={sharedProfileId} id={sharedProfileId} />
         : <div className="container inner-screen page-intro"><h1 lang="en">Page Not Found</h1><p><Link className="text-link" href={routes.home}>Bosh sahifa <ArrowRight size={16} /></Link></p></div>}
     </PublicLayout>;
   }

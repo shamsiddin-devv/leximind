@@ -163,7 +163,8 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
       : path === routes.leaderboard ? <LeaderboardPage key={user.id} token={token} />
       : path === routes.reviewCenter ? <ReviewCenterPage key={user.id} token={token} statistics={snapshot?.stats}
         autoplayPronunciation={autoplayPronunciation} onReview={reload} />
-      : path === routes.profile ? <ProfilePage user={user} token={token} profile={snapshot?.profile}
+      : path === routes.profile ? <ProfilePage key={user.id} user={user} token={token} profile={snapshot?.profile}
+        statistics={snapshot?.stats} streak={snapshot?.plan.activity.currentStreak} gamesPlayed={snapshot?.gamesPlayed}
         appearance={profileAppearance} onUserChange={onUserChange} preferences={preferences} />
       : settingsSection ? <SettingsPage key={path} path={path} section={settingsSection} user={user} profile={snapshot?.profile} token={token}
         preferences={preferences} notifications={notifications} appearance={profileAppearance} statistics={snapshot?.stats} forecast={snapshot?.plan.forecast}

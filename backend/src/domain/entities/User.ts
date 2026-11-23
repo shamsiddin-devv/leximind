@@ -2,6 +2,11 @@ import { BadRequestError } from '../errors/BadRequestError';
 import type { Avatar } from '../services/IAvatarStorage';
 import { Email } from '../value-objects/Email';
 import { normalizeBioFormat } from '../value-objects/BioFormatting';
+import {
+  type SocialLinks,
+  type SocialLinksPatch,
+  updateSocialLinks,
+} from '../value-objects/ProfileSocialLinks';
 
 const countryNames = new Intl.DisplayNames(['uz', 'en'], { type: 'region' });
 
@@ -14,6 +19,8 @@ export type ProfilePrivacy = {
   profileSharing: boolean;
   publicStatistics: boolean;
   publicCefr: boolean;
+  publicBio: boolean;
+  publicSocialLinks: boolean;
 };
 
 export type UserDetails = Partial<ProfilePrivacy> & {
@@ -24,15 +31,17 @@ export type UserDetails = Partial<ProfilePrivacy> & {
   city?: string | null;
   gender?: Gender | null;
   phoneNumber?: string | null;
+  socialLinks?: SocialLinksPatch;
 };
 
-export interface IUserProps extends UserDetails {
+export interface IUserProps extends Omit<UserDetails, 'socialLinks'> {
   id?: string;
   fullName: string;
   email: Email;
   createdAt?: Date;
   emailVerifiedAt?: Date | null;
   avatar?: Avatar | null;
+  socialLinks?: SocialLinks;
 }
 
 export class User {
@@ -49,6 +58,9 @@ export class User {
   update(
     props: UserDetails & { fullName?: string; email?: string },
   ): void {
+    const links = props.socialLinks
+      ? updateSocialLinks(this.socialLinks, props.socialLinks)
+      : undefined;
     if (props.fullName !== undefined) {
       if (!props.fullName.trim() || props.fullName.trim().length > 255)
         throw new BadRequestError('Full name must not be empty.');
@@ -76,10 +88,13 @@ export class User {
     }
     if (props.gender !== undefined) this.props.gender = props.gender;
     if (props.phoneNumber !== undefined) this.props.phoneNumber = props.phoneNumber;
+    if (links) this.props.socialLinks = links;
     if (props.profilePublic !== undefined) this.props.profilePublic = props.profilePublic;
     if (props.profileSharing !== undefined) this.props.profileSharing = props.profileSharing;
     if (props.publicStatistics !== undefined) this.props.publicStatistics = props.publicStatistics;
     if (props.publicCefr !== undefined) this.props.publicCefr = props.publicCefr;
+    if (props.publicBio !== undefined) this.props.publicBio = props.publicBio;
+    if (props.publicSocialLinks !== undefined) this.props.publicSocialLinks = props.publicSocialLinks;
   }
 
   private updatePlace(countryCode: string | null | undefined, city: string | null | undefined) {
@@ -123,12 +138,15 @@ export class User {
   get location() { return this.props.location ?? null; }
   get gender() { return this.props.gender ?? null; }
   get phoneNumber() { return this.props.phoneNumber ?? null; }
+  get socialLinks(): SocialLinks { return this.props.socialLinks ?? {}; }
   get privacy(): ProfilePrivacy {
     return {
       profilePublic: this.props.profilePublic ?? false,
       profileSharing: this.props.profileSharing ?? false,
       publicStatistics: this.props.publicStatistics ?? false,
       publicCefr: this.props.publicCefr ?? false,
+      publicBio: this.props.publicBio ?? false,
+      publicSocialLinks: this.props.publicSocialLinks ?? false,
     };
   }
   get hasProfileBadge() {

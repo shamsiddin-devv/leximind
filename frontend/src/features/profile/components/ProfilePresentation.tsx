@@ -1,10 +1,12 @@
 import { useId, type CSSProperties, type ReactNode } from 'react';
-import { Award, BadgeCheck, BookOpen, ChartNoAxesColumn, CircleCheck, Clock3, Flame, Mail, Target, Zap } from 'lucide-react';
+import { Award, BadgeCheck, BookOpen, ChartNoAxesColumn, CircleCheck, Clock3, Flame, Mail, MapPin, Target, Zap } from 'lucide-react';
 import type { Plan, Profile, Statistics, User } from '../../../shared/types/api';
 import { profileBannerSource, profileMetrics, type ProfileAppearance, type ProfileMetric } from '../data/profileAppearance';
+import { profileLinkHref, profileSocialPlatforms } from '../data/socialLinks';
 import './ProfilePresentation.css';
 
 type ProfileData = { user: User; profile?: Profile; statistics?: Statistics; forecast?: Plan['forecast'] };
+type ProfileCoverUser = Pick<User, 'fullName' | 'bio' | 'hasProfileBadge' | 'location' | 'socialLinks'> & { email?: string };
 const metricIcons = { xp: Zap, words: BookOpen, streak: Flame, sessions: CircleCheck, accuracy: Target, studyTime: Clock3 };
 const metricLabels = Object.fromEntries(profileMetrics.map(({ id, label }) => [id, label]));
 const number = new Intl.NumberFormat('uz-UZ');
@@ -22,13 +24,31 @@ function profileMetricValue(id: ProfileMetric, statistics?: Statistics, profile?
   return typeof value === 'number' ? number.format(value) : value;
 }
 
-export function ProfileCover({ appearance, user, profile, avatar, toolbar, bannerAction, preview }: {
-  appearance: ProfileAppearance; user: User; profile?: Profile; avatar: ReactNode;
+function ProfileCoverSocialLinks({ links }: { links: NonNullable<User['socialLinks']> }) {
+  const available = profileSocialPlatforms.flatMap((platform) => {
+    const href = profileLinkHref(links[platform.key], platform);
+    return href ? [{ ...platform, href }] : [];
+  });
+  if (!available.length) return null;
+
+  return <ul className="profile-cover-socials" aria-label="Ijtimoiy havolalar">
+    {available.map(({ key, label, icon: Icon, href }) => <li key={key}>
+      <a href={href} target="_blank" rel="noopener noreferrer" aria-label={label} title={label}>
+        <Icon size={17} aria-hidden="true" />
+      </a>
+    </li>)}
+  </ul>;
+}
+
+export function ProfileCover({ appearance, user, identity = user, level, avatar, toolbar, bannerAction, preview }: {
+  appearance: ProfileAppearance; user: ProfileCoverUser; level?: Profile['level']; avatar: ReactNode;
+  identity?: Pick<User, 'fullName' | 'bio'>;
   toolbar?: ReactNode; bannerAction?: ReactNode; preview?: boolean;
 }) {
   const id = useId();
   const Heading = preview ? 'h3' : 'h1';
   const vertical = appearance.layout === 'vertical';
+  const showCoverDetails = !vertical && !preview;
   const style = { '--cover-position': appearance.position, '--cover-overlay': appearance.overlay / 100 } as CSSProperties;
   return <section className="panel profile-overview customized-profile-cover" data-height={appearance.height} style={style} aria-labelledby={id}>
     <img className="profile-cover" src={profileBannerSource(appearance.banner, appearance.layout)} alt="" />
@@ -37,15 +57,19 @@ export function ProfileCover({ appearance, user, profile, avatar, toolbar, banne
       <div className="profile-hero-identity">
         {avatar}
         <div className="profile-identity">
-          <Heading id={id}>{user.fullName}
+          <Heading id={id}>{identity.fullName}
             {user.hasProfileBadge && <BadgeCheck size={21} className="profile-verified-badge" aria-label="Tasdiqlangan profil" />}
           </Heading>
-          {(!preview || appearance.content.email) && <p className="profile-cover-email">
+          {preview && appearance.content.email && user.email && <p className="profile-cover-email">
             {!vertical && <Mail size={15} aria-hidden="true" />} {user.email}
           </p>}
-          {profile && <p className="profile-cefr"><BookOpen size={14} aria-hidden="true" /> {profile.level} CEFR</p>}
-          {preview && appearance.content.bio && user.bio && <p className="customized-profile-bio">{user.bio}</p>}
+          {(!preview || appearance.content.bio) && identity.bio && <p className="customized-profile-bio">{identity.bio}</p>}
+          {level && <p className="profile-cefr"><BookOpen size={14} aria-hidden="true" /> {level} CEFR</p>}
+          {showCoverDetails && user.location?.trim() && <p className="profile-cover-location">
+            <MapPin size={15} aria-hidden="true" /> {user.location}
+          </p>}
         </div>
+        {showCoverDetails && user.socialLinks && <ProfileCoverSocialLinks links={user.socialLinks} />}
       </div>
       {bannerAction}
     </div>

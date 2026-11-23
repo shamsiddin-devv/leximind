@@ -19,6 +19,7 @@ import { sql } from 'drizzle-orm';
 
 import type { Gender } from '../../../domain/entities/User';
 import type { ReviewMode } from '../../../domain/repositories/ILearningRepository';
+import type { SocialLinks } from '../../../domain/value-objects/ProfileSocialLinks';
 
 export const cefrLevels = pgEnum('cefr_level', [
   'A1',
@@ -67,10 +68,13 @@ export const users = pgTable('users', {
   location: varchar({ length: 100 }),
   gender: varchar({ length: 20 }).$type<Gender>(),
   phoneNumber: varchar('phone_number', { length: 16 }),
+  socialLinks: jsonb('social_links').$type<SocialLinks>().notNull().default({}),
   profilePublic: boolean('profile_public').notNull().default(false),
   profileSharing: boolean('profile_sharing').notNull().default(false),
   publicStatistics: boolean('public_statistics').notNull().default(false),
   publicCefr: boolean('public_cefr').notNull().default(false),
+  publicBio: boolean('public_bio').notNull().default(false),
+  publicSocialLinks: boolean('public_social_links').notNull().default(false),
   role: text('role').$type<'user' | 'admin'>().notNull().default('user'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').$onUpdate(() => new Date()),

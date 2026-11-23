@@ -14,6 +14,8 @@ const switches = [
   { key: 'profileSharing', label: 'Profilni ulashishga ruxsat', description: 'Profilga ulashish havolasi orqali kirish.' },
   { key: 'publicStatistics', label: 'Ochiq profilda statistika', description: 'Faollik seriyasi va o‘rganilgan so‘zlar soni.' },
   { key: 'publicCefr', label: 'Ochiq profilda CEFR daraja', description: 'Joriy ingliz tili darajangiz.' },
+  { key: 'publicBio', label: 'Ochiq profilda Bio', description: 'Qisqa tanishtiruv profilingiz bannerida chiqadi.' },
+  { key: 'publicSocialLinks', label: 'Ochiq profilda ijtimoiy havolalar', description: 'Bannerda akkauntingizga qo‘shilgan havolalar ko‘rinadi.' },
 ] as const;
 
 export function PrivacySettings({ user, token, onUserChange, onDeleted }: VerificationProps & { onDeleted: () => void }) {

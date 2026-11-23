@@ -561,6 +561,26 @@ test('complete API and database lifecycle', async (t) => {
     );
     assert.deepEqual((await api.get('/api/cards/collection').set(other()).expect(200)).body, { data: [], total: 0 });
   });
+  await t.test('persists private social links and merges partial edits', async () => {
+    const endpoint = '/api/users/me';
+    const initial = (await api.get(endpoint).set(auth()).expect(200)).body;
+    assert.ok(Number.isFinite(Date.parse(initial.createdAt)));
+    assert.deepEqual(initial.socialLinks, {});
+
+    const telegram = 'https://t.me/leximind-test';
+    const instagram = 'https://www.instagram.com/leximind-test';
+    await api.patch(endpoint).set(auth()).send({ socialLinks: { telegram, instagram } }).expect(200);
+    await api.patch(endpoint).set(auth()).send({ socialLinks: { telegram: 'https://example.com/profile' } }).expect(400);
+    await api.patch(endpoint).set(auth()).send({ socialLinks: { website: 'http://example.com' } }).expect(400);
+    await api.patch(endpoint).set(auth()).send({ socialLinks: { unknown: 'https://example.com' } }).expect(400);
+
+    const website = 'https://example.com/profile';
+    await api.patch(endpoint).set(auth()).send({ socialLinks: { website, instagram: null } }).expect(200);
+    const saved = (await api.get(endpoint).set(auth()).expect(200)).body;
+    assert.deepEqual(saved.socialLinks, { telegram, website });
+    assert.equal(saved.createdAt, initial.createdAt);
+    assert.deepEqual((await api.get(endpoint).set(other()).expect(200)).body.socialLinks, {});
+  });
   await t.test(
     'concurrent session start returns one active session',
     async () => {
@@ -1656,9 +1676,14 @@ test('complete API and database lifecycle', async (t) => {
     await api.get(endpoint).expect(404);
 
     const { body: saved } = await api.patch('/api/users/me').set(auth())
-      .send({ profileSharing: true, publicCefr: true, publicStatistics: true }).expect(200);
+      .send({
+        profileSharing: true, publicCefr: true, publicStatistics: true,
+        bio: 'Learning English one word at a time.',
+        socialLinks: { instagram: 'https://instagram.com/leximind-test' },
+      }).expect(200);
     assert.deepEqual(saved.privacy, {
       profilePublic: true, profileSharing: true, publicStatistics: true, publicCefr: true,
+      publicBio: false, publicSocialLinks: false,
     });
     assert.deepEqual((await api.get('/api/users/me').set(auth()).expect(200)).body.privacy, saved.privacy);
     const { body: shared } = await api.get(endpoint).expect('Cache-Control', 'no-store').expect(200);
@@ -1667,6 +1692,16 @@ test('complete API and database lifecycle', async (t) => {
       'accuracy', 'learnedWords', 'sessions', 'streakDay', 'studySeconds', 'weeklyXp', 'xp',
     ]);
     assert.equal(shared.statistics.weeklyXp.length, 12);
+
+    await api.patch('/api/users/me').set(auth()).send({ publicBio: true }).expect(200);
+    const { body: sharedBio } = await api.get(endpoint).expect(200);
+    assert.deepEqual(sharedBio, { ...shared, bio: saved.bio });
+
+    await api.patch('/api/users/me').set(auth()).send({ publicBio: false, publicSocialLinks: true }).expect(200);
+    const { body: sharedLinks } = await api.get(endpoint).expect(200);
+    assert.equal(sharedLinks.socialLinks.instagram, 'https://instagram.com/leximind-test');
+    assert.deepEqual(sharedLinks, { ...shared, socialLinks: saved.socialLinks });
+
     const { body: publicRanking } = await api.get(leaderboard + '?period=all').set(other()).expect(200);
     const rankedUser = publicRanking.entries.find(({ id }) => id === userId);
     assert.ok(rankedUser);
@@ -1682,7 +1717,7 @@ test('complete API and database lifecycle', async (t) => {
     }
 
     await api.patch('/api/users/me').set(auth())
-      .send({ publicCefr: false, publicStatistics: false }).expect(200);
+      .send({ publicCefr: false, publicStatistics: false, publicSocialLinks: false }).expect(200);
     const { body: limited } = await api.get(endpoint).expect(200);
     assert.deepEqual(Object.keys(limited).sort(), ['avatarUrl', 'fullName', 'hasProfileBadge']);
     const { body: hiddenRanking } = await api.get(leaderboard).set(other()).expect(200);

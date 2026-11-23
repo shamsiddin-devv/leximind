@@ -1,12 +1,10 @@
 .collections-page {
   --collection-surface: var(--panel-surface);
-  --collection-line: var(--line);
-  --collection-action: var(--appearance-fill, #5041d2);
-  --collection-action-ink: #fff;
-  --collection-green: #276b4c;
-  --collection-middle: #4c956f;
-  --collection-low: #8d8b9a;
-  --collection-high: var(--appearance-fill, #5545fa);
+  --collection-action: var(--blue);
+  --collection-accent: var(--appearance-ink, var(--blue));
+  --collection-highlight: color-mix(in oklab, var(--collection-accent) 9%, var(--collection-surface));
+  --collection-mint: #1a775c;
+  --collection-violet: #6c44c2;
   color: var(--ink);
   container-type: inline-size;
   padding-block: 57px 46px;
@@ -15,13 +13,9 @@
 }
 
 :root[data-theme='dark'] .collections-page {
-  --collection-line: color-mix(in oklab, var(--line) 73%, var(--paper));
-  --collection-action: var(--ink);
-  --collection-action-ink: var(--paper);
-  --collection-green: var(--night-green);
-  --collection-middle: #71b98e;
-  --collection-low: #a5a1ad;
-  --collection-high: #f2eef7;
+  --collection-action: var(--night-accent);
+  --collection-mint: var(--night-green);
+  --collection-violet: var(--night-violet);
 }
 
 .collections-heading {
@@ -55,14 +49,14 @@
   padding: 7px 16px;
   border: 1px solid transparent;
   border-radius: 9px;
-  color: var(--collection-action-ink);
+  color: #fff;
   background: var(--collection-action);
   font: inherit;
   font-weight: 700;
   white-space: nowrap;
   cursor: pointer;
 }
-.collections-primary:hover:not(:disabled) { opacity: .87; }
+.collections-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--collection-action) 90%, black); }
 .collections-primary:disabled { opacity: .5; cursor: default; }
 
 .collections-toolbar {
@@ -83,8 +77,9 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--muted);
+  background: var(--collection-surface);
 }
-.collections-search:focus-within { border-color: var(--blue); outline: 1px solid var(--blue); }
+.collections-search:focus-within { border-color: var(--collection-accent); outline: 1px solid var(--collection-accent); }
 .collections-search svg { flex: none; }
 .collections-search input {
   inline-size: 100%;
@@ -109,9 +104,9 @@
   font-size: 11px;
   cursor: pointer;
 }
-.collections-filters button:hover { color: var(--ink); border-color: var(--blue); }
+.collections-filters button:hover { color: var(--collection-accent); border-color: var(--collection-accent); background: var(--collection-highlight); }
 .collections-filters button[aria-pressed='true'] {
-  color: var(--collection-action-ink);
+  color: #fff;
   background: var(--collection-action);
   border-color: var(--collection-action);
 }
@@ -125,43 +120,44 @@
 .collections-overview > div {
   min-block-size: 78px;
   padding: 11px 16px 10px;
-  border: 1px solid var(--collection-line);
+  border: 1px solid var(--line);
   border-radius: 13px;
   background: var(--collection-surface);
 }
 .collections-overview dt { color: var(--muted); font-size: 10px; font-weight: 730; letter-spacing: .09em; text-transform: uppercase; }
 .collections-overview dd { margin: 4px 0 0; font-size: 25px; font-weight: 630; letter-spacing: -.055em; font-variant-numeric: tabular-nums; }
+.collections-overview > div:first-child dd { color: var(--collection-accent); }
 .collections-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 
 .collection-card {
-  --collection-bar: var(--collection-low);
+  --collection-bar: var(--muted);
+  --collection-tag-ink: var(--collection-accent);
   min-inline-size: 0;
   min-block-size: 208px;
   display: flex;
   flex-direction: column;
   padding: 15px 17px 17px;
-  border: 1px solid var(--collection-line);
+  border: 1px solid var(--line);
   border-radius: 13px;
   background: var(--collection-surface);
 }
-.collection-card:hover, .collection-card:focus-within { border-color: color-mix(in oklab, var(--ink) 22%, var(--line)); }
-.collection-card[data-progress='mid'] { --collection-bar: var(--collection-middle); }
-.collection-card[data-progress='high'] { --collection-bar: var(--collection-high); }
+.collection-card:hover, .collection-card:focus-within { border-color: color-mix(in oklab, var(--collection-accent) 42%, var(--line)); }
+.collection-card[data-progress='mid'] { --collection-bar: var(--collection-accent); }
+.collection-card[data-progress='high'] { --collection-bar: var(--collection-mint); }
+.collection-card[data-kind='phrase'] { --collection-tag-ink: var(--collection-mint); }
+.collection-card[data-kind='sentence'] { --collection-tag-ink: var(--collection-violet); }
 .collection-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .collection-tag {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   padding: 4px 9px;
-  border: 1px solid var(--line);
+  border: 1px solid color-mix(in oklab, var(--collection-tag-ink) 22%, var(--line));
   border-radius: 99px;
+  background: color-mix(in oklab, var(--collection-tag-ink) 9%, var(--collection-surface));
+  color: var(--collection-tag-ink);
   font-size: 10px;
   font-weight: 750;
-}
-.collection-card[data-kind='phrase'] .collection-tag {
-  color: var(--collection-green);
-  border-color: color-mix(in oklab, var(--collection-green) 25%, var(--collection-line));
-  background: color-mix(in oklab, var(--collection-green) 6%, transparent);
 }
 .collection-pin {
   min-inline-size: 32px;
@@ -176,8 +172,8 @@
   cursor: pointer;
 }
 .collection-pin:hover, .collection-pin[aria-pressed='true'] {
-  background: color-mix(in oklab, var(--blue) 13%, transparent);
-  color: var(--blue);
+  background: var(--collection-highlight);
+  color: var(--collection-accent);
 }
 .collection-card h2 {
   margin: 15px 0 3px;
@@ -228,12 +224,14 @@
   justify-items: center;
   gap: 8px;
   padding: 28px 16px;
-  border: 1px solid var(--collection-line);
+  border: 1px solid var(--line);
   border-radius: 13px;
   text-align: center;
   background: var(--collection-surface);
 }
 .collections-empty p { margin: 0; color: var(--muted); }
+.collections-empty > svg { color: var(--collection-accent); }
+.collections-page :focus-visible { outline-color: var(--collection-accent); }
 
 .collection-dialog { --dialog-width: 480px; --dialog-gap: 16px; }
 .collection-form .app-dialog-field { grid-template-columns: auto 1fr; align-items: baseline; }

@@ -8,8 +8,9 @@ import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import { ProfileBannerEditor } from './ProfileBannerEditor';
 import { ProfileCover } from './ProfilePresentation';
 
-export function ProfileHero({ user, profile, token, appearance, onUserChange }: {
+export function ProfileHero({ user, identity, profile, token, appearance, onUserChange }: {
   user: User;
+  identity: Pick<User, 'fullName' | 'bio'>;
   profile?: Profile;
   token: string;
   appearance: ProfileAppearanceState;
@@ -45,7 +46,7 @@ export function ProfileHero({ user, profile, token, appearance, onUserChange }: 
     triggerClassName={vertical ? 'profile-vertical-photo' : undefined} />;
 
   return <div className="customized-profile-hero">
-    <ProfileCover appearance={saved} user={user} profile={profile}
+    <ProfileCover appearance={saved} user={user} identity={identity} level={profile?.level}
       avatar={<ProfileAvatarEditor user={user} token={token} onUserChange={onUserChange} />}
       toolbar={<div className="profile-cover-toolbar" role="group" aria-label="Banner amallari">
         <button type="button" lang="en"

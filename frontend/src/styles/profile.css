@@ -245,7 +245,6 @@
   background: var(--profile-soft-hover);
   color: var(--profile-accent-ink);
 }
-.profile-form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .profile-verification {
   display: flex;
   flex-wrap: wrap;
@@ -315,14 +314,6 @@
 .profile-section-heading h2 { font-size: 1rem; }
 .profile-section-heading p { margin-block-start: 3px; color: var(--muted); font-size: .82rem; line-height: 1.4; }
 .profile-details .profile-panel > .profile-section-heading { padding-block-end: 12px; border-block-end: 1px solid var(--line); }
-.profile-details .account-form > .profile-account-field {
-  grid-template-columns: 20px minmax(0, 1fr);
-  gap: 4px 8px;
-  align-items: center;
-}
-.profile-account-field > svg { grid-row: 1 / 3; }
-.profile-account-field > input { grid-column: 2; }
-.profile-account-field > svg, .profile-preference-row > svg { color: var(--profile-accent-ink); }
 .profile-details .profile-verification { padding-block-start: 12px; border-block-start: 1px solid var(--line); }
 .profile-details .account-form.profile-preferences { gap: 0; }
 .profile-preference-row {

@@ -1,0 +1,32 @@
+.stats-heatmap {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: repeat(7, auto);
+  grid-auto-flow: column;
+  gap: 6px;
+  margin-block: 19px 16px;
+}
+.stats-heatmap button { inline-size: 100%; min-inline-size: 0; aspect-ratio: 1; border: 1px solid transparent; border-radius: 4px; padding: 0; }
+.stats-heatmap button:disabled { opacity: .4; }
+.stats-heatmap button[aria-current='date'] { border-color: var(--stats-accent); }
+.stats-heatmap button:hover:not(:disabled) { border-color: var(--stats-accent); }
+:is(.stats-heatmap, .stats-legend) [data-intensity='0'] { background: var(--stats-heat-base); }
+:is(.stats-heatmap, .stats-legend) [data-intensity='1'] { background: color-mix(in srgb, var(--stats-accent) 26%, var(--stats-surface)); }
+:is(.stats-heatmap, .stats-legend) [data-intensity='2'] { background: color-mix(in srgb, var(--stats-accent) 50%, var(--stats-surface)); }
+:is(.stats-heatmap, .stats-legend) [data-intensity='3'] { background: color-mix(in srgb, var(--stats-accent) 75%, var(--stats-surface)); }
+:is(.stats-heatmap, .stats-legend) [data-intensity='4'] { background: var(--stats-accent); }
+.stats-heatmap-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.stats-heatmap-footer strong { color: var(--ink); }
+
+@media (forced-colors: active) {
+  .stats-heatmap button { border-color: ButtonText; }
+  .stats-heatmap button[aria-current='date'] { border-color: Highlight; }
+}

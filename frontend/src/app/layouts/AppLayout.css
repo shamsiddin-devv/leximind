@@ -306,11 +306,10 @@
 [data-indicator] > .app-nav-indicator { opacity: 1; }
 [data-indicator] .app-nav-link:is([aria-current='page'], [aria-current='location']) { background: transparent; box-shadow: none; }
 
-.app-workspace { --workspace-gutter: 16px; display: flex; flex-direction: column; min-inline-size: 0; }
-.app-workspace > :is(main, .footer) > .container {
-  inline-size: calc(100% - 2 * var(--workspace-gutter));
-  max-inline-size: none;
-}
+.app-workspace { display: flex; flex-direction: column; min-inline-size: 0; }
+.app-workspace > main:has(> .profile-page) { --main-gutter: 16px; }
+.app-workspace > main > .container { inline-size: 100%; max-inline-size: none; }
+.app-workspace > .footer > .container { inline-size: calc(100% - 2 * var(--main-gutter)); }
 .app-workspace > main > .practice-screen > * {
   max-inline-size: 702px;
   margin-inline: auto;

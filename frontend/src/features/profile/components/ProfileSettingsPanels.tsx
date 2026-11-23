@@ -1,11 +1,14 @@
-import { useState, type FormEvent } from 'react';
-import { BadgeCheck, Bell, CircleAlert, GraduationCap, Mail, Save, Settings2, UserRound, Volume2, type LucideIcon } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { BadgeCheck, Bell, CircleAlert, GraduationCap, Settings2, UserRound, Volume2, type LucideIcon } from 'lucide-react';
+import { Link, routes } from '../../../app/router';
 import { Notice } from '../../../shared/components/UI';
 import { api, explain } from '../../../shared/services/api';
 import type { Profile, User } from '../../../shared/types/api';
 import type { PreferenceSave } from '../hooks/usePreferenceSave';
 
 type Feedback = { message: string; error?: true };
+export type ProfileIdentityDraft = { fullName?: string; bio?: string };
+const maxBioLength = 280;
 
 export function ProfileSectionHeading({ id, icon: Icon, title, description }: {
   id: string; icon: LucideIcon; title: string; description: string;
@@ -16,29 +19,43 @@ export function ProfileSectionHeading({ id, icon: Icon, title, description }: {
   </header>;
 }
 
-export function AccountDetails({ user, token, onUserChange, vertical }: {
+export function AccountDetails({ user, token, onUserChange, vertical, draft, onDraftChange }: {
   user: User; token: string; onUserChange: (user: User) => void; vertical?: boolean;
+  draft: ProfileIdentityDraft; onDraftChange: (draft: ProfileIdentityDraft) => void;
 }) {
-  const [fullName, setFullName] = useState(user.fullName);
-  const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const requestPending = useRef(false);
   const [feedback, setFeedback] = useState<Feedback>();
-  const name = fullName.trim();
-  const changed = name !== user.fullName;
+  const fullName = draft.fullName ?? user.fullName;
+  const bio = draft.bio ?? user.bio ?? '';
 
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (busy || !changed) return;
+  async function save() {
+    if (requestPending.current) return;
+    const name = fullName.trim();
     if (!name) { setFeedback({ message: 'Ism va familiyangizni kiriting.', error: true }); return; }
-    setBusy(true);
+    const nextBio = bio.trim() || null;
+    const changes = {
+      ...(name !== user.fullName ? { fullName: name } : {}),
+      ...(nextBio !== (user.bio ?? null) ? { bio: nextBio } : {}),
+    };
+    if (Object.keys(changes).length === 0) {
+      if (draft.fullName !== undefined || draft.bio !== undefined) onDraftChange({});
+      return;
+    }
+    requestPending.current = true;
+    setSaving(true);
     setFeedback(undefined);
     try {
-      const saved = await api<User>('/users/me', { token, method: 'PATCH', body: { fullName: name } });
+      const saved = await api<User>('/users/me', { token, method: 'PATCH', body: changes });
       onUserChange(saved);
-      setFullName(saved.fullName);
+      onDraftChange({});
       setFeedback({ message: 'Shaxsiy ma’lumotlar saqlandi.' });
     } catch (failure) {
-      setFeedback({ message: explain(failure, { 400: 'Ism va familiyani tekshiring.' }), error: true });
-    } finally { setBusy(false); }
+      setFeedback({ message: explain(failure), error: true });
+    } finally {
+      requestPending.current = false;
+      setSaving(false);
+    }
   }
 
   const verification = <div className="profile-verification">
@@ -46,26 +63,42 @@ export function AccountDetails({ user, token, onUserChange, vertical }: {
       {user.emailVerifiedAt ? <BadgeCheck size={17} aria-hidden="true" /> : <CircleAlert size={17} aria-hidden="true" />}
       {user.emailVerifiedAt ? 'Email tasdiqlangan' : 'Email tasdiqlanmagan'}
     </span>
+    {!user.emailVerifiedAt && <Link className="text-link profile-verify-link" href={routes.settingsVerifyEmail}>Tasdiqlash</Link>}
   </div>;
 
   return <section className="profile-panel" aria-labelledby="account-title">
     <ProfileSectionHeading id="account-title" icon={UserRound}
       title={vertical ? 'Profil ma’lumotlari' : 'Shaxsiy ma’lumotlar'} description="Profilingizdagi asosiy ma’lumotlarni yangilang." />
-    <form className="account-form" onSubmit={save}>
-      <label className="profile-account-field"><UserRound size={17} aria-hidden="true" />
+    <form className="account-form profile-account-form" onSubmit={(event) => { event.preventDefault(); void save(); }}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) void save();
+      }}>
+      <label>
         <span>Ism va familiya</span>
-        <input id="profile-full-name" name="fullName" autoComplete="name" required maxLength={255} value={fullName} disabled={!!busy}
-          onChange={(event) => setFullName(event.target.value)} /></label>
-      <label className="profile-account-field"><Mail size={17} aria-hidden="true" />
+        <input id="profile-full-name" name="fullName" autoComplete="name" required maxLength={255} value={fullName} readOnly={saving}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+              event.preventDefault();
+              event.currentTarget.form?.requestSubmit();
+            }
+          }}
+          onChange={(event) => { onDraftChange({ ...draft, fullName: event.target.value }); setFeedback(undefined); }} />
+      </label>
+      <label>
         <span>Email manzili</span>
-        <input type="email" value={user.email} readOnly /></label>
-      {changed && <div className="profile-form-actions">
-        <button type="submit" className="button primary" disabled={!!busy}>
-          <Save size={15} aria-hidden="true" /> {busy ? 'Saqlanmoqda…' : 'Ma’lumotlarni saqlash'}
-        </button>
-      </div>}
+        <input type="email" value={user.email} readOnly />
+      </label>
+      <label className="profile-bio-field">
+        <span>Bio</span>
+        <textarea name="bio" rows={3} maxLength={maxBioLength} value={bio} readOnly={saving}
+          placeholder="O‘zingiz haqingizda qisqacha yozing"
+          aria-describedby="profile-bio-hint"
+          onChange={(event) => { onDraftChange({ ...draft, bio: event.target.value }); setFeedback(undefined); }} />
+        <small id="profile-bio-hint">Maydonlardan chiqqanda avtomatik saqlanadi · {bio.length}/{maxBioLength}</small>
+      </label>
     </form>
     {verification}
+    {saving && <p role="status">Saqlanmoqda…</p>}
     {feedback && <Notice error={feedback.error}>{feedback.message}</Notice>}
   </section>;
 }
@@ -74,7 +107,7 @@ function ProfilePreferenceToggle({ id, label, description, icon: Icon, checked, 
   id: string; label: string; description: string; icon: LucideIcon; checked: boolean; onChange: (checked: boolean) => void;
 }) {
   return <div className="profile-preference-row">
-    <Icon size={17} aria-hidden="true" />
+    <span className="profile-preference-icon"><Icon size={17} aria-hidden="true" /></span>
     <div>
       <label htmlFor={id}>{label}</label>
       <small id={id + '-hint'}>{description}</small>
@@ -112,7 +145,7 @@ export function LearningPreferences({ profile, preferences }: {
       description="Maqsad, ovoz va eslatmalarni sozlang." />
     <div className="account-form profile-preferences">
       <div className="profile-preference-row">
-        <GraduationCap size={17} aria-hidden="true" />
+        <span className="profile-preference-icon"><GraduationCap size={17} aria-hidden="true" /></span>
         <div>
           <label htmlFor="profile-daily-words">Kunlik yangi so‘zlar</label>
           <small id="profile-daily-words-hint">1 dan 100 gacha. Enter yoki maydondan chiqish bilan saqlanadi.</small>

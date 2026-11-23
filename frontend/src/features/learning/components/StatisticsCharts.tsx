@@ -1,6 +1,8 @@
 import { useId, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent } from 'react';
 import type { LearningAnalytics, LearningSkill } from '../../../shared/types/api';
+import { uzbekMonths } from '../../../shared/utils/date';
+import './ActivityHeatmap.css';
 
 export const skillLabels: Record<LearningSkill, string> = {
   vocabulary: 'So‘z boyligi', grammar: 'Grammatika', listening: 'Tinglash',
@@ -9,7 +11,10 @@ export const skillLabels: Record<LearningSkill, string> = {
 
 const weekdays = ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba'];
 const number = new Intl.NumberFormat('uz-UZ');
-const date = new Intl.DateTimeFormat('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+function activityDate(value: string) {
+  const [year, month, day] = value.split('-');
+  return Number(day) + '-' + uzbekMonths[Number(month) - 1] + ', ' + year;
+}
 
 export function duration(seconds: number) {
   if (seconds <= 0) return '0 daqiqa';
@@ -35,8 +40,8 @@ function linePath(points: Coordinate[]) {
   return path;
 }
 
-export function StatisticsChart({ points, kind, minimum = 0, maximum, unit }: {
-  points: ChartPoint[]; kind: 'area' | 'line' | 'bars'; minimum?: number; maximum: number; unit?: string;
+export function StatisticsChart({ points, kind, minimum = 0, maximum, unit, showDots = kind === 'line' }: {
+  points: ChartPoint[]; kind: 'area' | 'line' | 'bars'; minimum?: number; maximum: number; unit?: string; showDots?: boolean;
 }) {
   const gradient = useId();
   const [focused, setFocused] = useState<number>();
@@ -79,7 +84,7 @@ export function StatisticsChart({ points, kind, minimum = 0, maximum, unit }: {
             key={detail} style={{ '--point-x': x(index) + '%', '--point-y': y(value ?? minimum) + '%',
               '--bar-width': 80 / points.length + '%' } as CSSProperties}>
             {bars && !!value && <span className="stats-chart-bar" aria-hidden="true" />}
-            {kind === 'line' && value !== null && <span className="stats-chart-dot" aria-hidden="true" />}
+            {showDots && value !== null && <span className="stats-chart-dot" aria-hidden="true" />}
             <button type="button" aria-label={detail + ' · ' + reading}
               onFocus={() => setFocused(index)} onBlur={() => setFocused(undefined)}
               onPointerEnter={() => setFocused(index)} onClick={() => setFocused(index)} />
@@ -88,7 +93,7 @@ export function StatisticsChart({ points, kind, minimum = 0, maximum, unit }: {
         })}
       </div>
       <div className="stats-chart-labels" aria-hidden="true">
-        {points.map(({ label, detail }, index) => (bars || index % 2 === 0) && <span key={detail}
+        {points.map(({ label, detail }, index) => (bars || index % 2 === 0 || (kind === 'area' && showDots && points.length <= 4)) && <span key={detail}
           data-secondary={index % 4 !== 0} style={{ left: x(index) + '%' }}>{label}</span>)}
       </div>
     </div>
@@ -152,7 +157,7 @@ export function ActivityHeatmap({ days, today }: Pick<LearningAnalytics, 'days' 
       {days.map(({ date: day, studySeconds }, index) => {
         const minutes = studySeconds / 60;
         const level = minutes >= 20 ? 4 : minutes >= 10 ? 3 : minutes >= 5 ? 2 : studySeconds > 0 ? 1 : 0;
-        const label = date.format(new Date(day + 'T12:00:00Z')) + ' · ' + duration(studySeconds);
+        const label = activityDate(day) + ' · ' + duration(studySeconds);
         return <button key={day} ref={(element) => { dates.current[index] = element; }}
           type="button" disabled={day > today} tabIndex={index === current ? 0 : -1}
           aria-label={label} aria-current={day === today ? 'date' : undefined} title={label}
@@ -161,7 +166,7 @@ export function ActivityHeatmap({ days, today }: Pick<LearningAnalytics, 'days' 
       })}
     </div>
     <div className="stats-heatmap-footer">
-      <span>{day ? <><time dateTime={day.date}>{date.format(new Date(day.date + 'T12:00:00Z'))}</time> · <strong>{duration(day.studySeconds)}</strong></>
+      <span>{day ? <><time dateTime={day.date}>{activityDate(day.date)}</time> · <strong>{duration(day.studySeconds)}</strong></>
         : <>Eng faol kun · <strong>{peakDay > 0 ? weekdays[weekdayTotals.indexOf(peakDay)] : '—'}</strong></>}</span>
       <span>Jami · <strong>{duration(total)}</strong></span>
     </div>

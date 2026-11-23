@@ -1,0 +1,42 @@
+.settings-social-row { align-items: center; padding-block: 18px; }
+.settings-social-row .settings-field-label { padding-block-start: 0; }
+.settings-social-icons { display: flex; flex-wrap: wrap; gap: 9px; }
+.settings-social-icon {
+  display: grid;
+  position: relative;
+  place-items: center;
+  inline-size: 45px;
+  block-size: 45px;
+  padding: 0;
+  border: 1px dashed var(--settings-control-edge);
+  border-radius: 10px;
+  background: var(--settings-control);
+  color: var(--muted);
+}
+.settings-social-icon[data-linked='true'] {
+  border: 1px solid color-mix(in srgb, var(--settings-focus) 45%, var(--settings-control-edge));
+  background: color-mix(in srgb, var(--settings-focus) 13%, var(--settings-control));
+  color: var(--settings-focus);
+}
+.settings-social-icon:hover:not(:disabled) { border-color: var(--settings-focus); color: var(--settings-focus); }
+.settings-social-icon:disabled { opacity: .6; }
+.settings-social-check {
+  display: grid;
+  position: absolute;
+  inset: auto 3px 3px auto;
+  place-items: center;
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 50%;
+  background: var(--settings-focus);
+  color: var(--settings-control);
+}
+.settings-social-dialog .app-dialog-field small { overflow-wrap: anywhere; }
+.settings-social-remove {
+  justify-self: start;
+  border-color: transparent;
+  background: transparent;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .settings-social-icon { transition: background-color .16s ease, color .16s ease, border-color .16s ease; }
+}

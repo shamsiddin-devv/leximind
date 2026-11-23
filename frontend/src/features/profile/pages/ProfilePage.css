@@ -1,0 +1,110 @@
+.profile-page .profile-details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(18px, 2.4cqi, 28px);
+}
+.profile-page [data-layout='horizontal'] .profile-details {
+  grid-template-columns: minmax(218px, .39fr) minmax(0, 1fr);
+}
+.profile-page .profile-details > .profile-panels {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.profile-page .profile-section-heading .profile-panel-icon {
+  inline-size: 38px;
+  block-size: 38px;
+  border-radius: 11px;
+}
+.profile-page .profile-panel .profile-account-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px 16px;
+}
+.profile-bio-field { grid-column: 1 / -1; }
+.profile-bio-field textarea {
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--profile-bio-edge, #dce0e8);
+  border-radius: 8px;
+  background: var(--panel-surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.5;
+  resize: vertical;
+}
+:root[data-theme='dark'] .profile-bio-field { --profile-bio-edge: var(--night-edge); }
+.profile-bio-field textarea:focus-visible { outline-color: var(--profile-focus); border-color: var(--profile-focus); }
+.profile-bio-field textarea::placeholder { color: var(--muted); opacity: 1; }
+.profile-verify-link { font-size: .78rem; }
+.profile-page .profile-preference-row { grid-template-columns: 36px minmax(0, 1fr) auto; gap: 10px 13px; padding-block: 12px; }
+.profile-page .profile-preference-row:first-child { padding-block-start: 0; }
+.profile-page .profile-preference-row #profile-daily-words { inline-size: clamp(60px, 9cqi, 82px); }
+.profile-preference-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 9px;
+  background: var(--panel-surface);
+  color: var(--profile-accent-ink);
+}
+
+.profile-activity-summary {
+  --stats-surface: var(--panel-surface);
+  --stats-accent: var(--appearance-fill, #6253e1);
+  --stats-heat-base: color-mix(in srgb, var(--ink) 8%, var(--stats-surface));
+  display: grid;
+  min-inline-size: 0;
+  gap: 16px;
+}
+.profile-summary-panel {
+  min-inline-size: 0;
+  padding: clamp(14px, 1.8cqi, 20px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel-surface);
+}
+.profile-summary-panel h2 { font-size: .96rem; font-weight: 750; }
+.profile-statistics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 13px 0 0;
+}
+.profile-statistic {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-inline-size: 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--paper);
+}
+.profile-statistic dt { color: var(--muted); font-size: .75rem; line-height: 1.4; }
+.profile-statistic dd { order: -1; display: grid; gap: 7px; margin: 0; font: 780 1.23rem/1.2 var(--display); overflow-wrap: anywhere; }
+.profile-statistic-icon {
+  display: grid;
+  place-items: center;
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--stats-accent) 14%, var(--paper));
+  color: var(--appearance-ink, var(--blue));
+}
+.profile-statistic-icon[data-tone='amber'] { background: #f5b04726; color: #8e4908; }
+.profile-statistic-icon[data-tone='green'] { background: #42b89726; color: #1b6953; }
+:root[data-theme='dark'] .profile-statistic-icon[data-tone='amber'] { color: var(--night-amber); }
+:root[data-theme='dark'] .profile-statistic-icon[data-tone='green'] { color: var(--night-green); }
+.profile-activity-panel > header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 5px 9px; }
+.profile-activity-panel > header p, .profile-activity-loading { color: var(--muted); font-size: .76rem; }
+.profile-activity-panel .stats-heatmap { gap: 4px; margin-block: 14px 10px; }
+.profile-activity-panel > :is(.notice, .button, .profile-activity-loading) { margin-block-start: 10px; }
+
+@container profile-layout (max-width: 680px) {
+  .profile-page [data-layout='horizontal'] .profile-details { grid-template-columns: minmax(0, 1fr); }
+}
+@container profile-layout (max-width: 480px) {
+  .profile-page .profile-panel .profile-account-form { grid-template-columns: minmax(0, 1fr); }
+}
