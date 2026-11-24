@@ -91,39 +91,12 @@
 .settings-verification-list li[data-complete="true"] svg { color: var(--settings-positive); }
 
 .settings-password-page { gap: 38px; }
-.settings-password-form { --settings-label-width: clamp(142px, 30%, 285px); }
-.settings-password-form .settings-section-heading, .settings-devices .settings-section-heading { margin-block-end: 19px; }
-.settings-sheet .settings-password-heading, .settings-devices h2 { font-size: 1.0625rem; line-height: 1.4; letter-spacing: -.02em; font-weight: 700; }
+
+.settings-devices .settings-section-heading { margin-block-end: 19px; }
+.settings-devices h2 { font-size: 1.0625rem; line-height: 1.4; letter-spacing: -.02em; font-weight: 700; }
 .settings-password-page .settings-section-heading p { font-size: .875rem; }
-.settings-password-form .settings-form-row { padding-block: 19px; }
-.settings-password-form .settings-row-label { font-size: .875rem; line-height: 1.375rem; font-weight: 650; }
-.settings-password-form .settings-field-control { max-inline-size: 32rem; }
-.settings-password-form input { min-block-size: 40px; font-size: 1rem; line-height: 1.25rem; }
-.settings-password-control { position: relative; }
-.settings-password-form .settings-password-control input { padding-inline-end: 44px; }
-.settings-password-control input::placeholder { color: var(--muted); opacity: 1; }
-.settings-password-control input::-ms-reveal { display: none; }
-.settings-password-toggle {
-  position: absolute;
-  inset: 3px 4px 3px auto;
-  display: grid;
-  place-items: center;
-  inline-size: 34px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
-}
-.settings-password-toggle:hover:not(:disabled) { background: var(--paper); color: var(--ink); }
-.settings-password-toggle:disabled { opacity: .55; }
-.settings-password-control input:placeholder-shown + .settings-password-toggle { visibility: hidden; }
-.settings-field-control .settings-password-hint { display: flex; align-items: center; gap: 5px; font-size: .875rem; }
-.settings-password-hint svg { flex: none; }
-.settings-password-control:has(input:user-valid) + .settings-password-hint svg { color: var(--settings-positive); }
-.settings-password-form .settings-form-actions { padding-block-start: 18px; }
-.settings-password-form .button.secondary { background: var(--settings-control); border-color: var(--settings-control-edge); color: var(--ink); }
-.settings-password-form .button.secondary:hover:not(:disabled) { background: var(--paper); }
+
+
 
 .settings-devices > .notice { margin-block-end: 12px; }
 .account-device-list { border-block-start: 1px solid var(--line); }
@@ -146,7 +119,7 @@
 @media (max-width: 620px) {
   .settings-sheet { gap: 20px; padding-block: 20px 36px; }
   .settings-password-page { gap: 30px; }
-  .settings-password-form .settings-form-row { padding-block: 13px; }
+
   .account-device-list li { grid-template-columns: 20px minmax(0, 1fr); padding-inline: 4px; }
   .account-device-list .button { grid-column: 2; justify-self: start; }
   .settings-form-row, .settings-account-danger { grid-template-columns: minmax(0, 1fr); gap: 6px; }

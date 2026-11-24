@@ -31,6 +31,17 @@ export const leaderboardQuery = `
     WHERE g.kind<>'assessment' AND g.completed_at<=now() AND g.result IS NOT NULL
       AND (b.starts_at IS NULL OR g.completed_at>=b.starts_at)
     GROUP BY g.user_id
+    UNION ALL
+    SELECT f.user_id, sum(f.points) AS points
+    FROM eligible e JOIN friendship_rewards f ON f.user_id=e.id CROSS JOIN bounds b
+    WHERE f.points>0 AND f.awarded_at<=now()
+      AND (b.starts_at IS NULL OR f.awarded_at>=b.starts_at)
+    GROUP BY f.user_id
+    UNION ALL
+    SELECT f.referrer_id AS user_id, sum(f.reward_xp) AS points
+    FROM eligible e JOIN referrals f ON f.referrer_id=e.id CROSS JOIN bounds b
+    WHERE f.rewarded_at<=now() AND (b.starts_at IS NULL OR f.rewarded_at>=b.starts_at)
+    GROUP BY f.referrer_id
   ), totals AS (
     SELECT user_id, sum(points)::float8 AS xp FROM scores GROUP BY user_id
   ), ranked AS (

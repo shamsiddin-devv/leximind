@@ -20,6 +20,7 @@ export interface WordListResult {
 }
 
 export interface IWordRepository {
+  findDaily(dayNumber: number): Promise<Word | null>;
   findById(id: string): Promise<Word | null>;
   editSenses(id: string, edit: (word: Word) => Word): Promise<Word>;
   findByText(text: string, cefrLevel: CefrLevel): Promise<Word | null>;

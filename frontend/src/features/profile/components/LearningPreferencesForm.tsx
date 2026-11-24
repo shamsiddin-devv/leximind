@@ -1,3 +1,5 @@
+import { useInterfaceSyncIssue } from '../../../app/interfacePreferences';
+import { LanguagePicker } from '../../../shared/components/LanguagePicker';
 import { useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { Notice } from '../../../shared/components/UI';
@@ -39,6 +41,7 @@ function GoalControl({ id, label, description, value, unit, min, max, onChange }
 
 export function LearningPreferencesForm({ profile, preferences }: { profile: Profile; preferences: PreferenceSave }) {
   const { save, pending, status } = preferences;
+  const syncIssue = useInterfaceSyncIssue();
   const values = { ...profile, ...pending };
   const [reminderTime, setReminderTime] = useState<string>();
 
@@ -64,7 +67,7 @@ export function LearningPreferencesForm({ profile, preferences }: { profile: Pro
     </PreferenceSection>
     <PreferenceSection id="learning-course" title="Til va daraja">
       <SettingsField id="learning-interface-language" label="Interfeys tili">
-        <input id="learning-interface-language" className="learning-language" readOnly value="O‘zbekcha" />
+        <LanguagePicker triggerId="learning-interface-language" />
       </SettingsField>
       <SettingsField id="learning-language" label="O‘rganilayotgan til">
         <input id="learning-language" className="learning-language" readOnly value="Ingliz tili" />
@@ -113,6 +116,7 @@ export function LearningPreferencesForm({ profile, preferences }: { profile: Pro
       {toggle('feedbackAudioEnabled', 'O‘yin ovoz effektlari', 'O‘yin javoblariga beriladigan ovozli fikr-mulohaza.')}
       {toggle('autoplayPronunciation', 'Talaffuzni avtomatik ijro etish', 'So‘z mashqlari va kartalarda inglizcha talaffuzni ijro etadi.')}
     </PreferenceSection>
+    {syncIssue && <Notice error>{syncIssue.message} <button type="button" className="text-link" onClick={syncIssue.retry}>Qayta urinish</button></Notice>}
     {status?.error && <Notice error>{status.message}</Notice>}
     <p className="preference-status" role="status">{status?.error ? '' : status?.message}</p>
   </div>;

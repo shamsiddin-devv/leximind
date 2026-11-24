@@ -1,0 +1,79 @@
+:is(.welcome-site, .welcome-skin) {
+  --welcome-bg: var(--paper);
+  --welcome-panel: var(--panel-surface);
+  --welcome-line: var(--line);
+  --welcome-rule: color-mix(in srgb, var(--line) 75%, var(--paper));
+  --welcome-text: var(--ink);
+  --welcome-muted: var(--muted);
+  --welcome-accent: var(--brand-ink);
+  --welcome-fill: var(--brand-fill);
+  --welcome-tint: var(--appearance-soft, color-mix(in srgb, var(--welcome-fill) 10%, var(--welcome-panel)));
+  --welcome-glow: color-mix(in srgb, var(--welcome-fill) 12%, transparent);
+  --welcome-preview-shadow: color-mix(in srgb, var(--ink) 17%, transparent);
+  --welcome-control-edge: #858b9b;
+  --welcome-good: #21715d;
+  --welcome-bad: #a13f34;
+  --welcome-body: 'Manrope Variable', sans-serif;
+  --welcome-display: 'Instrument Sans Variable', sans-serif;
+  --welcome-serif: 'Instrument Serif', Georgia, serif;
+  color: var(--welcome-text);
+  font-family: var(--welcome-body);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.welcome-site { min-height: 100svh; background: var(--welcome-bg); }
+:root[data-theme='dark'] :is(.welcome-site, .welcome-skin) {
+  --welcome-preview-shadow: #0007;
+  --welcome-control-edge: #676b71;
+  --welcome-good: var(--night-green);
+  --welcome-bad: var(--night-error);
+}
+.welcome-site:not(.welcome-login) main { padding-inline: 0; }
+#root:has(> .welcome-site) > .skip-link:focus { z-index: 11; }
+:is(.welcome-site, .welcome-skin) :is(h1, h2, h3) { font-family: var(--welcome-display); font-weight: 600; }
+.welcome-site :is(h1, h2) em { color: var(--welcome-accent); font-family: var(--welcome-serif); font-weight: 400; }
+:is(.welcome-site, .welcome-skin) :is(a, button, input):focus-visible { outline-color: var(--welcome-accent); }
+.welcome-site :is(h1, p, h2, li) { overflow-wrap: break-word; }
+.welcome-site :where(ol, ul, dl, dd) { margin: 0; padding: 0; }
+.welcome-site :where(ol, ul) { list-style: none; }
+.welcome-site svg { flex: none; }
+.welcome-site :where(button) { color: inherit; }
+.welcome-site small { font-size: 12px; }
+.welcome-site .notice, .welcome-skin .notice { margin-block-start: 16px; }
+
+.welcome-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px 24px;
+  border: 1px solid var(--welcome-line);
+  border-radius: 100px;
+  background: transparent;
+  color: var(--welcome-text);
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.welcome-button:hover:not(:disabled) { background: var(--welcome-panel); border-color: var(--welcome-muted); }
+.welcome-button.welcome-primary { background: var(--welcome-fill); border-color: transparent; color: #fff; }
+.welcome-button.welcome-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--welcome-fill) 88%, #000); border-color: transparent; }
+.welcome-button:disabled { opacity: .4; }
+.welcome-eyebrow { color: var(--welcome-muted); font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
+.welcome-tile-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--welcome-tint);
+  color: var(--welcome-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-site *, .welcome-site *::before, .welcome-site *::after { transition-duration: 0s; }
+}

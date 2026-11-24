@@ -30,6 +30,21 @@ export class DrizzleWordRepository implements IWordRepository {
   constructor(
     @Inject(DRIZZLE) private readonly db: NodePgDatabase<typeof relations>,
   ) {}
+  async findDaily(dayNumber: number) {
+    return this.db.transaction(
+      async (tx) => {
+        const [{ total }] = await tx.select({ total: count() }).from(words);
+        if (!total) return null;
+        const row = await tx.query.words.findFirst({
+          orderBy: { id: 'asc' },
+          offset: dayNumber % total,
+          with: { wordSenses: true },
+        });
+        return row ? this.toDomain(row) : null;
+      },
+      { isolationLevel: 'repeatable read', accessMode: 'read only' },
+    );
+  }
   async findById(id: string) {
     const r = await this.db.query.words.findFirst({
       where: { id },

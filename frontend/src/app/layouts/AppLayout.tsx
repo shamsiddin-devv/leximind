@@ -1,9 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from 'react';
-import { Bell, BookOpen, ChevronDown, LayoutGrid, LogOut, Menu, MoonStar, Sun, UserRound, Volume2, VolumeX, X } from 'lucide-react';
+import { BookOpen, ChevronDown, LayoutGrid, LogOut, Menu, MoonStar, Sun, UserRound, Volume2, VolumeX, X } from 'lucide-react';
+import { LanguagePicker } from '../../shared/components/LanguagePicker';
+import { useInterfaceLanguage } from '../language';
+import { groupLabel, routeLabel, shellCopy } from '../shellCopy';
 import { Brand } from '../../shared/components/Brand';
 import { UserAvatar } from '../../shared/components/UserAvatar';
 import type { SessionAccount } from '../../features/auth/hooks/useSession';
 import { VocabularySearch } from '../../features/vocabulary/components/VocabularySearch';
+import { NotificationMenu } from '../../features/notifications/NotificationMenu';
 import { accountNavigation, navigation, navigationPages, settingsNavigation, type NavigationGroup, type NavigationItem } from '../navigation';
 import { Link, routes, settingsParent } from '../router';
 import { getTheme, subscribeToTheme, toggleTheme } from '../theme';
@@ -20,9 +24,10 @@ function SidebarGroups({ selected, expanded, panelId, onSelect }: {
   panelId: string;
   onSelect: (group: NavigationGroup) => void;
 }) {
-  return <nav className="app-rail-groups" aria-label="Menyu guruhlari">
-    {navigation.map((group) => <button key={group.title} type="button" lang="en" className="app-nav-link app-nav-group-button"
-      aria-label={group.title} title={group.title} aria-controls={panelId}
+  const language = useInterfaceLanguage();
+  return <nav className="app-rail-groups" aria-label={shellCopy[language].navigation}>
+    {navigation.map((group) => <button key={group.title} type="button" lang={language === 'ru' ? 'ru' : 'en'} className="app-nav-link app-nav-group-button"
+      aria-label={groupLabel(language, group.title)} title={groupLabel(language, group.title)} aria-controls={panelId}
       aria-expanded={expanded && group === selected} data-active={group === selected || undefined}
       onClick={() => onSelect(group)}>
       <group.icon size={20} strokeWidth={1.7} aria-hidden="true" />
@@ -37,22 +42,24 @@ function AccountNavigation({ activePath, compact = false, onSelect, loggingOut, 
   loggingOut: boolean;
   onRequestLogout: () => void;
 }) {
-  return <nav className="app-nav-account" aria-label="Akkaunt navigatsiyasi">
+  const language = useInterfaceLanguage();
+  const copy = shellCopy[language];
+  return <nav className="app-nav-account" aria-label={copy.accountNavigation}>
     {accountNavigation.map(({ href, label, icon: Icon }) => <Link key={href}
-      className="app-nav-link" href={href} lang="en" aria-label={compact ? label : undefined}
-      title={compact ? label : undefined}
+      className="app-nav-link" href={href} lang={language === 'ru' ? 'ru' : 'en'} aria-label={compact ? routeLabel(language, href, label) : undefined}
+      title={compact ? routeLabel(language, href, label) : undefined}
       aria-current={activePath === href ? 'page' : href === routes.settingsAccount &&
         settingsNavigation.items.some((item) => item.href === activePath) ? 'location' : undefined}
       onClick={(event) => onSelect(event, href)}>
       <Icon size={compact ? 20 : 17} strokeWidth={1.7} aria-hidden="true" />
-      {!compact && label}
+      {!compact && routeLabel(language, href, label)}
     </Link>)}
     <div className="app-nav-logout">
       <button type="button" className="app-nav-link" disabled={loggingOut}
-        aria-label={compact ? (loggingOut ? 'Chiqilmoqda…' : 'Chiqish') : undefined}
-        title={compact ? 'Chiqish' : undefined} aria-haspopup="dialog" onClick={onRequestLogout}>
+        aria-label={compact ? (loggingOut ? copy.signingOut : copy.signOut) : undefined}
+        title={compact ? copy.signOut : undefined} aria-haspopup="dialog" onClick={onRequestLogout}>
         <LogOut size={compact ? 20 : 17} strokeWidth={1.7} aria-hidden="true" />
-        {!compact && (loggingOut ? 'Chiqilmoqda…' : 'Chiqish')}
+        {!compact && (loggingOut ? copy.signingOut : copy.signOut)}
       </button>
     </div>
   </nav>;
@@ -64,6 +71,7 @@ function SidebarNavigation({ group, activePath, onSelect, id }: {
   onSelect: SelectPage;
   id?: string;
 }) {
+  const language = useInterfaceLanguage();
   const itemsRef = useRef<HTMLDivElement>(null);
   const [indicator, setIndicator] = useState<{
     top: number; left: number; width: number; height: number; path: string; slide: boolean;
@@ -105,22 +113,22 @@ function SidebarNavigation({ group, activePath, onSelect, id }: {
     if (items.firstElementChild) observer.observe(items.firstElementChild);
     observer.observe(active);
     return () => observer.disconnect();
-  }, [activePath]);
+  }, [activePath, language]);
 
   function renderLink({ href, label, icon: Icon }: NavigationItem) {
-    return <Link key={href} href={href} lang="en" className="app-nav-link"
+    return <Link key={href} href={href} lang={language === 'ru' ? 'ru' : 'en'} className="app-nav-link"
       aria-current={activePath === href ? 'page' : undefined} onClick={(event) => onSelect(event, href)}>
       <Icon size={17} strokeWidth={1.7} aria-hidden="true" />
-      {label}
+      {routeLabel(language, href, label)}
     </Link>;
   }
 
   const showIndicator = Boolean(activePath && indicator);
-  return <nav id={id} className="app-nav" aria-label={group.title} lang="en">
+  return <nav id={id} className="app-nav" aria-label={groupLabel(language, group.title)} lang={language === 'ru' ? 'ru' : 'en'}>
     <div ref={itemsRef} className="app-nav-items" data-indicator={showIndicator || undefined}
       data-slide={showIndicator && indicator?.slide ? true : undefined}>
       <div className="app-nav-group">
-        <p className="app-nav-heading" aria-hidden="true">{group.title}</p>
+        <p className="app-nav-heading" aria-hidden="true">{groupLabel(language, group.title)}</p>
         {group.items.map(renderLink)}
       </div>
       {indicator && <span className="app-nav-indicator" aria-hidden="true" style={{
@@ -131,15 +139,16 @@ function SidebarNavigation({ group, activePath, onSelect, id }: {
   </nav>;
 }
 
-export function AppLayout({ children, path, token, user, accountAccess, practicing, dueCount, sound, soundAvailable, onToggleSound, onExitPractice, loggingOut, onLogout, collapsed, onCollapsedChange }: {
-  children: ReactNode; path: string; token: string; user: SessionAccount; accountAccess: AccountAccess; practicing: boolean; dueCount: number; sound: boolean; soundAvailable: boolean;
+export function AppLayout({ children, path, token, user, accountAccess, practicing, sound, soundAvailable, onToggleSound, onExitPractice, loggingOut, onLogout, collapsed, onCollapsedChange }: {
+  children: ReactNode; path: string; token: string; user: SessionAccount; accountAccess: AccountAccess; practicing: boolean; sound: boolean; soundAvailable: boolean;
   onToggleSound: () => void; onExitPractice: () => void; loggingOut: boolean; onLogout: () => void;
   collapsed: boolean; onCollapsedChange: (collapsed: boolean) => void;
 }) {
+  const language = useInterfaceLanguage();
+  const copy = shellCopy[language];
   const isDark = useSyncExternalStore(subscribeToTheme, getTheme) === 'dark';
   const { fullName: name, avatarUrl } = user;
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [bell, setBell] = useState({ count: dueCount, ring: dueCount > 0 });
   const drawer = useRef<HTMLDialogElement>(null);
   const closeDrawerButton = useRef<HTMLButtonElement>(null);
   const logoutDialog = useRef<HTMLDialogElement>(null);
@@ -196,79 +205,59 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
     onCollapsedChange(false);
   }
 
-  if (dueCount !== bell.count) {
-    setBell({ count: dueCount, ring: dueCount > bell.count });
-  }
 
-  return <div className="app-shell" data-collapsed={collapsed}>
+  return <div className="app-shell" lang={language} data-collapsed={collapsed}>
     <header className="app-topbar">
       <div className="app-menu-slot">
         <button type="button" className="app-control app-desktop-toggle"
-          aria-label={collapsed ? 'Yon menyuni kengaytirish' : 'Yon menyuni yig‘ish'}
+          aria-label={collapsed ? copy.expandMenu : copy.collapseMenu}
           aria-expanded={!collapsed} aria-controls="app-sidebar-panel" onClick={() => onCollapsedChange(!collapsed)}>
           <Menu size={21} aria-hidden="true" />
         </button>
-        <button type="button" className="app-control app-mobile-toggle" aria-label="Menyuni ochish"
+        <button type="button" className="app-control app-mobile-toggle" aria-label={copy.openMenu}
           aria-expanded={drawerOpen} aria-controls="app-mobile-drawer"
           onClick={openDrawer}>
           <Menu size={21} aria-hidden="true" />
         </button>
       </div>
-      <div className="app-topbar-brand"><Brand href={routes.dashboard} onClick={(event) => goTo(event, routes.dashboard)} /></div>
+      <div className="app-topbar-brand"><Brand wordmark label={'LexiMind · ' + routeLabel(language, routes.dashboard, 'Dashboard')} href={routes.dashboard} onClick={(event) => goTo(event, routes.dashboard)} /></div>
       <div className="app-shortcuts">
         <VocabularySearch token={token} onNavigate={() => { if (practicing && path === routes.vocabulary) onExitPractice(); }} />
-        <button type="button" className="app-control app-toolbar-control app-quick-trigger" popoverTarget="app-quick-links" aria-label="Tezkor menyu" title="Tezkor menyu">
+        <button type="button" className="app-control app-toolbar-control app-quick-trigger" popoverTarget="app-quick-links" aria-label={copy.quick} title={copy.quick}>
           <LayoutGrid size={17} strokeWidth={1.65} aria-hidden="true" />
         </button>
-        <div id="app-quick-links" popover="auto" className="app-topbar-popover app-quick-popover" aria-label="Tezkor menyu">
-          <p className="app-popover-title">Tezkor menyu</p>
-          {quickLinks.map(({ href, label, icon: Icon }) => <Link key={href} href={href} lang="en"
+        <div id="app-quick-links" popover="auto" className="app-topbar-popover app-quick-popover" aria-label={copy.quick}>
+          <p className="app-popover-title">{copy.quick}</p>
+          {quickLinks.map(({ href, label, icon: Icon }) => <Link key={href} href={href} lang={language === 'ru' ? 'ru' : 'en'}
             className="app-popover-item" aria-current={activePath === href ? 'page' : undefined} onClick={(event) => goTo(event, href)}>
-            <Icon size={17} aria-hidden="true" />{label}
+            <Icon size={17} aria-hidden="true" />{routeLabel(language, href, label)}
           </Link>)}
         </div>
       </div>
       <div className="app-topbar-actions">
-        <button type="button" className="app-control app-toolbar-control" aria-label="Tungi rejim" title={isDark ? 'Kunduzgi rejimga o‘tish' : 'Tungi rejimga o‘tish'}
+        <button type="button" className="app-control app-toolbar-control" aria-label={copy.dark} title={isDark ? copy.toLight : copy.toDark}
           aria-pressed={isDark} onClick={toggleTheme}>
           {isDark ? <Sun size={18} strokeWidth={1.7} aria-hidden="true" /> : <MoonStar size={18} strokeWidth={1.7} aria-hidden="true" />}
         </button>
-        <button type="button" className="app-control app-toolbar-control app-bell" popoverTarget="app-notifications"
-          aria-label={dueCount ? 'Bildirishnomalar, ' + dueCount + ' ta karta' : 'Bildirishnomalar'} title="Bildirishnomalar">
-          <Bell key={dueCount} className={bell.ring ? "app-bell-ring" : undefined} size={18} strokeWidth={1.65} aria-hidden="true" />
-          {dueCount > 0 && <span className="app-notification-count" aria-hidden="true">{dueCount > 99 ? '99+' : dueCount}</span>}
-        </button>
-        <div id="app-notifications" popover="auto" className="app-topbar-popover app-notification-popover" aria-label="Bildirishnomalar">
-          <p className="app-popover-title">Bildirishnomalar</p>
-          {dueCount > 0 ? <Link className="app-popover-item" href={routes.dashboard} onClick={(event) => goTo(event, routes.dashboard)}>
-            <BookOpen size={17} aria-hidden="true" />{dueCount} ta karta takrorlashga tayyor
-          </Link> : <p className="app-popover-note">Yangi bildirishnoma yo‘q.</p>}
-        </div>
-        <button type="button" className="app-control app-toolbar-control" popoverTarget="app-language" aria-label="Til" title="Til">
-          <span className="app-english-flag" aria-hidden="true" />
-        </button>
-        <div id="app-language" popover="auto" className="app-topbar-popover app-language-popover" aria-label="Til">
-          <p className="app-popover-title">Til</p>
-          <p className="app-popover-note">O‘rganilayotgan til · Inglizcha</p>
-          <p className="app-popover-note">Interfeys tili · O‘zbekcha</p>
-        </div>
-        <button type="button" className="app-control app-account" popoverTarget="app-account-menu" aria-label="Profil menyusi" title={name}>
+        <NotificationMenu key={token} token={token} onNavigate={goTo} />
+        <LanguagePicker compact />
+        <button type="button" className="app-control app-account" popoverTarget="app-account-menu" aria-label={copy.profileMenu} title={name}>
           <UserAvatar className="app-account-avatar" name={name} url={avatarUrl} />
           <ChevronDown size={12} strokeWidth={2} aria-hidden="true" />
         </button>
-        <div id="app-account-menu" popover="auto" className="app-topbar-popover app-account-popover" aria-label="Profil menyusi">
+        <div id="app-account-menu" popover="auto" className="app-topbar-popover app-account-popover" aria-label={copy.profileMenu}>
           <p className="app-popover-title">{name}</p>
-          <Link href={routes.profile} lang="en" className="app-popover-item" onClick={(event) => goTo(event, routes.profile)}>
-            <UserRound size={17} aria-hidden="true" />Profile
+          <Link href={routes.profile} lang={language === 'ru' ? 'ru' : 'en'} className="app-popover-item" onClick={(event) => goTo(event, routes.profile)}>
+            <UserRound size={17} aria-hidden="true" />{routeLabel(language, routes.profile, 'Profile')}
           </Link>
           <button type="button" className="app-popover-item" aria-pressed={sound} disabled={!soundAvailable} onClick={onToggleSound}>
-            {sound ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />} O‘yin ovozlari
+            {sound ? <Volume2 size={17} aria-hidden="true" /> : <VolumeX size={17} aria-hidden="true" />} {copy.sound}
           </button>
         </div>
       </div>
     </header>
 
-    <aside className="app-sidebar" aria-label="Yon menyu">
+    <aside className="app-sidebar" aria-label={copy.sidebar}>
       <div className="app-rail">
         <SidebarGroups selected={selectedGroup} expanded={!collapsed} panelId="app-sidebar-panel"
           onSelect={(group) => { setGroupSelection({ path, group }); onCollapsedChange(false); }} />
@@ -282,16 +271,16 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
     </aside>
 
     <div className="app-workspace">
-      <main id="main" tabIndex={-1}>{children}</main>
+      <main id="main" tabIndex={-1} lang={path === routes.dashboard && !practicing ? language : 'uz'}>{children}</main>
       <footer className="footer"><div className="container"><span><BookOpen size={16} /> LexiMind</span>
-        <span>Inglizcha so‘zlarni o‘rganish va takrorlash</span></div></footer>
+        <span>{copy.footer}</span></div></footer>
     </div>
 
-    <dialog id="app-mobile-drawer" ref={drawer} className="app-drawer" aria-label="Yon menyu"
+    <dialog id="app-mobile-drawer" ref={drawer} className="app-drawer" aria-label={copy.sidebar}
       onClose={() => setDrawerOpen(false)} onClick={(event) => { if (event.target === event.currentTarget) drawer.current?.close(); }}>
       <div className="app-drawer-panel">
-        <div className="app-drawer-header"><Brand href={routes.dashboard} onClick={(event) => goTo(event, routes.dashboard)} />
-          <button type="button" className="app-control" aria-label="Menyuni yopish" ref={closeDrawerButton}
+        <div className="app-drawer-header"><Brand wordmark label={'LexiMind · ' + routeLabel(language, routes.dashboard, 'Dashboard')} href={routes.dashboard} onClick={(event) => goTo(event, routes.dashboard)} />
+          <button type="button" className="app-control" aria-label={copy.closeMenu} ref={closeDrawerButton}
             onClick={() => drawer.current?.close()}><X size={21} aria-hidden="true" /></button>
         </div>
         <SidebarGroups selected={selectedGroup} expanded={drawerOpen} panelId="app-mobile-links"
@@ -304,15 +293,15 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
     <dialog ref={logoutDialog} className="app-dialog sidebar-account-dialog" aria-labelledby="app-logout-title"
       aria-describedby="app-logout-description">
       <header className="app-dialog-heading">
-        <h2 id="app-logout-title">Akkauntdan chiqish</h2>
-        <button type="button" className="app-dialog-close" aria-label="Yopish" onClick={() => logoutDialog.current?.close()}>
+        <h2 id="app-logout-title">{copy.signOutTitle}</h2>
+        <button type="button" className="app-dialog-close" aria-label={copy.close} onClick={() => logoutDialog.current?.close()}>
           <X size={16} aria-hidden="true" />
         </button>
       </header>
-      <p id="app-logout-description" className="app-dialog-description">Joriy akkaunt seansi yakunlanadi.</p>
+      <p id="app-logout-description" className="app-dialog-description">{copy.signOutDetail}</p>
       <div className="app-dialog-actions">
-        <button ref={cancelLogoutButton} type="button" className="app-dialog-button" onClick={() => logoutDialog.current?.close()}>Bekor qilish</button>
-        <button type="button" className="app-dialog-button" data-tone="accent" onClick={confirmLogout}>Chiqish</button>
+        <button ref={cancelLogoutButton} type="button" className="app-dialog-button" onClick={() => logoutDialog.current?.close()}>{copy.cancel}</button>
+        <button type="button" className="app-dialog-button" data-tone="accent" onClick={confirmLogout}>{copy.signOut}</button>
       </div>
     </dialog>
   </div>;

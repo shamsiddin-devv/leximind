@@ -33,19 +33,6 @@ export class UpdateAvatarUseCase {
   async execute(id: string, image: string | null) {
     if (image !== null) validateImage(image);
     const next = image === null ? null : await this.storage.upload(image);
-    let previousId: string | undefined;
-
-    const user = await this.users
-      .edit(id, (current) => {
-        previousId = current.avatar?.publicId;
-        current.setAvatar(next);
-      })
-      .catch(async (error: unknown) => {
-        if (next) await this.storage.remove(next.publicId);
-        throw error;
-      });
-
-    if (previousId) await this.storage.remove(previousId);
-    return user;
+    return this.users.edit(id, (current) => current.setAvatar(next));
   }
 }

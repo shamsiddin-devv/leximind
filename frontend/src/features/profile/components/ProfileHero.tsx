@@ -3,7 +3,7 @@ import { Share2 } from 'lucide-react';
 import { Link, routes } from '../../../app/router';
 import { Notice } from '../../../shared/components/UI';
 import type { Profile, User } from '../../../shared/types/api';
-import type { ProfileAppearanceState } from '../hooks/useProfileAppearance';
+import type { ProfileAppearanceState } from '../hooks/useAccountUiPreferences';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import { ProfileBannerEditor } from './ProfileBannerEditor';
 import { ProfileCover } from './ProfilePresentation';
@@ -16,7 +16,7 @@ export function ProfileHero({ user, identity, profile, token, appearance, onUser
   appearance: ProfileAppearanceState;
   onUserChange: (user: User) => void;
 }) {
-  const { saved, save } = appearance;
+  const { saved, saveBanner, ready, saving, error, retry } = appearance;
   const vertical = saved.layout === 'vertical';
   const [shareStatus, setShareStatus] = useState('');
   const canShare = user.privacy?.profilePublic && user.privacy.profileSharing;
@@ -41,7 +41,7 @@ export function ProfileHero({ user, identity, profile, token, appearance, onUser
   }
 
   const bannerEditor = <ProfileBannerEditor banner={saved.banner} position={saved.position}
-    onSave={(banner) => save({ ...saved, banner })}
+    onSave={saveBanner} disabled={!ready}
     triggerLabel={vertical ? 'Rasmni almashtirish' : 'Change banner'}
     triggerClassName={vertical ? 'profile-vertical-photo' : undefined} />;
 
@@ -56,6 +56,7 @@ export function ProfileHero({ user, identity, profile, token, appearance, onUser
         {!vertical && bannerEditor}
       </div>}
       bannerAction={vertical ? bannerEditor : undefined} />
+    {error && <div className="profile-share-status"><Notice error>{error} <button type="button" className="text-link" disabled={saving} onClick={retry}>Qayta urinish</button></Notice></div>}
     {shareStatus && <div className="profile-share-status"><Notice>{shareStatus}{!canShare && <> <Link className="text-link" href={routes.settingsPrivacy}>Privacy &amp; Security</Link></>}</Notice></div>}
   </div>;
 }

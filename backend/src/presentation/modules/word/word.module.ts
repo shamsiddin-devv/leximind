@@ -3,6 +3,7 @@ import { WordController } from './word.controller';
 import { CreateWordUseCase } from '../../../application/use-cases/word/CreateWordUseCase';
 import { IWordRepository } from '../../../domain/repositories/IWordRepository';
 import { GetWordByIdUseCase } from '../../../application/use-cases/word/GetWordByIdUseCase';
+import { GetDailyWord } from '../../../application/use-cases/word/GetDailyWord';
 import { SearchWordUseCase } from '../../../application/use-cases/word/SearchWordUseCase';
 import { CreateManyWordsUseCase } from '../../../application/use-cases/word/create-many-words/CreateManyWordsUseCase';
 
@@ -14,6 +15,11 @@ import { WordSenseController } from './word-sense.controller';
   imports: [],
   controllers: [WordController, WordSenseController],
   providers: [
+    {
+      provide: GetDailyWord,
+      useFactory: (wordRepo: IWordRepository) => new GetDailyWord(wordRepo),
+      inject: ['IWordRepository'],
+    },
     {
       provide: ManageWordSenses,
       useFactory: (repo: IWordRepository) => new ManageWordSenses(repo),

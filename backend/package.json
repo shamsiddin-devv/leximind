@@ -22,7 +22,9 @@
     "db:migrate": "node scripts/migrate.cjs",
     "db:admin": "node scripts/admin.cjs",
     "db:cleanup": "node scripts/cleanup.cjs",
+    "db:news": "node scripts/publish-news.cjs",
     "db:seed:vocabulary": "node scripts/seed-vocabulary.cjs",
+    "db:import:vocabulary": "node scripts/import-english-dictionary.cjs",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm test -- --runInBand && npm run test:e2e"
   },
@@ -40,10 +42,12 @@
     "dotenv": "^18.0.5",
     "drizzle-orm": "^1.0.0-rc.4",
     "helmet": "^8.3.0",
+    "nodemailer": "^10.6.1",
     "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "ts-fsrs": "^5.4.2"
+    "ts-fsrs": "^5.4.2",
+    "web-push": "^4.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -51,11 +55,14 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^6.0.2",
+    "@types/web-push": "^3.6.4",
     "drizzle-kit": "^1.0.0-rc.4",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
@@ -70,8 +77,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0",
-    "@types/bcrypt": "^6.0.0"
+    "typescript-eslint": "^8.20.0"
   },
   "jest": {
     "moduleFileExtensions": [

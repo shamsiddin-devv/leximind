@@ -1,0 +1,34 @@
+.email-code-field {
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  color: var(--welcome-text, var(--ink));
+  font-size: .875rem;
+  font-weight: 650;
+}
+
+.email-code-field input {
+  inline-size: min(100%, 12rem);
+  min-block-size: 46px;
+  padding-inline: 14px;
+  border: 1px solid var(--welcome-control-edge, var(--line));
+  border-radius: 10px;
+  background: var(--welcome-bg, var(--settings-control, var(--paper)));
+  color: inherit;
+  font: inherit;
+  font-size: 1.125rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .3em;
+}
+
+.email-code-field small,
+.email-code-field input::placeholder {
+  color: var(--welcome-muted, var(--muted));
+}
+
+.email-code-field small {
+  font-size: .8rem;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}

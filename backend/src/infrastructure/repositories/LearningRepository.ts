@@ -20,10 +20,17 @@ import {
 } from '../../domain/repositories/ILearningRepository';
 import { SessionData } from '../../domain/entities/LearningSession';
 import { Card } from '../../domain/entities/Card';
-import { achievementRules, type AchievementProgress } from '../../domain/entities/Achievement';
+import {
+  achievementRules,
+  type AchievementProgress,
+} from '../../domain/entities/Achievement';
 import { IReviewRating } from '../../domain/services/IReviewRatingService';
 import { NotFoundError } from '../../domain/errors/NotFoundError';
-import { learningAnalyticsQuery, learningCalendarQuery, learningAchievementsQuery } from './learningAnalyticsQuery';
+import {
+  learningAnalyticsQuery,
+  learningCalendarQuery,
+  learningAchievementsQuery,
+} from './learningAnalyticsQuery';
 import { leaderboardQuery } from './leaderboardQuery';
 const sessionColumns =
   'id,user_id AS "userId",status,started_at AS "startedAt",ended_at AS "endedAt"';
@@ -128,7 +135,12 @@ class PgLearningTransaction implements LearningTransaction {
       )
     ).rows;
   }
-  async dueCards(userId: string, limit: number, newLimit: number, queue: ReviewQueue = 'today') {
+  async dueCards(
+    userId: string,
+    limit: number,
+    newLimit: number,
+    queue: ReviewQueue = 'today',
+  ) {
     const r = await this.c.query<ConstructorParameters<typeof Card>[0]>(
       `SELECT ${cardColumns} FROM cards
        WHERE user_id=$1 AND paused_at IS NULL AND due<=now()
@@ -218,13 +230,20 @@ export class LearningRepository implements ILearningRepository {
       c.release();
     }
   }
-  async history(userId: string, page: number, limit: number, status?: SessionData['status']) {
-    const conditions = ' FROM sessions WHERE user_id=$1 AND ($2::text IS NULL OR status=$2)';
+  async history(
+    userId: string,
+    page: number,
+    limit: number,
+    status?: SessionData['status'],
+  ) {
+    const conditions =
+      ' FROM sessions WHERE user_id=$1 AND ($2::text IS NULL OR status=$2)';
     const data = (
       await this.pool.query<SessionData>(
         'SELECT ' +
           sessionColumns +
-          conditions + ' ORDER BY started_at DESC,id LIMIT $3 OFFSET $4',
+          conditions +
+          ' ORDER BY started_at DESC,id LIMIT $3 OFFSET $4',
         [userId, status ?? null, limit, (page - 1) * limit],
       )
     ).rows;
@@ -433,11 +452,17 @@ export class LearningRepository implements ILearningRepository {
   }
 
   async analytics(userId: string) {
-    const { rows } = await this.pool.query<LearningAnalytics>(learningAnalyticsQuery, [userId]);
+    const { rows } = await this.pool.query<LearningAnalytics>(
+      learningAnalyticsQuery,
+      [userId],
+    );
     return rows[0] ?? null;
   }
   async calendar(userId: string, month?: string) {
-    const { rows } = await this.pool.query<LearningCalendar>(learningCalendarQuery, [userId, month ?? null]);
+    const { rows } = await this.pool.query<LearningCalendar>(
+      learningCalendarQuery,
+      [userId, month ?? null],
+    );
     return rows[0] ?? null;
   }
   async topics(userId: string) {
@@ -463,11 +488,17 @@ export class LearningRepository implements ILearningRepository {
     return rows;
   }
   async achievements(userId: string) {
-    const { rows } = await this.pool.query<AchievementProgress>(learningAchievementsQuery, [userId, JSON.stringify(achievementRules)]);
+    const { rows } = await this.pool.query<AchievementProgress>(
+      learningAchievementsQuery,
+      [userId, JSON.stringify(achievementRules)],
+    );
     return rows;
   }
   async leaderboard(userId: string, period: LeaderboardPeriod) {
-    const { rows } = await this.pool.query<Leaderboard>(leaderboardQuery, [userId, period]);
+    const { rows } = await this.pool.query<Leaderboard>(leaderboardQuery, [
+      userId,
+      period,
+    ]);
     return rows[0];
   }
 

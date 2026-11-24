@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -15,10 +16,21 @@ export class ReleaseReadiness implements OnModuleInit {
   private readonly migrations = new Map<string, Set<string>>();
   private readonly audioDirectory = resolve('assets', 'feedback-audio');
   private audioAvailable = false;
+  private accountEmailAvailable = true;
 
-  constructor(private readonly pool: DatabasePool) {}
+  constructor(
+    private readonly pool: DatabasePool,
+    private readonly config: ConfigService,
+  ) {}
 
   onModuleInit() {
+    if (
+      this.config.get('NODE_ENV') === 'production' &&
+      !this.config.get('ACCOUNT_MAIL_PROVIDER')
+    ) {
+      this.accountEmailAvailable = false;
+      this.logger.error('Production account email delivery is not configured.');
+    }
     try {
       const directory = resolve('migrations');
       for (const name of readdirSync(directory).filter((name) =>
@@ -58,7 +70,12 @@ export class ReleaseReadiness implements OnModuleInit {
   }
 
   async isReady() {
-    if (!this.audioAvailable || !this.migrations.size) return false;
+    if (
+      !this.accountEmailAvailable ||
+      !this.audioAvailable ||
+      !this.migrations.size
+    )
+      return false;
     const { rows } = await this.pool.query<{ name: string; checksum: string }>(
       'SELECT name, checksum FROM app_migrations WHERE name=ANY($1::text[])',
       [[...this.migrations.keys()]],

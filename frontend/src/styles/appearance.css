@@ -41,7 +41,7 @@
 :root:is([data-density='compact'], [data-density='comfortable']) .app-shell :is(.activity-grid, .catalog-grid, .learning-preferences-form) {
   gap: var(--density-gap);
 }
-:root:is([data-density='compact'], [data-density='comfortable']) .app-shell :is(.activity-tile, .catalog-word, .rail .panel) {
+:root:is([data-density='compact'], [data-density='comfortable']) .app-shell :is(.activity-tile, .catalog-word, .study-home-rail .panel) {
   padding: var(--density-card-padding);
 }
 :root:is([data-density='compact'], [data-density='comfortable']) .app-shell .learning-section-body > .settings-form-row {

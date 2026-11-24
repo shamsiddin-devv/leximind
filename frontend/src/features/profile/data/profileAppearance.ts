@@ -32,8 +32,11 @@ export type ProfileAppearance = {
   metrics: { id: ProfileMetric; visible: boolean }[];
 };
 
-export function profileBannerSource(image: string, layout: ProfileAppearance['layout']) {
-  return layout === 'vertical' ? profileBanners.find((banner) => banner.image === image)?.portrait ?? image : image;
+export function profileBannerSource(image: string, layout: ProfileAppearance['layout'], thumbnail = false) {
+  const banner = profileBanners.find((item) => item.image === image);
+  if (!banner) return image;
+  const asset = layout === 'vertical' ? banner.portrait : banner.image;
+  return asset.slice(0, -4) + (thumbnail ? '-thumb.webp' : '.webp');
 }
 
 export const defaultProfileAppearance: ProfileAppearance = {

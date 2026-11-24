@@ -4,6 +4,8 @@ import {
   getAppearance, getSystemTheme, getThemeMode, setAppearance, setThemeMode, subscribeToTheme,
   type Density, type TextSize, type ThemeMode,
 } from '../../../app/theme';
+import { useInterfaceSyncIssue } from '../../../app/interfacePreferences';
+import { Notice } from '../../../shared/components/UI';
 import { PreferenceSection, PreferenceSwitch } from './PreferenceControls';
 import { SettingsField } from './SettingsField';
 import './AppearanceSettings.css';
@@ -40,9 +42,11 @@ export function AppearanceSettings() {
   const mode = useSyncExternalStore(subscribeToTheme, getThemeMode);
   const systemTheme = useSyncExternalStore(subscribeToTheme, getSystemTheme);
   const appearance = useSyncExternalStore(subscribeToTheme, getAppearance);
+  const syncIssue = useInterfaceSyncIssue();
   const custom = !accents.some(({ value }) => value === appearance.accent);
 
   return <div className="learning-preferences-form appearance-settings">
+    {syncIssue && <Notice error>{syncIssue.message} <button type="button" className="text-link" onClick={syncIssue.retry}>Qayta urinish</button></Notice>}
     <PreferenceSection id="appearance-theme" title="Mavzu" description="Yorug‘, qorong‘i yoki qurilmangizdagi rejimni tanlang.">
       <div className="appearance-theme-grid" role="radiogroup" aria-labelledby="appearance-theme">
         {themes.map(({ value, label, icon: Icon }) => <label className="appearance-choice" key={value}>

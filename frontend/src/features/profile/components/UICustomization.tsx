@@ -5,7 +5,7 @@ import { Notice } from '../../../shared/components/UI';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import type { Plan, Profile, Statistics, User } from '../../../shared/types/api';
 import { defaultProfileAppearance, profileBanners, profileMetrics, type ProfileAppearance, type ProfileMetric } from '../data/profileAppearance';
-import type { ProfileAppearanceState } from '../hooks/useProfileAppearance';
+import type { ProfileAppearanceState } from '../hooks/useAccountUiPreferences';
 import { PreferenceSection, PreferenceSwitch } from './PreferenceControls';
 import { ProfileBannerEditor } from './ProfileBannerEditor';
 import { ProfileBannerPreviews } from './ProfileBannerPreviews';
@@ -26,25 +26,15 @@ type CustomizationProps = {
   appearance: ProfileAppearanceState; user: User; profile?: Profile; statistics?: Statistics; forecast?: Plan['forecast'];
 };
 
-export function UICustomization({ appearance: { saved, save }, user, profile, statistics, forecast }: CustomizationProps) {
-  const [saveError, setSaveError] = useState(false);
+export function UICustomization({ appearance: { saved, save, saveBanner, ready, saving, error, retry }, user, profile, statistics, forecast }: CustomizationProps) {
   const [announcement, setAnnouncement] = useState('');
   const sortList = useRef<HTMLOListElement>(null);
   const vertical = saved.layout === 'vertical';
 
-  function apply(changes: Partial<ProfileAppearance>) {
-    save({ ...saved, ...changes });
-    setSaveError(false);
-  }
-
   function edit(changes: Partial<ProfileAppearance>) {
-    try {
-      apply(changes);
-      return true;
-    } catch {
-      setSaveError(true);
-      return false;
-    }
+    if (!ready) return false;
+    void save(changes).catch(() => { /* The settings hook displays save failures. */ });
+    return true;
   }
 
   function moveMetric(index: number, step: number) {
@@ -72,7 +62,7 @@ export function UICustomization({ appearance: { saved, save }, user, profile, st
       description="Profil sahifangiz qanday tartibda ko‘rinishini tanlang.">
       <div className="customization-layout-options" role="radiogroup" aria-labelledby="customization-layout">
         {layouts.map(({ value, label, description }) => <label className="appearance-choice" key={value}>
-          <input type="radio" name="profile-layout" value={value} checked={saved.layout === value} onChange={() => edit({ layout: value })} />
+          <input type="radio" name="profile-layout" value={value} checked={saved.layout === value} disabled={!ready} onChange={() => edit({ layout: value })} />
           <span className="appearance-option customization-layout-choice">
             <span className="customization-thumbnail" data-layout={value} aria-hidden="true">
               <span className="customization-mini-cover"><i /><i /><i /></span>
@@ -89,16 +79,16 @@ export function UICustomization({ appearance: { saved, save }, user, profile, st
     <PreferenceSection id="customization-banner" title="Banner sozlamalari" description="Rasm, joylashuv va matn o‘qilishini sozlang.">
       <div className="customization-gallery" aria-label="Tayyor bannerlar">
         {profileBanners.map(({ image, name }) => <button type="button" key={image} className="customization-banner-choice"
-          aria-label={name} title={name} aria-pressed={saved.banner === image} onClick={() => edit({ banner: image })}>
+          aria-label={name} title={name} aria-pressed={saved.banner === image} disabled={!ready} onClick={() => edit({ banner: image })}>
           <ProfileBannerPreviews image={image} position={saved.position} />
           <strong>{name}</strong>
           {saved.banner === image && <Check size={16} aria-hidden="true" />}
         </button>)}
-        <ProfileBannerEditor banner={saved.banner} position={saved.position} onSave={(banner) => apply({ banner })} triggerLabel="Rasm yuklash"
+        <ProfileBannerEditor banner={saved.banner} position={saved.position} onSave={saveBanner} disabled={!ready} triggerLabel="Rasm yuklash"
           triggerClassName="button secondary customization-banner-upload" />
       </div>
       <SettingsField id="customization-position" label="Banner joylashuvi">
-        <select id="customization-position" value={saved.position} onChange={(event) => {
+        <select id="customization-position" value={saved.position} disabled={!ready} onChange={(event) => {
           const value = event.currentTarget.value;
           if (value === 'left' || value === 'center' || value === 'right') edit({ position: value });
         }}>
@@ -109,14 +99,14 @@ export function UICustomization({ appearance: { saved, save }, user, profile, st
         <span className="settings-row-label" id="customization-height">Banner balandligi</span>
         <div className="learning-segments" role="radiogroup" aria-labelledby="customization-height">
           {heights.map(({ value, label }) => <label key={value}>
-            <input type="radio" name="profile-banner-height" checked={saved.height === value} onChange={() => edit({ height: value })} />
+            <input type="radio" name="profile-banner-height" checked={saved.height === value} disabled={!ready} onChange={() => edit({ height: value })} />
             <span>{label}</span>
           </label>)}
         </div>
       </div>
       <SettingsField id="customization-overlay" label="Qorong‘i qatlam" description="Banner ustidagi matn o‘qilishi uchun.">
         <div className="customization-range">
-          <input id="customization-overlay" type="range" min={0} max={75} step={1} value={saved.overlay}
+          <input id="customization-overlay" type="range" min={0} max={75} step={1} value={saved.overlay} disabled={!ready}
             aria-valuetext={saved.overlay + '%'} aria-describedby="customization-overlay-description"
             onChange={(event) => edit({ overlay: event.currentTarget.valueAsNumber })} />
           <output htmlFor="customization-overlay">{saved.overlay}%</output>
@@ -126,15 +116,15 @@ export function UICustomization({ appearance: { saved, save }, user, profile, st
 
     <PreferenceSection id="customization-content" title="Kontent" description="Jonli ko‘rinishda qaysi bloklar va statistikalar chiqishini tanlang.">
       {contentOptions.map(({ id, label }) => <SettingsField key={id} id={'customization-' + id} label={label}>
-        <PreferenceSwitch id={'customization-' + id} checked={saved.content[id]}
-          onChange={(checked) => edit({ content: { ...saved.content, [id]: checked } })} />
+        <PreferenceSwitch id={'customization-' + id} checked={saved.content[id]} disabled={!ready}
+          onChange={(checked) => { void save({ content: { [id]: checked } }).catch(() => { /* Shown below. */ }); }} />
       </SettingsField>)}
       <div className="settings-form-row learning-selector-row">
         <span className="settings-row-label" id="customization-stats-style">Statistika kartalari uslubi</span>
         <div className="learning-segments" role="radiogroup" aria-labelledby="customization-stats-style">
-          <label><input name="profile-stats-style" type="radio" checked={saved.statsStyle === 'grid'} onChange={() => edit({ statsStyle: 'grid' })} />
+          <label><input name="profile-stats-style" type="radio" checked={saved.statsStyle === 'grid'} disabled={!ready} onChange={() => edit({ statsStyle: 'grid' })} />
             <span><LayoutGrid size={14} aria-hidden="true" /> To‘r</span></label>
-          <label><input name="profile-stats-style" type="radio" checked={saved.statsStyle === 'list'} onChange={() => edit({ statsStyle: 'list' })} />
+          <label><input name="profile-stats-style" type="radio" checked={saved.statsStyle === 'list'} disabled={!ready} onChange={() => edit({ statsStyle: 'list' })} />
             <span><List size={15} aria-hidden="true" /> Ro‘yxat</span></label>
         </div>
       </div>
@@ -146,9 +136,9 @@ export function UICustomization({ appearance: { saved, save }, user, profile, st
             const fieldId = 'customization-stat-' + id;
             return <li key={id} data-metric={id}>
               <label htmlFor={fieldId}>{label}</label>
-              <button type="button" data-step="-1" disabled={index === 0} aria-label={label + ' — yuqoriga'} onClick={() => moveMetric(index, -1)}><ArrowUp size={16} /></button>
-              <button type="button" data-step="1" disabled={index === saved.metrics.length - 1} aria-label={label + ' — pastga'} onClick={() => moveMetric(index, 1)}><ArrowDown size={16} /></button>
-              <PreferenceSwitch id={fieldId} checked={visible} onChange={(checked) => setMetricVisibility(id, checked)} />
+              <button type="button" data-step="-1" disabled={!ready || index === 0} aria-label={label + ' — yuqoriga'} onClick={() => moveMetric(index, -1)}><ArrowUp size={16} /></button>
+              <button type="button" data-step="1" disabled={!ready || index === saved.metrics.length - 1} aria-label={label + ' — pastga'} onClick={() => moveMetric(index, 1)}><ArrowDown size={16} /></button>
+              <PreferenceSwitch id={fieldId} checked={visible} disabled={!ready} onChange={(checked) => setMetricVisibility(id, checked)} />
             </li>;
           })}
         </ol>
@@ -158,9 +148,9 @@ export function UICustomization({ appearance: { saved, save }, user, profile, st
 
     <section className="customization-preview" aria-labelledby="customization-preview">
       <header><h2 id="customization-preview">Jonli ko‘rinish</h2>
-        {saveError
-          ? <Notice error>Sozlamani bu brauzerda saqlab bo‘lmadi.</Notice>
-          : <span>O‘zgarishlar avtomatik saqlanadi</span>}
+        {error
+          ? <Notice error>{error} <button type="button" className="text-link" disabled={saving} onClick={retry}>Qayta urinish</button></Notice>
+          : <span role="status">{!ready ? 'Sozlamalar yuklanmoqda…' : saving ? 'Saqlanmoqda…' : 'O‘zgarishlar avtomatik saqlanadi'}</span>}
       </header>
       <div className="customization-preview-frame">
         <div className="customization-preview-bar" aria-hidden="true"><span /><span>/profile</span><Eye size={16} /></div>
@@ -205,7 +195,7 @@ export function UICustomization({ appearance: { saved, save }, user, profile, st
           </div>
         </div>
       </div>
-      <button type="button" className="button quiet" onClick={() => edit(defaultProfileAppearance)}><RotateCcw size={16} /> Standartga qaytarish</button>
+      <button type="button" className="button quiet" disabled={!ready} onClick={() => edit(defaultProfileAppearance)}><RotateCcw size={16} /> Standartga qaytarish</button>
       <Link href={routes.profile} className="text-link">Profil sahifasini ochish <ArrowUpRight size={15} aria-hidden="true" /></Link>
     </section>
   </div>;

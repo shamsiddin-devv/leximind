@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowLeft, ArrowRight, Check, CircleX, Clock3, Eye, PartyPopper, Sparkles } from 'lucide-react';
-import { api, explain, mediaUrl } from '../../../shared/services/api';
+import { ArrowLeft, ArrowRight, Check, CircleX, Clock3, PartyPopper, Sparkles } from 'lucide-react';
+import { api, explain } from '../../../shared/services/api';
 import type { Attempt, Result, Round } from '../../../shared/types/api';
 import { activities } from '../activities';
 import { Notice, Speak } from '../../../shared/components/UI';
+import { playFeedbackAudio } from '../feedbackAudio';
+import { MemoryRound } from '../components/MemoryRound';
 
 export type ActiveRound = Round & { demoAnswers?: string[] };
 
@@ -18,10 +20,8 @@ export function Practice({ round, token, onDone, onClose, soundEnabled, autoplay
   const [result, setResult] = useState<Result>();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [preview, setPreview] = useState(false);
-  const [memoryStarted, setMemoryStarted] = useState(false);
   const [seconds, setSeconds] = useState(60);
-  const player = useRef<HTMLAudioElement | null>(null);
+  const stopSound = useRef<(() => void) | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const nextButton = useRef<HTMLButtonElement>(null);
   const request = useRef<AbortController | null>(null);
@@ -32,21 +32,14 @@ export function Practice({ round, token, onDone, onClose, soundEnabled, autoplay
   const activity = activities.find((item) => item.id === round.kind);
   const timed = round.kind === 'word_rush' && Boolean(round.expiresAt);
   const expired = timed && seconds === 0;
-  const isGrid = Boolean(round.payload.gridSize);
-  const memory = Boolean(round.payload.stimulus);
-  const stimulus = round.payload.stimulus ?? [];
+  const stimulus = round.payload.stimulus;
   const selected = question?.input === 'tokens'
     ? tokens.map((tokenIndex) => question.options[tokenIndex]).join(' ')
     : answer;
-  const practiceSteps = memory ? 1 : Math.max(1, length);
+  const practiceSteps = Math.max(1, length);
 
-  useEffect(() => () => { request.current?.abort(); player.current?.pause(); }, []);
-  useEffect(() => { if (!soundEnabled) player.current?.pause(); }, [soundEnabled]);
-  useEffect(() => {
-    if (!preview) return;
-    const t = window.setTimeout(() => setPreview(false), round.payload.previewMs ?? 5000);
-    return () => window.clearTimeout(t);
-  }, [preview, round.payload.previewMs]);
+  useEffect(() => () => { request.current?.abort(); stopSound.current?.(); }, []);
+  useEffect(() => { if (!soundEnabled) { stopSound.current?.(); stopSound.current = null; } }, [soundEnabled]);
   useEffect(() => {
     if (!timed || !round.expiresAt) return;
     const end = new Date(round.expiresAt).valueOf();
@@ -63,10 +56,8 @@ export function Practice({ round, token, onDone, onClose, soundEnabled, autoplay
   function finish(value: Result) { setResult(value); onDone(value); }
   function sound(url?: string) {
     if (!soundEnabled || !url) return;
-    player.current?.pause();
-    player.current = new Audio(mediaUrl(url));
-    player.current.volume = 0.6;
-    void player.current.play().catch(() => {});
+    stopSound.current?.();
+    stopSound.current = playFeedbackAudio(url);
   }
   function advance() {
     if (feedback?.result) { finish(feedback.result); return; }
@@ -76,10 +67,11 @@ export function Practice({ round, token, onDone, onClose, soundEnabled, autoplay
       return;
     }
     if (round.demoAnswers) setAssessmentAnswers((current) => [...current, feedback?.feedback.correct ? '1' : '0']);
-    player.current?.pause();
+    stopSound.current?.();
+    stopSound.current = null;
     setIndex((n) => n + 1); setFeedback(undefined); setAnswer(''); setTokens([]);
   }
-  async function submit(value: string) {
+  async function submit(value: string, memoryAnswers?: string[]) {
     if (request.current || busy || feedback || expired) return;
     setError('');
     if (round.demoAnswers) {
@@ -91,11 +83,11 @@ export function Practice({ round, token, onDone, onClose, soundEnabled, autoplay
     request.current = abort;
     setBusy(true);
     try {
-      if (memory || isAssessment) {
-        const answers = memory
-          ? Array.from({ length }, (_, position) => (isGrid ? tokens.map(String) : value.trim().split(/\s+/))[position] ?? '')
+      if (memoryAnswers || isAssessment) {
+        const answers = memoryAnswers
+          ? Array.from({ length }, (_, position) => memoryAnswers[position] ?? '')
           : [...assessmentAnswers, value];
-        if (!memory && answers.length < length) {
+        if (!memoryAnswers && answers.length < length) {
           setAssessmentAnswers(answers); setIndex(index + 1); setAnswer('');
           return;
         }
@@ -115,8 +107,8 @@ export function Practice({ round, token, onDone, onClose, soundEnabled, autoplay
     }
   }
 
-  if (result) return <div className="container screen practice-screen">
-    <section className="panel result-card"><div className="result-medal"><PartyPopper size={42} /><Sparkles size={20} /></div>
+  if (result) return <div className={`container screen practice-screen${stimulus ? ' memory-screen' : ''}`}>
+    <section className={`panel result-card${stimulus ? ' memory-result' : ''}`}><div className="result-medal"><PartyPopper size={42} /><Sparkles size={20} /></div>
       <h1 ref={heading} tabIndex={-1}>Mashq yakunlandi!</h1>
       <p>{result.correctCount} / {result.totalQuestion} ta to‘g‘ri javob</p>
       <div className="score-chip">{result.resultingLevel ? 'Lug‘at darajasi · ' + result.resultingLevel : '+' + result.score + ' ball'}</div>
@@ -124,37 +116,28 @@ export function Practice({ round, token, onDone, onClose, soundEnabled, autoplay
     </section>
   </div>;
 
+  if (stimulus && activity?.category === 'memory') return <MemoryRound
+    activity={activity} stimulus={stimulus} gridSize={round.payload.gridSize} previewMs={round.payload.previewMs ?? 5000}
+    busy={busy} error={error} onClose={onClose} onSubmit={(answers) => void submit('', answers)} />;
+
   return <div className="container screen practice-screen">
     <div className="practice-top">
       <button className="icon-button" aria-label="Mashqdan chiqish" onClick={onClose}><ArrowLeft size={22} /></button>
-      <progress aria-label="Mashqdagi jarayon" max={practiceSteps} value={memory ? 0 : index + (feedback ? 1 : 0)} />
-      <span className="step-counter">{!memory && index + 1 + ' / ' + length}</span>
+      <progress aria-label="Mashqdagi jarayon" max={practiceSteps} value={index + (feedback ? 1 : 0)} />
+      <span className="step-counter">{index + 1 + ' / ' + length}</span>
     </div>
     <form className="panel question-card" onSubmit={(event: FormEvent) => { event.preventDefault(); if (!multipleChoice) void submit(selected); }}>
       <span className="question-kind">{activity?.title}{round.demoAnswers && ' · Namuna'}</span>
       {timed && <span className={`timer ${seconds <= 10 ? 'urgent' : ''}`}><Clock3 size={16} /> {seconds} s</span>}
       {multipleChoice && <p className="question-instruction">So‘zning o‘zbekcha ma’nosini tanlang.</p>}
       <h1 ref={heading} tabIndex={-1} key={index} lang={multipleChoice ? "en" : undefined}>
-        {memory ? (preview ? 'Eslab qoling' : memoryStarted ? 'Nimalarni esladingiz?' : 'Xotirangizni sinang')
-          : question?.prompt}
+        {question?.prompt}
       </h1>
       {question?.hint && <p className="question-hint">{question.hint}</p>}
       {question?.definition && <p className="question-hint" lang="en">{question.definition}</p>}
       {question?.audioUrl && <audio key={index} controls preload="none" autoPlay={autoplayPronunciation} src={question.audioUrl} aria-label="Diktant audiosi" />}
       {question && (round.kind === 'meaning_match' || round.kind === 'word_rush') &&
         <div className="practice-pronunciation"><Speak key={index} text={question.prompt} autoplay={autoplayPronunciation} /></div>}
-      {memory && !memoryStarted && <button type="button" className="button primary" onClick={() => { setMemoryStarted(true); setPreview(true); }}><Eye size={18} /> Ko‘rsatish</button>}
-      {memory && memoryStarted && (isGrid ? <div className="memory-grid" aria-label="Xotira kataklari">
-        {Array.from({ length: (round.payload.gridSize ?? 4) ** 2 }, (_, cell) => <button key={cell} type="button"
-          aria-label={`${cell + 1}-katak`} aria-pressed={tokens.includes(cell)} disabled={preview || busy || (tokens.length >= length && !tokens.includes(cell))}
-          className={`memory-cell ${preview && stimulus.includes(String(cell)) ? 'lit' : ''} ${tokens.includes(cell) ? 'picked' : ''}`}
-          onClick={() => setTokens((current) => current.includes(cell) ? current.filter((item) => item !== cell) : [...current, cell])}>
-          {preview ? (stimulus.includes(String(cell)) ? stimulus.indexOf(String(cell)) + 1 : '') : tokens.includes(cell) ? tokens.indexOf(cell) + 1 : ''}
-        </button>)}
-      </div> : preview ? <div className="stimulus">{stimulus.map((item, i) => <span key={i}>{item}</span>)}</div>
-        : <label className="answer-label">Ko‘rganlaringizni tartib bilan, bo‘sh joy orqali yozing
-          <input value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={255} placeholder="Javobingiz…" disabled={busy} />
-        </label>)}
       {question?.input === 'tokens' && <>
         <div className="token-answer" aria-label="Tanlangan so‘zlar">{tokens.map((item) => <button type="button" key={item} className="filter active" disabled={!!feedback || busy}
           onClick={() => setTokens((current) => current.filter((entry) => entry !== item))}>{question.options[item]}</button>)}</div>
@@ -178,10 +161,10 @@ export function Practice({ round, token, onDone, onClose, soundEnabled, autoplay
         {feedback.feedback.correct ? <Check size={21} /> : <CircleX size={21} />}
         {feedback.feedback.correct ? 'To‘g‘ri javob!' : `To‘g‘ri javob: ${feedback.expectedAnswer}`}
       </div>}
-      {(question || (memoryStarted && !preview)) && <div className="question-actions">
+      {question && <div className="question-actions">
         {feedback ? <button className="button primary" ref={nextButton} key="next" type="button" onClick={advance}>Davom etish <ArrowRight size={18} /></button>
           : <><button type="button" className="button quiet" disabled={busy || expired} onClick={() => void submit('')}>O‘tkazib yuborish</button>
-            {!multipleChoice && <button type="submit" key="submit" className="button primary" disabled={busy || expired || !(isGrid ? tokens.length : selected.trim())}>
+            {!multipleChoice && <button type="submit" key="submit" className="button primary" disabled={busy || expired || !selected.trim()}>
               {busy ? 'Tekshirilmoqda…' : isAssessment ? 'Keyingi' : 'Tekshirish'} <ArrowRight size={18} />
             </button>}</>}
       </div>}

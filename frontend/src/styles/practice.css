@@ -29,9 +29,6 @@ progress::-moz-progress-bar { background: #3555ec; border-radius: 20px; }
 .stimulus { display: flex; gap: 7px; flex-wrap: wrap; }
 .stimulus span { background: #eef1ff; color: #2843c2; border-radius: 9px; padding: 6px 10px; font-weight: 850; }
 .token-answer { display: flex; gap: 7px; flex-wrap: wrap; width: 100%; min-height: 52px; border: 1px dashed #b5c1f1; border-radius: 11px; padding: 6px; }
-.memory-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; width: min(240px, 100%); }
-.memory-cell { aspect-ratio: 1; border-radius: 10px; border: 1px solid var(--line); background: #f5f6fb; font-weight: 850; }
-.memory-cell.lit, .memory-cell.picked { background: var(--blue); color: white; border-color: var(--blue); }
 .result-card { display: grid; justify-items: center; gap: 14px; padding: 34px 16px; text-align: center; }
 .result-medal { display: grid; place-items: center; width: 82px; height: 82px; position: relative; border-radius: 25px; background: #fff0d6; color: #a45000; }
 .result-medal > svg + svg { position: absolute; top: -4px; right: -6px; color: var(--blue); }

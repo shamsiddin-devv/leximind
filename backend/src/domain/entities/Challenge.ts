@@ -196,14 +196,13 @@ export class Challenge {
   }
 
   private grade(index: number, answer: string) {
-    const feedback = gradeAnswer(
-      answer,
-      this.data.answers[index],
-      this.data.payload.questions?.[index].input,
-    );
+    const input =
+      this.data.payload.questions?.[index].input ??
+      (this.data.kind === 'word_span' ? 'text' : undefined);
+    const feedback = gradeAnswer(answer, this.data.answers[index], input);
     if (
       !feedback.correct &&
-      feedback.mistake === 'incorrect' &&
+      feedback.mistake !== 'skipped' &&
       this.data.payload.stimulus &&
       this.data.answers.some(
         (target, other) =>

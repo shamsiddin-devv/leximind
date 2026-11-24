@@ -1,21 +1,19 @@
 import { useState, type FormEvent } from 'react';
-import { CircleCheck, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { minimumPasswordLength, WelcomePasswordField } from '../../auth/components/WelcomePasswordField';
 import { Notice } from '../../../shared/components/UI';
 import { api, explain } from '../../../shared/services/api';
-import { SettingsField } from './SettingsField';
 
 const passwordFields = [
-  { name: 'currentPassword', id: 'settings-current-password', label: 'Joriy parol', placeholder: 'Joriy parolni kiriting', target: 'Joriy parolni' },
-  { name: 'newPassword', id: 'settings-new-password', label: 'Yangi parol', placeholder: 'Yangi parolni kiriting', target: 'Yangi parolni' },
-  { name: 'confirmPassword', id: 'settings-confirm-password', label: 'Yangi parolni takrorlang', placeholder: 'Yangi parolni qayta kiriting', target: 'Takrorlangan parolni' },
+  { name: 'currentPassword', id: 'settings-current-password', label: 'Joriy parol', placeholder: 'Joriy parolni kiriting' },
+  { name: 'newPassword', id: 'settings-new-password', label: 'Yangi parol', placeholder: 'Yangi parolni kiriting' },
+  { name: 'confirmPassword', id: 'settings-confirm-password', label: 'Yangi parol tasdig‘i', placeholder: 'Yangi parolni qayta kiriting' },
 ] as const;
-
-type PasswordField = typeof passwordFields[number]['name'];
 
 export function PasswordSettings({ token, onChanged }: { token: string; onChanged: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [revealed, setRevealed] = useState<Partial<Record<PasswordField, boolean>>>({});
+  const [formVersion, setFormVersion] = useState(0);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,8 +23,8 @@ export function PasswordSettings({ token, onChanged }: { token: string; onChange
     const currentPassword = String(fields.get('currentPassword'));
     const newPassword = String(fields.get('newPassword'));
 
-    if (Array.from(newPassword).length < 8 || new TextEncoder().encode(newPassword).length > 72) {
-      setError('Yangi parol kamida 8 ta belgi va ko‘pi bilan 72 bayt bo‘lishi kerak.');
+    if (Array.from(newPassword).length < minimumPasswordLength || new TextEncoder().encode(newPassword).length > 72) {
+      setError(`Yangi parol kamida ${minimumPasswordLength} ta belgi va ko‘pi bilan 72 bayt bo‘lishi kerak.`);
       return;
     }
     if (newPassword !== fields.get('confirmPassword')) {
@@ -46,37 +44,21 @@ export function PasswordSettings({ token, onChanged }: { token: string; onChange
     }
   }
 
-  return <section className="settings-form-section settings-password-form" aria-labelledby="settings-password-title">
-    <header className="settings-section-heading">
-      <h1 id="settings-password-title" className="settings-password-heading" lang="en">Password</h1>
+  return <section className="welcome-skin welcome-password-settings" aria-labelledby="settings-password-title">
+    <header className="welcome-register-heading">
+      <h1 id="settings-password-title">Parolni o‘zgartirish</h1>
       <p>Parolni yangilash uchun joriy parolingizni kiriting. Yangilangach, qurilmalaringizda qayta kirishingiz kerak bo‘ladi.</p>
     </header>
-    <form className="settings-row-form" onSubmit={(event) => void save(event)} onReset={() => { setError(''); setRevealed({}); }}>
-      {passwordFields.map(({ name, id, label, placeholder, target }) => {
-        const visible = Boolean(revealed[name]);
-        const isCurrent = name === 'currentPassword';
-        const showsHint = name === 'newPassword';
-        const toggleLabel = `${target} ${visible ? 'yashirish' : 'ko‘rsatish'}`;
-        return <SettingsField key={name} id={id} label={label} required>
-          <div className="settings-password-control">
-            <input id={id} name={name} type={visible ? 'text' : 'password'} placeholder={placeholder}
-              autoComplete={isCurrent ? 'current-password' : 'new-password'} minLength={isCurrent ? undefined : 8} maxLength={72}
-              aria-describedby={showsHint ? 'settings-password-length' : undefined} required disabled={busy}
-              onChange={(event) => {
-                if (!event.currentTarget.value && visible) setRevealed((previous) => ({ ...previous, [name]: false }));
-              }} />
-            <button type="button" className="settings-password-toggle" aria-label={toggleLabel} title={toggleLabel} aria-controls={id}
-              disabled={busy} onClick={() => setRevealed((previous) => ({ ...previous, [name]: !previous[name] }))}>
-              {visible ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-            </button>
-          </div>
-          {showsHint && <small id="settings-password-length" className="settings-password-hint"><CircleCheck size={15} aria-hidden="true" /> Kamida 8 ta belgi.</small>}
-        </SettingsField>;
-      })}
+    <form aria-labelledby="settings-password-title" onSubmit={(event) => void save(event)} onReset={() => { setError(''); setFormVersion(previous => previous + 1); }}>
+      <div className="welcome-register-fields" key={formVersion}>
+        {passwordFields.map(({ name, id, label, placeholder }) => <WelcomePasswordField key={name} id={id} name={name}
+          label={label} placeholder={placeholder} newPassword={name !== 'currentPassword'} hint={name === 'newPassword'}
+          icon disabled={busy} revealAfterInput />)}
+      </div>
       {error && <Notice error>{error}</Notice>}
-      <div className="settings-form-actions">
-        <button type="reset" className="button secondary" disabled={busy}>Bekor qilish</button>
-        <button type="submit" className="button primary" disabled={busy}>{busy ? 'Saqlanmoqda…' : 'Parolni yangilash'}</button>
+      <div className="welcome-register-actions">
+        <button type="reset" className="welcome-button" disabled={busy}>Bekor qilish</button>
+        <button type="submit" className="welcome-button welcome-primary" disabled={busy}>{busy ? 'Saqlanmoqda…' : 'Parolni yangilash'} <ArrowRight size={16} /></button>
       </div>
     </form>
   </section>;

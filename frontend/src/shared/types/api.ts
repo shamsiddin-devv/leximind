@@ -28,6 +28,7 @@ export type User = {
   privacy?: ProfilePrivacy;
 };
 export type SharedProfileData = {
+  appearance?: { banner: string; position: 'left' | 'center' | 'right'; height: 'low' | 'medium' | 'high'; overlay: number };
   fullName: string; avatarUrl: string | null; hasProfileBadge: boolean;
   bio?: string; socialLinks?: ProfileSocialLinks;
   level?: Level; statistics?: {

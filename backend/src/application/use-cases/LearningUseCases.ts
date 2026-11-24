@@ -27,10 +27,7 @@ export class LearningUseCases {
   profile(userId: string) {
     return this.repo.transaction((tx) => tx.profile(userId));
   }
-  updateProfile(
-    userId: string,
-    patch: Partial<ProfilePreferences>,
-  ) {
+  updateProfile(userId: string, patch: Partial<ProfilePreferences>) {
     if (patch.timezone !== undefined) validateTimezone(patch.timezone);
     if (
       patch.dailyNewWords !== undefined &&
@@ -39,14 +36,24 @@ export class LearningUseCases {
         patch.dailyNewWords > 100)
     )
       throw new BadRequestError('Invalid daily target.');
-    if (patch.dailyStudyMinutes !== undefined &&
-        (!Number.isInteger(patch.dailyStudyMinutes) || patch.dailyStudyMinutes < 5 || patch.dailyStudyMinutes > 180))
+    if (
+      patch.dailyStudyMinutes !== undefined &&
+      (!Number.isInteger(patch.dailyStudyMinutes) ||
+        patch.dailyStudyMinutes < 5 ||
+        patch.dailyStudyMinutes > 180)
+    )
       throw new BadRequestError('Invalid study duration.');
     if (patch.studyLevel != null && !CEFR_LEVELS.includes(patch.studyLevel))
       throw new BadRequestError('Invalid CEFR level.');
-    if (patch.reviewMode !== undefined && !reviewModes.includes(patch.reviewMode))
+    if (
+      patch.reviewMode !== undefined &&
+      !reviewModes.includes(patch.reviewMode)
+    )
       throw new BadRequestError('Invalid review mode.');
-    if (patch.studyReminderTime !== undefined && !studyReminderTimePattern.test(patch.studyReminderTime))
+    if (
+      patch.studyReminderTime !== undefined &&
+      !studyReminderTimePattern.test(patch.studyReminderTime)
+    )
       throw new BadRequestError('Invalid study reminder time.');
     return this.repo.transaction(async (tx) => {
       const current = await tx.profile(userId);
@@ -55,11 +62,16 @@ export class LearningUseCases {
         timezone: patch.timezone ?? current.timezone,
         dailyNewWords: patch.dailyNewWords ?? current.dailyNewWords,
         dailyStudyMinutes: patch.dailyStudyMinutes ?? current.dailyStudyMinutes,
-        studyLevel: patch.studyLevel === undefined ? current.studyLevel : patch.studyLevel,
+        studyLevel:
+          patch.studyLevel === undefined
+            ? current.studyLevel
+            : patch.studyLevel,
         reviewMode: patch.reviewMode ?? current.reviewMode,
-        studyReminderEnabled: patch.studyReminderEnabled ?? current.studyReminderEnabled,
+        studyReminderEnabled:
+          patch.studyReminderEnabled ?? current.studyReminderEnabled,
         studyReminderTime: patch.studyReminderTime ?? current.studyReminderTime,
-        autoplayPronunciation: patch.autoplayPronunciation ?? current.autoplayPronunciation,
+        autoplayPronunciation:
+          patch.autoplayPronunciation ?? current.autoplayPronunciation,
         feedbackAudioEnabled:
           patch.feedbackAudioEnabled ?? current.feedbackAudioEnabled,
       });
@@ -181,7 +193,12 @@ export class LearningUseCases {
       return session.data;
     });
   }
-  history(userId: string, page: number, limit: number, status?: SessionData['status']) {
+  history(
+    userId: string,
+    page: number,
+    limit: number,
+    status?: SessionData['status'],
+  ) {
     return this.repo.history(userId, page, limit, status);
   }
   cancel(userId: string, id: string) {

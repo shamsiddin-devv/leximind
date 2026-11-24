@@ -1,5 +1,6 @@
 import {
   integer,
+  smallint,
   pgTable,
   varchar,
   text,
@@ -18,8 +19,14 @@ import {
 import { sql } from 'drizzle-orm';
 
 import type { Gender } from '../../../domain/entities/User';
+import type { CollectionKind } from '../../../domain/repositories/ICollectionRepository';
 import type { ReviewMode } from '../../../domain/repositories/ILearningRepository';
 import type { SocialLinks } from '../../../domain/value-objects/ProfileSocialLinks';
+import type {
+  InterfaceSettings,
+  NotificationPreferences,
+  ProfileAppearance,
+} from '../../../domain/value-objects/UserUiPreferences';
 
 export const cefrLevels = pgEnum('cefr_level', [
   'A1',
@@ -55,6 +62,7 @@ export const cardState = pgEnum('card_state', [
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
+  referralCode: uuid('referral_code').defaultRandom().notNull().unique(),
   fullName: varchar('full_name', { length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
   passwordHash: text('password_hash').notNull(),
@@ -80,6 +88,21 @@ export const users = pgTable('users', {
   updatedAt: timestamp('updated_at').$onUpdate(() => new Date()),
 });
 
+export const referrals = pgTable('referrals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  referrerId: uuid('referrer_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  referredUserId: uuid('referred_user_id')
+    .unique()
+    .references(() => users.id, { onDelete: 'set null' }),
+  rewardXp: smallint('reward_xp').notNull(),
+  registeredAt: timestamp('registered_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  rewardedAt: timestamp('rewarded_at', { withTimezone: true }),
+});
+
 export const learnerProfiles = pgTable('learner_profiles', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
@@ -91,10 +114,19 @@ export const learnerProfiles = pgTable('learner_profiles', {
   streakDay: integer('streak_day').notNull(),
   dailyNewWords: integer('daily_new_words').notNull(),
   dailyStudyMinutes: integer('daily_study_minutes').notNull().default(15),
-  reviewMode: varchar('review_mode', { length: 8 }).$type<ReviewMode>().notNull().default('spaced'),
-  studyReminderEnabled: boolean('study_reminder_enabled').notNull().default(false),
-  studyReminderTime: varchar('study_reminder_time', { length: 5 }).notNull().default('19:00'),
-  autoplayPronunciation: boolean('autoplay_pronunciation').notNull().default(false),
+  reviewMode: varchar('review_mode', { length: 8 })
+    .$type<ReviewMode>()
+    .notNull()
+    .default('spaced'),
+  studyReminderEnabled: boolean('study_reminder_enabled')
+    .notNull()
+    .default(false),
+  studyReminderTime: varchar('study_reminder_time', { length: 5 })
+    .notNull()
+    .default('19:00'),
+  autoplayPronunciation: boolean('autoplay_pronunciation')
+    .notNull()
+    .default(false),
   feedbackAudioEnabled: boolean('feedback_audio_enabled')
     .notNull()
     .default(false),
@@ -135,6 +167,7 @@ export const wordSenses = pgTable('word_senses', {
 export const cards = pgTable(
   'cards',
   {
+    collectionPinned: boolean('collection_pinned'),
     id: uuid('id').defaultRandom().primaryKey(),
     userId: uuid('user_id')
       .notNull()
@@ -167,6 +200,64 @@ export const sessions = pgTable('sessions', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').$onUpdate(() => new Date()),
 });
+
+export const avatarCleanupJobs = pgTable(
+  'avatar_cleanup_jobs',
+  {
+    publicId: text('public_id').primaryKey(),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    attempts: integer('attempts').notNull().default(0),
+    leaseId: uuid('lease_id'),
+  },
+  (table) => [
+    check('avatar_cleanup_jobs_attempts_check', sql`${table.attempts} >= 0`),
+    index('avatar_cleanup_jobs_due_idx').on(
+      table.nextAttemptAt,
+      table.publicId,
+    ),
+  ],
+);
+
+export const collectionEntries = pgTable(
+  'collection_entries',
+  {
+    collectionPinned: boolean('collection_pinned'),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    id: uuid().notNull(),
+    kind: varchar({ length: 8 }).$type<CollectionKind>().notNull(),
+    text: varchar({ length: 255 }).notNull(),
+    translation: varchar({ length: 255 }).notNull(),
+    example: varchar({ length: 500 }).notNull().default(''),
+    topic: varchar({ length: 80 }).notNull().default(''),
+    progress: integer().notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.id] }),
+    index('collection_entries_user_date')
+      .on(table.userId, table.createdAt.desc(), table.id)
+      .where(sql`${table.deletedAt} IS NULL`),
+    check(
+      'collection_entries_kind_check',
+      sql`${table.kind} IN ('word', 'phrase', 'sentence')`,
+    ),
+    check(
+      'collection_entries_check',
+      sql`${table.deletedAt} IS NOT NULL OR (btrim(${table.text}) <> '' AND btrim(${table.translation}) <> '')`,
+    ),
+    check(
+      'collection_entries_progress_check',
+      sql`${table.progress} BETWEEN 0 AND 100`,
+    ),
+  ],
+);
 
 export const sessionsTasks = pgTable('session_tasks', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -247,6 +338,9 @@ export const accountActions = pgTable('account_actions', {
     .notNull()
     .defaultNow(),
   deliveryAttempts: integer('delivery_attempts').notNull().default(0),
+  otpHash: char('otp_hash', { length: 64 }),
+  otpExpiresAt: timestamp('otp_expires_at', { withTimezone: true }),
+  otpAttempts: smallint('otp_attempts').notNull().default(0),
 });
 export const rateLimits = pgTable('rate_limits', {
   key: text().primaryKey(),
@@ -286,21 +380,54 @@ export const gameMistakes = pgTable(
   (table) => [primaryKey({ columns: [table.userId, table.wordId] })],
 );
 
-export const mistakeNotebookEntries = pgTable('mistake_notebook_entries', {
-  id: uuid().defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  challengeId: uuid('challenge_id').references(() => challenges.id, { onDelete: 'set null' }),
-  questionIndex: integer('question_index').notNull(),
-  kind: text().notNull(),
-  question: jsonb().notNull(),
-  expectedAnswer: varchar('expected_answer', { length: 255 }).notNull(),
-  submittedAnswer: varchar('submitted_answer', { length: 255 }),
-  reason: text(),
-  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
-  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
-}, (table) => [
-  unique('mistake_notebook_entries_challenge_id_question_index_key').on(table.challengeId, table.questionIndex),
-  index('mistake_notebook_owner_date').on(table.userId, table.occurredAt.desc(), table.id),
-  check('mistake_notebook_entries_question_index_check', sql`${table.questionIndex} BETWEEN 0 AND 29`),
-  check('mistake_notebook_entries_reason_check', sql`${table.reason} IN ('skipped', 'typo', 'word_order', 'incomplete', 'incorrect')`),
-]);
+export const mistakeNotebookEntries = pgTable(
+  'mistake_notebook_entries',
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    challengeId: uuid('challenge_id').references(() => challenges.id, {
+      onDelete: 'set null',
+    }),
+    questionIndex: integer('question_index').notNull(),
+    kind: text().notNull(),
+    question: jsonb().notNull(),
+    expectedAnswer: varchar('expected_answer', { length: 255 }).notNull(),
+    submittedAnswer: varchar('submitted_answer', { length: 255 }),
+    reason: text(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  },
+  (table) => [
+    unique('mistake_notebook_entries_challenge_id_question_index_key').on(
+      table.challengeId,
+      table.questionIndex,
+    ),
+    index('mistake_notebook_owner_date').on(
+      table.userId,
+      table.occurredAt.desc(),
+      table.id,
+    ),
+    check(
+      'mistake_notebook_entries_question_index_check',
+      sql`${table.questionIndex} BETWEEN 0 AND 29`,
+    ),
+    check(
+      'mistake_notebook_entries_reason_check',
+      sql`${table.reason} IN ('skipped', 'typo', 'word_order', 'incomplete', 'incorrect')`,
+    ),
+  ],
+);
+
+export const userUiPreferences = pgTable('user_ui_preferences', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  appearance: jsonb('appearance').$type<ProfileAppearance>(),
+  notifications: jsonb('notifications').$type<NotificationPreferences>(),
+  interfaceSettings: jsonb('interface_settings').$type<InterfaceSettings>(),
+  bannerPublicId: text('banner_public_id'),
+});

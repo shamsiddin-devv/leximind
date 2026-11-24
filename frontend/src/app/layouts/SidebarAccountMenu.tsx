@@ -3,6 +3,8 @@ import { Check, ChevronsUpDown, LogOut, Plus, Settings2, UserRound, X } from 'lu
 import type { SessionAccount } from '../../features/auth/hooks/useSession';
 import { UserAvatar } from '../../shared/components/UserAvatar';
 import { explain } from '../../shared/services/api';
+import { useInterfaceLanguage } from '../language';
+import { routeLabel, shellCopy } from '../shellCopy';
 import { Link, routes } from '../router';
 import './SidebarAccountMenu.css';
 
@@ -26,6 +28,8 @@ export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, lo
   user: SessionAccount; access: AccountAccess; path: string; collapsed: boolean; loggingOut: boolean;
   onSelect: (event: MouseEvent<HTMLAnchorElement>, href: string) => void; onRequestLogout: () => void;
 }) {
+  const language = useInterfaceLanguage();
+  const copy = shellCopy[language];
   const trigger = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -95,7 +99,7 @@ export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, lo
     if (id === user.id) { menu.current?.hidePopover(); return; }
     setPending(true);
     try { await access.switchAccount(id); }
-    catch (failure) { setError(explain(failure, { 401: 'Bu akkaunt seansi tugagan. Uni qayta qo‘shing.' })); }
+    catch (failure) { setError(explain(failure, { 401: copy.expiredAccount })); }
     finally { setPending(false); }
   }
 
@@ -105,35 +109,35 @@ export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, lo
     const fields = new FormData(event.currentTarget);
     const email = String(fields.get('email') ?? '').trim().toLowerCase();
     if (accounts.some((account) => account.email.toLowerCase() === email)) {
-      setError('Bu akkaunt ro‘yxatda bor. Uni almashtirish bo‘limidan tanlang.');
+      setError(copy.duplicateAccount);
       return;
     }
     setError('');
     setPending(true);
     try { await access.addAccount(email, String(fields.get('password') ?? '')); }
-    catch (failure) { setError(explain(failure, { 401: 'Email yoki parol noto‘g‘ri.' })); }
+    catch (failure) { setError(explain(failure, { 401: copy.invalidCredentials })); }
     finally { setPending(false); }
   }
 
   return <div className="sidebar-account">
     <button type="button" className="sidebar-account-trigger" ref={trigger} popoverTarget="sidebar-account-menu"
-      aria-label="Yon menyudagi akkaunt boshqaruvi" title={user.fullName}>
+      aria-label={copy.accountMenu} title={user.fullName}>
       <AccountIdentity account={user} />
       <ChevronsUpDown size={15} aria-hidden="true" />
     </button>
     <div id="sidebar-account-menu" popover="auto" className="sidebar-account-menu" ref={menu}>
-      <nav className="sidebar-account-group" aria-label="Akkauntga o‘tish">
+      <nav className="sidebar-account-group" aria-label={copy.accountNavigation}>
         <Link ref={profileLink} className="sidebar-account-action" href={routes.profile} aria-keyshortcuts="Alt+Shift+P"
           aria-current={path === routes.profile ? 'page' : undefined} onClick={(event) => onSelect(event, routes.profile)}>
-          <UserRound size={16} aria-hidden="true" /><span>Profilni ko‘rish</span><kbd aria-hidden="true">⇧ Alt P</kbd>
+          <UserRound size={16} aria-hidden="true" /><span>{copy.viewProfile}</span><kbd aria-hidden="true">⇧ Alt P</kbd>
         </Link>
         <Link ref={settingsLink} className="sidebar-account-action" href={routes.settingsAccount} aria-keyshortcuts="Alt+Shift+S"
           aria-current={path === routes.settingsAccount ? 'page' : undefined} onClick={(event) => onSelect(event, routes.settingsAccount)}>
-          <Settings2 size={16} aria-hidden="true" /><span>Akkaunt sozlamalari</span><kbd aria-hidden="true">⇧ Alt S</kbd>
+          <Settings2 size={16} aria-hidden="true" /><span>{routeLabel(language, routes.settingsAccount, 'Settings')}</span><kbd aria-hidden="true">⇧ Alt S</kbd>
         </Link>
       </nav>
       <div className="sidebar-account-group sidebar-account-switch" role="group" aria-labelledby="sidebar-account-switch-title">
-        <p id="sidebar-account-switch-title">Akkauntni almashtirish</p>
+        <p id="sidebar-account-switch-title">{copy.switchAccount}</p>
         {accounts.map((account) => <button key={account.id} type="button" className="sidebar-account-choice"
           aria-current={account.id === user.id ? 'true' : undefined} disabled={pending || loggingOut}
           onClick={() => void selectAccount(account.id)}>
@@ -142,12 +146,12 @@ export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, lo
         </button>)}
         {error && !addingAccount && <p className="sidebar-account-error" role="alert">{error}</p>}
         <button type="button" className="sidebar-account-action sidebar-account-add" aria-haspopup="dialog" disabled={pending || loggingOut}
-          onClick={openAddAccount}><Plus size={17} aria-hidden="true" />Akkaunt qo‘shish</button>
+          onClick={openAddAccount}><Plus size={17} aria-hidden="true" />{copy.addAccount}</button>
       </div>
       <div className="sidebar-account-group">
         <button type="button" className="sidebar-account-action sidebar-account-signout" aria-haspopup="dialog" aria-keyshortcuts="Alt+Shift+Q"
           disabled={pending || loggingOut} onClick={requestLogout}>
-          <LogOut size={16} aria-hidden="true" /><span>{loggingOut ? 'Chiqilmoqda…' : 'Chiqish'}</span><kbd aria-hidden="true">⇧ Alt Q</kbd>
+          <LogOut size={16} aria-hidden="true" /><span>{loggingOut ? copy.signingOut : copy.signOut}</span><kbd aria-hidden="true">⇧ Alt Q</kbd>
         </button>
       </div>
     </div>
@@ -156,17 +160,17 @@ export function SidebarAccountMenu({ user, access, path, collapsed, onSelect, lo
       onClose={() => { setAddingAccount(false); setError(''); trigger.current?.focus({ preventScroll: true }); }}>
       {addingAccount && <>
         <header className="app-dialog-heading">
-          <h2 id="sidebar-account-dialog-title">Akkaunt qo‘shish</h2>
-          <button type="button" className="app-dialog-close" aria-label="Yopish" disabled={pending} onClick={() => dialog.current?.close()}><X size={16} aria-hidden="true" /></button>
+          <h2 id="sidebar-account-dialog-title">{copy.addAccount}</h2>
+          <button type="button" className="app-dialog-close" aria-label={copy.close} disabled={pending} onClick={() => dialog.current?.close()}><X size={16} aria-hidden="true" /></button>
         </header>
         <form className="app-dialog-form" onSubmit={(event) => void addAccount(event)}>
-          <p className="app-dialog-description">Boshqa LexiMind akkauntingizga kiring. Joriy seans ham shu brauzer varag‘ida saqlanadi.</p>
-          <label className="app-dialog-field">Email manzili<input type="email" name="email" autoComplete="username" required maxLength={255} disabled={pending} /></label>
-          <label className="app-dialog-field">Parol<input type="password" name="password" autoComplete="current-password" required maxLength={72} disabled={pending} /></label>
+          <p className="app-dialog-description">{copy.addAccountHint}</p>
+          <label className="app-dialog-field">{copy.email}<input type="email" name="email" autoComplete="username" required maxLength={255} disabled={pending} /></label>
+          <label className="app-dialog-field">{copy.pass}<input type="password" name="password" autoComplete="current-password" required maxLength={72} disabled={pending} /></label>
           {error && <p className="sidebar-account-error" role="alert">{error}</p>}
           <div className="app-dialog-actions">
-            <button type="button" className="app-dialog-button" disabled={pending} onClick={() => dialog.current?.close()}>Bekor qilish</button>
-            <button type="submit" className="app-dialog-button" data-tone="accent" disabled={pending}>{pending ? 'Kirilmoqda…' : 'Kirish'}</button>
+            <button type="button" className="app-dialog-button" disabled={pending} onClick={() => dialog.current?.close()}>{copy.cancel}</button>
+            <button type="submit" className="app-dialog-button" data-tone="accent" disabled={pending}>{pending ? copy.addingAccount : copy.addAccount}</button>
           </div>
         </form>
       </>}

@@ -14,7 +14,11 @@ import {
   ChallengeResult,
   QuizWord,
 } from '../../domain/entities/Challenge';
-import type { NotebookCount, NotebookEntry, NotebookMistake } from '../../domain/entities/MistakesNotebook';
+import type {
+  NotebookCount,
+  NotebookEntry,
+  NotebookMistake,
+} from '../../domain/entities/MistakesNotebook';
 const columns =
   'id,user_id AS "userId",kind,payload,answers,attempts,created_at AS "createdAt",expires_at AS "expiresAt",completed_at AS "completedAt",result';
 const notebookColumns = `id,kind,question,submitted_answer AS "submittedAnswer",
@@ -82,7 +86,10 @@ class PgChallengeTransaction implements ChallengeTransaction {
     return rows[0]?.enabled ?? false;
   }
 
-  async recordNotebookMistakes(data: ChallengeData, mistakes: readonly NotebookMistake[]) {
+  async recordNotebookMistakes(
+    data: ChallengeData,
+    mistakes: readonly NotebookMistake[],
+  ) {
     if (!mistakes.length) return;
     await this.c.query(
       `INSERT INTO mistake_notebook_entries(user_id,challenge_id,question_index,kind,question,expected_answer,submitted_answer,reason)
@@ -229,7 +236,13 @@ export class ChallengeRepository implements IChallengeRepository {
     );
     return { data, total: c.rows[0].total };
   }
-  async notebook(userId: string, page: number, limit: number, kinds: readonly ChallengeKind[] | null, onlyOpen: boolean) {
+  async notebook(
+    userId: string,
+    page: number,
+    limit: number,
+    kinds: readonly ChallengeKind[] | null,
+    onlyOpen: boolean,
+  ) {
     const [entries, counts] = await Promise.all([
       this.pool.query<NotebookEntry>(
         `SELECT ${notebookColumns} FROM mistake_notebook_entries

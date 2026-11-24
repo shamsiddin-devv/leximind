@@ -12,6 +12,8 @@ import { UserModule } from './presentation/modules/user/User.module';
 import { WordModule } from './presentation/modules/word/word.module';
 import { CardModule } from './presentation/modules/card/card.module';
 import { LearningModule } from './presentation/modules/learning/learning.module';
+import { NotificationsModule } from './presentation/modules/notifications/notifications.module';
+import { NotificationDeliveryModule } from './presentation/modules/notifications/notification-delivery.module';
 import { DomainExceptionFilter } from './presentation/filters/DomainExceptionFilter';
 import { AuthGuard } from './presentation/security';
 import { HealthController } from './presentation/health.controller';
@@ -38,6 +40,8 @@ import {
     WordModule,
     CardModule,
     LearningModule,
+    NotificationsModule,
+    NotificationDeliveryModule,
   ],
   controllers: [HealthController, OperationsController],
   providers: [

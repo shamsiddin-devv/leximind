@@ -1,14 +1,23 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, count, eq, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { IUserRepository } from '../../domain/repositories/IUserRepository';
+import type {
+  InitialLearningPreferences,
+  IUserRepository,
+} from '../../domain/repositories/IUserRepository';
 import { User } from '../../domain/entities/User';
+import { referralRewardXp } from '../../domain/repositories/IReferralRepository';
 import { Email } from '../../domain/value-objects/Email';
 import { socialPlatforms } from '../../domain/value-objects/ProfileSocialLinks';
 import { NotFoundError } from '../../domain/errors/NotFoundError';
+import { UnavailableError } from '../../domain/errors/UnavailableError';
 import { DRIZZLE } from '../db/drizzle/drizzle.provider';
 import { relations } from '../db/drizzle/drizzle.relations';
-import { users, learnerProfiles } from '../db/drizzle/drizzle.schema';
+import {
+  avatarCleanupJobs,
+  learnerProfiles,
+  users,
+} from '../db/drizzle/drizzle.schema';
 @Injectable()
 export class DrizzleUserRepository implements IUserRepository {
   constructor(
@@ -47,7 +56,12 @@ export class DrizzleUserRepository implements IUserRepository {
       limit,
     };
   }
-  async create(data: User, passwordHash: string) {
+  async create(
+    data: User,
+    passwordHash: string,
+    preferences?: InitialLearningPreferences,
+    referralCode?: string,
+  ) {
     return this.db.transaction(async (tx) => {
       const [r] = await tx
         .insert(users)
@@ -62,9 +76,19 @@ export class DrizzleUserRepository implements IUserRepository {
         level: 'A1',
         timezone: 'UTC',
         streakDay: 0,
-        dailyNewWords: 10,
+        dailyNewWords: preferences?.dailyNewWords ?? 10,
+        dailyStudyMinutes: preferences?.dailyStudyMinutes,
+        studyLevel: preferences?.studyLevel,
         xpMultiplier: 1,
       });
+      if (referralCode) {
+        await tx.execute(sql`
+          INSERT INTO referrals (referrer_id, referred_user_id, reward_xp)
+          SELECT id, ${r.id}, ${referralRewardXp}
+          FROM users WHERE referral_code=${referralCode} AND id<>${r.id}
+          FOR KEY SHARE
+        `);
+      }
       return this.toDomain(r);
     });
   }
@@ -87,7 +111,10 @@ export class DrizzleUserRepository implements IUserRepository {
       return true;
     });
   }
-  edit(id: string, change: (current: User, passwordHash: string) => void | Promise<void>) {
+  edit(
+    id: string,
+    change: (current: User, passwordHash: string) => void | Promise<void>,
+  ) {
     return this.db.transaction(async (tx) => {
       const [row] = await tx
         .select()
@@ -98,6 +125,8 @@ export class DrizzleUserRepository implements IUserRepository {
       const user = this.toDomain(row);
       await change(user, row.passwordHash);
       const emailChanged = row.email !== user.email.toString();
+      const avatarPublicId = user.avatar?.publicId ?? null;
+      const avatarChanged = row.avatarPublicId !== avatarPublicId;
       const privacy = user.privacy;
       const socialLinks = user.socialLinks;
       if (
@@ -110,16 +139,38 @@ export class DrizzleUserRepository implements IUserRepository {
         row.location === user.location &&
         row.gender === user.gender &&
         row.phoneNumber === user.phoneNumber &&
-        socialPlatforms.every((key) => row.socialLinks[key] === socialLinks[key]) &&
+        socialPlatforms.every(
+          (key) => row.socialLinks[key] === socialLinks[key],
+        ) &&
         row.profilePublic === privacy.profilePublic &&
         row.profileSharing === privacy.profileSharing &&
         row.publicStatistics === privacy.publicStatistics &&
         row.publicCefr === privacy.publicCefr &&
         row.publicBio === privacy.publicBio &&
         row.publicSocialLinks === privacy.publicSocialLinks &&
-        row.avatarPublicId === (user.avatar?.publicId ?? null)
+        !avatarChanged
       )
         return user;
+      if (avatarChanged && avatarPublicId) {
+        const [reservation] = await tx
+          .delete(avatarCleanupJobs)
+          .where(
+            and(
+              eq(avatarCleanupJobs.publicId, avatarPublicId),
+              eq(avatarCleanupJobs.attempts, 0),
+            ),
+          )
+          .returning({ publicId: avatarCleanupJobs.publicId });
+        if (!reservation) {
+          throw new UnavailableError('Avatar upload could not be finalized.');
+        }
+      }
+      if (avatarChanged && row.avatarPublicId) {
+        await tx
+          .insert(avatarCleanupJobs)
+          .values({ publicId: row.avatarPublicId })
+          .onConflictDoNothing();
+      }
       const [updated] = await tx
         .update(users)
         .set({
@@ -136,7 +187,7 @@ export class DrizzleUserRepository implements IUserRepository {
           socialLinks,
           ...privacy,
           avatarUrl: user.avatar?.url ?? null,
-          avatarPublicId: user.avatar?.publicId ?? null,
+          avatarPublicId,
         })
         .where(eq(users.id, id))
         .returning();
@@ -149,11 +200,19 @@ export class DrizzleUserRepository implements IUserRepository {
     });
   }
   async delete(id: string, expectedHash: string) {
-    const [deleted] = await this.db
-      .delete(users)
-      .where(and(eq(users.id, id), eq(users.passwordHash, expectedHash)))
-      .returning({ avatarPublicId: users.avatarPublicId });
-    return deleted ?? null;
+    return this.db.transaction(async (tx) => {
+      const [deleted] = await tx
+        .delete(users)
+        .where(and(eq(users.id, id), eq(users.passwordHash, expectedHash)))
+        .returning({ avatarPublicId: users.avatarPublicId });
+      if (deleted?.avatarPublicId) {
+        await tx
+          .insert(avatarCleanupJobs)
+          .values({ publicId: deleted.avatarPublicId })
+          .onConflictDoNothing();
+      }
+      return Boolean(deleted);
+    });
   }
   private toDomain(r: typeof users.$inferSelect) {
     return new User({

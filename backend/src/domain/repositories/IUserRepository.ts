@@ -1,4 +1,11 @@
 import { User } from '../entities/User';
+import type { CefrLevel } from '../entities/Word';
+
+export interface InitialLearningPreferences {
+  studyLevel?: CefrLevel;
+  dailyStudyMinutes?: number;
+  dailyNewWords?: number;
+}
 
 export interface IUserRepository {
   findById(id: string): Promise<User | null>;
@@ -13,10 +20,15 @@ export interface IUserRepository {
     hashPassword: string,
     expectedHash: string,
   ): Promise<boolean>;
-  create(data: User, passwordHash: string): Promise<User>;
+  create(
+    data: User,
+    passwordHash: string,
+    preferences?: InitialLearningPreferences,
+    referralCode?: string,
+  ): Promise<User>;
   edit(
     id: string,
     change: (current: User, passwordHash: string) => void | Promise<void>,
   ): Promise<User>;
-  delete(id: string, expectedHash: string): Promise<{ avatarPublicId: string | null } | null>;
+  delete(id: string, expectedHash: string): Promise<boolean>;
 }

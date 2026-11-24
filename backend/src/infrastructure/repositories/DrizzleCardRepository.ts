@@ -97,9 +97,9 @@ export class DrizzleCardRepository implements ICardRepository {
         SELECT c.id, w.text, w.topic, c.created_at AS "createdAt",
           coalesce(s.translation_uz, '') AS translation,
           coalesce(s.example_sentence, '') AS example,
-          r.progress, c.state = 'REVIEW' AS mastered
+          r.progress, c.state = 'REVIEW' AS mastered, coalesce(c.collection_pinned, false) AS pinned
         FROM (
-          SELECT id, word_id, created_at, state FROM cards
+          SELECT id, word_id, created_at, state, collection_pinned FROM cards
           WHERE user_id = ${userId}
           ORDER BY created_at DESC, id
           LIMIT ${limit} OFFSET ${(page - 1) * limit}
@@ -114,7 +114,10 @@ export class DrizzleCardRepository implements ICardRepository {
         ) r
         ORDER BY c.created_at DESC, c.id
       `),
-      this.db.select({ total: count() }).from(cards).where(eq(cards.userId, userId)),
+      this.db
+        .select({ total: count() })
+        .from(cards)
+        .where(eq(cards.userId, userId)),
     ]);
     return { data: result.rows, total: counts[0].total };
   }

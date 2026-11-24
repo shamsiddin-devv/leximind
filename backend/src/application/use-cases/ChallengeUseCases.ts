@@ -10,11 +10,17 @@ import {
 } from '../../domain/entities/Challenge';
 import { NotFoundError } from '../../domain/errors/NotFoundError';
 import {
-  AnswerFeedback,
+  chooseRoundSound,
   chooseSound,
   gradeAnswer,
+  type SoundId,
 } from '../../domain/entities/GameFeedback';
-import { notebookCategories, notebookCategory, notebookKinds, type NotebookCategory } from '../../domain/entities/MistakesNotebook';
+import {
+  notebookCategories,
+  notebookCategory,
+  notebookKinds,
+  type NotebookCategory,
+} from '../../domain/entities/MistakesNotebook';
 export class ChallengeUseCases {
   constructor(
     private readonly repo: IChallengeRepository,
@@ -72,14 +78,20 @@ export class ChallengeUseCases {
       await tx.finish(data, result);
       const feedback = result.feedback ?? [];
       if (notebookCategory(data.kind)) {
-        await tx.recordNotebookMistakes(data, feedback.flatMap((item, index) =>
-          !item.correct && data.payload.questions?.[index] ? [{ index, answer: answers[index], reason: item.mistake }] : []));
+        await tx.recordNotebookMistakes(
+          data,
+          feedback.flatMap((item, index) =>
+            !item.correct && data.payload.questions?.[index]
+              ? [{ index, answer: answers[index], reason: item.mistake }]
+              : [],
+          ),
+        );
       }
-      const firstMistake = feedback.findIndex((item) => !item.correct);
-      const index = firstMistake >= 0 ? firstMistake : 0;
       const sound =
-        feedback[index] && (await tx.audioEnabled(userId))
-          ? this.sound(feedback[index], index, data.kind === 'mistake_words')
+        data.kind !== 'assessment' && (await tx.audioEnabled(userId))
+          ? this.sound(
+              chooseRoundSound(data.kind, feedback, this.soundSeed(data.id)),
+            )
           : undefined;
       return { ...result, sound };
     });
@@ -97,13 +109,25 @@ export class ChallengeUseCases {
       if (!replayed) {
         if (result) await tx.finish(data, result);
         else await tx.saveAttempts(data);
-        if (!feedback.correct && notebookCategory(data.kind) && data.payload.questions?.[index]) {
-          await tx.recordNotebookMistakes(data, [{ index, answer, reason: feedback.mistake }]);
+        if (
+          !feedback.correct &&
+          notebookCategory(data.kind) &&
+          data.payload.questions?.[index]
+        ) {
+          await tx.recordNotebookMistakes(data, [
+            { index, answer, reason: feedback.mistake },
+          ]);
         }
       }
       const sound =
         !replayed && (await tx.audioEnabled(userId))
-          ? this.sound(feedback, index, data.kind === 'mistake_words')
+          ? this.sound(
+              chooseSound(
+                data.kind,
+                data.attempts ?? [],
+                this.soundSeed(data.id),
+              ),
+            )
           : undefined;
       return {
         index,
@@ -116,27 +140,57 @@ export class ChallengeUseCases {
     });
   }
 
-  private sound(feedback: AnswerFeedback, index: number, recovery: boolean) {
-    const id = chooseSound(feedback, index, recovery);
-    return { id, url: '/api/feedback-audio/' + id + '.wav?v=4' };
+  private soundSeed(roundId: string) {
+    return Number.parseInt(roundId.slice(-8), 16);
+  }
+
+  private sound(id: SoundId | undefined) {
+    return id
+      ? { id, url: '/api/feedback-audio/' + id + '.wav?v=4' }
+      : undefined;
   }
   history(userId: string, assessment: boolean, page: number, limit: number) {
     return this.repo.history(userId, assessment, page, limit);
   }
-  async notebook(userId: string, page: number, limit: number, category: NotebookCategory | undefined, onlyOpen: boolean) {
-    const { entries, counts } = await this.repo.notebook(userId, page, limit, category ? notebookKinds[category] : null, onlyOpen);
+  async notebook(
+    userId: string,
+    page: number,
+    limit: number,
+    category: NotebookCategory | undefined,
+    onlyOpen: boolean,
+  ) {
+    const { entries, counts } = await this.repo.notebook(
+      userId,
+      page,
+      limit,
+      category ? notebookKinds[category] : null,
+      onlyOpen,
+    );
     const summary = notebookCategories.map((key) => {
-      const byCategory = counts.filter((count) => notebookCategory(count.kind) === key);
+      const byCategory = counts.filter(
+        (count) => notebookCategory(count.kind) === key,
+      );
       return {
         category: key,
         total: byCategory.reduce((total, count) => total + count.total, 0),
-        resolved: byCategory.reduce((total, count) => total + count.resolved, 0),
+        resolved: byCategory.reduce(
+          (total, count) => total + count.resolved,
+          0,
+        ),
       };
     });
-    const matching = category ? summary.filter((item) => item.category === category) : summary;
+    const matching = category
+      ? summary.filter((item) => item.category === category)
+      : summary;
     return {
-      data: entries.map((entry) => ({ ...entry, category: notebookCategory(entry.kind) })),
-      total: matching.reduce((total, count) => total + count.total - (onlyOpen ? count.resolved : 0), 0),
+      data: entries.map((entry) => ({
+        ...entry,
+        category: notebookCategory(entry.kind),
+      })),
+      total: matching.reduce(
+        (total, count) => total + count.total - (onlyOpen ? count.resolved : 0),
+        0,
+      ),
       summary,
     };
   }
@@ -148,8 +202,16 @@ export class ChallengeUseCases {
   async practiceNotebook(userId: string, id: string, answer: string) {
     const entry = await this.repo.notebookEntry(userId, id);
     if (!entry) throw new NotFoundError('Mistake not found.');
-    const feedback = gradeAnswer(answer, entry.expectedAnswer, entry.question.input);
-    if (!feedback.correct) return { correct: false, resolvedAt: entry.resolvedAt };
-    return { correct: true, ...await this.setNotebookResolved(userId, id, true) };
+    const feedback = gradeAnswer(
+      answer,
+      entry.expectedAnswer,
+      entry.question.input,
+    );
+    if (!feedback.correct)
+      return { correct: false, resolvedAt: entry.resolvedAt };
+    return {
+      correct: true,
+      ...(await this.setNotebookResolved(userId, id, true)),
+    };
   }
 }

@@ -20,10 +20,7 @@ export class AccountEmailWorker implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    if (
-      !this.config.get('EMAIL_API_KEY') ||
-      this.config.get('NODE_ENV') === 'test'
-    )
+    if (!this.mail.isConfigured() || this.config.get('NODE_ENV') === 'test')
       return;
     this.timer = setInterval(() => void this.flush(), 5000);
     this.timer.unref();

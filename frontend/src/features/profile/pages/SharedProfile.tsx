@@ -153,7 +153,7 @@ function ProfileDetails({ id, profile, rank }: { id: string; profile: SharedProf
 
   return <>
     <div className="shared-profile-panel shared-profile-hero">
-      <ProfileCover appearance={defaultProfileAppearance}
+      <ProfileCover appearance={{ ...defaultProfileAppearance, ...profile.appearance }}
         user={{ fullName: profile.fullName, hasProfileBadge: profile.hasProfileBadge, bio: profile.bio, socialLinks: profile.socialLinks }}
         level={profile.level}
         avatar={<UserAvatar className="profile-avatar" name={profile.fullName} url={profile.avatarUrl} />}

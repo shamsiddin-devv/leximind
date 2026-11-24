@@ -1,7 +1,5 @@
 @media (prefers-reduced-motion: no-preference) {
   .screen { animation: appear .29s var(--ease) both; }
-  .wave { animation: wave .75s .23s var(--ease) both; }
-  .hero-image { animation: book-in .7s .08s var(--ease) both; }
   .activity-tile, .button { transition: transform .19s var(--ease), border-color .19s, box-shadow .19s, background-color .19s; }
   .activity-tile:hover { transform: translateY(-3px); }
   .activity-tile:active, .primary:active:not(:disabled), .sign-in:active:not(:disabled), .white:active:not(:disabled) { transform: translateY(2px); }
@@ -14,22 +12,11 @@
   .goal-ring, progress::-webkit-progress-value { transition: none; }
 }
 @keyframes appear { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes book-in { from { opacity: 0; transform: translate(8px, 9px) rotate(-3deg); } to { opacity: 1; transform: none; } }
 @keyframes pop { from { opacity: 0; transform: scale(.72) rotate(-8deg); } to { opacity: 1; transform: none; } }
-@keyframes wave { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(16deg); } 60% { transform: rotate(-11deg); } }
 
 @media (max-width: 1000px) {
   .container { width: calc(100% - 48px); }
-  .dashboard-grid { grid-template-columns: minmax(0, 1fr) minmax(245px, 278px); gap: 17px; }
-  .hero { padding-inline: 25px; }
-  .hero-image { width: 54%; inset-inline-end: -2%; }
   .all-games { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 800px) {
-  .dashboard-grid { grid-template-columns: minmax(0, 1fr); }
-  .rail { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px; }
-  .rail .word-panel { grid-column: 1 / -1; }
-  .hero { min-height: 312px; }
 }
 @media (max-width: 600px) {
   .container { width: calc(100% - 28px); }
@@ -42,37 +29,17 @@
   .header-actions { gap: 6px; }
   .header-actions .icon-button, .header-actions .avatar { width: 38px; height: 38px; }
   .sign-in { min-height: 37px; padding: 6px 10px; font-size: .82rem; }
-  .dashboard, .inner-screen { padding-block: 24px 33px; }
-  .welcome { margin-block-end: 17px; align-items: start; gap: 8px; }
-  .welcome h1 { font-size: clamp(1.8rem, 7vw, 2.22rem); overflow-wrap: anywhere; }
-  .welcome p { font-size: .84rem; margin-block-start: 5px; }
-  .date-pill { font-size: .7rem; padding: 7px; gap: 4px; margin-block-start: 4px; }
-  .date-pill svg { width: 12px; }
-  .hero { padding: 20px 16px 24px; min-height: 300px; border-radius: 19px; }
-  .hero-content { max-width: 70%; }
-  .hero-image { width: 48%; top: 32%; inset-inline-end: -4%; }
-  .hero-orbit { width: 240px; top: 41%; right: -25%; }
-  .hero-label { font-size: .61rem; padding: 5px 6px; letter-spacing: .08em; }
-  .hero h2 { font-size: clamp(2rem, 8vw, 2.65rem); }
-  .hero p { max-width: 25ch; font-size: .82rem; }
-  .hero-button { font-size: .79rem; gap: 6px; padding-inline: 11px; }
-  .hero-button svg:last-child { margin-inline-start: 1px; }
+  .inner-screen { padding-block: 24px 33px; }
   .quick-section { margin-block-start: 20px; }
   .section-heading h2 { font-size: 1.1rem; }
   .text-link { font-size: .75rem; }
   .activity-grid, .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .quick-grid > :last-child { grid-column: 1 / -1; min-height: 129px; }
   .activity-tile { padding: 12px; min-height: 147px; }
-  .rail { grid-template-columns: minmax(0, 1fr); }
   .catalog-word { padding: 12px; }
   .catalog-word h2 { font-size: 1.16rem; }
   .catalog-word .button { font-size: .75rem; padding-inline: 8px; }
   .practice-screen { padding-block-start: 22px; }
   .choices { grid-template-columns: minmax(0, 1fr); }
   .question-card { gap: 12px; }
-}
-@media (max-width: 365px) {
-  .date-pill { display: none; }
-  .hero-content { max-width: 75%; }
-  .hero-image { inset-inline-end: -6%; }
 }

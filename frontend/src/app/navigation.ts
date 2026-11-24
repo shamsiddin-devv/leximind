@@ -1,6 +1,6 @@
 import {
   BarChart3, Bell, BookOpen, CalendarDays, ClipboardList, Compass, Crown, FolderHeart, Gamepad2,
-  House, KeyRound, Layers3, NotebookPen, Palette, PanelsTopLeft, RotateCcw, Settings2, ShieldCheck, Trophy, UserRound, type LucideIcon,
+  House, KeyRound, Layers3, NotebookPen, Palette, PanelsTopLeft, RotateCcw, Send, Settings2, ShieldCheck, Trophy, UserRound, type LucideIcon,
 } from 'lucide-react';
 import { routes } from './router';
 
@@ -57,6 +57,7 @@ export const navigation: NavigationGroup[] = [
     icon: FolderHeart,
     items: [
       { href: routes.collections, label: 'My Collections', icon: FolderHeart },
+      { href: routes.referrals, label: 'Invitations', icon: Send },
       { href: routes.mistakes, label: 'Mistakes Notebook', icon: NotebookPen },
     ],
   },

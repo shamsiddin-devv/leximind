@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: leximind-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    autoDeployTrigger: 'off'
+    buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
+    startCommand: npm run db:migrate && npm run db:seed:vocabulary && npm run start:prod
+    healthCheckPath: /api/health/ready
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: NODE_ENV
+        value: production
+      - key: DB_POOL_MAX
+        value: '4'
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ACCOUNT_ACTION_URL
+        sync: false
+      - key: ACCOUNT_EMAIL_KEY
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_FROM_EMAIL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+  - type: web
+    name: leximind-web
+    runtime: static
+    rootDir: frontend
+    autoDeployTrigger: 'off'
+    buildCommand: npm ci --include=dev && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      - key: VITE_API_BASE_URL
+        sync: false

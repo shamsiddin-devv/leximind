@@ -77,7 +77,13 @@ export class LearningController {
   @Get('mistakes-notebook')
   @Header('Cache-Control', 'no-store')
   notebook(@CurrentUser() u: Identity, @Query() query: MistakesNotebookDto) {
-    return this.challenges.notebook(u.id, query.page, query.limit, query.category, query.onlyOpen === 'true');
+    return this.challenges.notebook(
+      u.id,
+      query.page,
+      query.limit,
+      query.category,
+      query.onlyOpen === 'true',
+    );
   }
   @Patch('mistakes-notebook/:id')
   resolveMistake(

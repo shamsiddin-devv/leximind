@@ -45,12 +45,13 @@ export function PrivacySettings({ user, token, onUserChange, onDeleted }: Verifi
     setExporting(true);
     setExportError('');
     try {
-      const [account, learning] = await Promise.all([
+      const [account, learning, uiPreferences] = await Promise.all([
         api<User>('/users/me', { token }),
         api<Profile>('/profile', { token }),
+        api('/users/me/ui-preferences', { token }),
       ]);
       const { privacy, ...profile } = account;
-      const download = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), profile, privacy, learning }, null, 2)], { type: 'application/json' });
+      const download = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), profile, privacy, learning, uiPreferences }, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(download);
       const anchor = document.createElement('a');
       anchor.href = url;

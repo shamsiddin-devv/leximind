@@ -4,7 +4,7 @@ NestJS API for vocabulary learning, FSRS spaced repetition, learner profiles, pl
 
 ## Local setup
 
-1. Run `npm ci`.
+1. Run `npm ci` in `backend/`. For the web application, run `npm ci` and `npm run dev` in `frontend/`.
 2. Copy `.env.example` to `.env` **only for a new installation**. Keep an existing `.env` and set `DATABASE_URL` to the intended PostgreSQL database.
 3. Run `npm run db:migrate` against an empty database.
 4. Run `npm run start:dev`. The API prefix is `/api`; interactive documentation is at `/api/docs`, with OpenAPI JSON at `/api/docs-json` in development/test.
@@ -37,7 +37,7 @@ All routes below use `/api`. Authentication is required except registration, log
 | Authentication | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout` | Register, issue a session, revoke the current session |
 | Account | `GET/PATCH/DELETE /users/me`, `PATCH /users/me/password` | Own account; password changes revoke all sessions |
 | Administration | `GET /users`, `GET /users/:id` | Admin only, paginated user list |
-| Vocabulary | `GET /words`, `GET /words/:id` | Search, CEFR filter and pagination |
+| Vocabulary | `GET /words`, `GET /words/:id`, `GET /words/daily` | Search, CEFR filter, pagination and a catalog word selected for the current UTC day |
 | Catalog management | `POST /words`, `POST /words/bulk`, `PUT/DELETE /words/:id` | Admin only; words and senses saved atomically |
 | Word senses | `GET/POST /words/:wordId/senses`, `GET/PUT/DELETE /words/:wordId/senses/:id` | Admin writes; edits preserve the sense ID and each word keeps at least one sense |
 | Cards | `GET/POST /cards`, `POST /cards/bulk`, `GET /cards/due`, `GET/PATCH/DELETE /cards/:id` | Owner scoped; PATCH accepts `{"paused":true}` or `{"paused":false}` |
@@ -51,6 +51,22 @@ All routes below use `/api`. Authentication is required except registration, log
 | Feedback audio | `GET /feedback-audio/:file` | Public, cacheable PCM cues selected by the server for learners who enable them |
 | Stored results | `GET /assessment-results`, `GET /assessment-results/:id`, `GET /game-scores`, `GET /game-scores/:id` | Owner-only views of stored results, including records created before the challenge workflow |
 | Study plan | `GET /study-plan` | Today's actionable queue, next seven local calendar days, and difficult words |
+| Takliflar | `GET /referrals`, `POST /auth/register` dagi `referralCode` | Shaxsiy taklif havolasi, tasdiqlanish holati va bonus XP |
+| Bildirishnomalar | `GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all` | Akkaunt bo‘yicha tarix va o‘qilmaganlar soni |
+| Yetkazish | `GET /notifications/delivery`, `POST /notifications/push-subscriptions`, `DELETE /notifications/push-subscriptions/:id` | Kanal holati va joriy sessiyaga biriktirilgan brauzer obunalari |
+
+### Taklif orqali qo‘shilish
+
+Takliflar sahifasidagi havola yangi foydalanuvchini `/register?ref=…` manziliga olib boradi. Havola bilan yaratilgan akkaunt emailini tasdiqlaganda, taklif egasiga bir marta 50 XP yoziladi. Mukofot o‘quv statistikasi, taqvim va reytingga qo‘shiladi. Sahifada taklif oluvchilarning shaxsiy ma’lumotlari berilmaydi. `026_referrals.sql` mavjud akkauntlarga taklif kodi beradi. Avval hisoblangan do‘stlik XP’lari umumiy natijalarda saqlanadi.
+
+### Bildirishnomalarni ishga tushirish
+
+Backend katalogida `npm run db:migrate` buyrug‘ini bajaring. `021–024` migratsiyalari xabarlar tarixi, rejalashtirish, push obunalari, yetkazish navbati, interfeys sozlamalari va yangiliklarni qayta e’lon qilishdan himoyani qo‘shadi. Kunlik mashq va seriya uchun foydalanuvchining vaqt mintaqasi ishlatiladi.
+
+- Ilova ichidagi bildirishnomalar backend ishlaganda avtomatik hosil bo‘ladi. Yangilik e’lon qilish tartibi [operator yo‘riqnomasida](backend/docs/NEWS.md).
+- Web Push uchun serverdagi `NOTIFICATION_DELIVERY_ENABLED=true`, `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY` va `VAPID_PRIVATE_KEY` kerak. Frontend HTTPS orqali ishlashi, foydalanuvchi esa kanalda va qurilmasida bildirishnomaga ruxsat berishi kerak.
+- O‘quv xatlari tasdiqlangan emailga yuboriladi. `EMAIL_API_KEY`, `EMAIL_FROM`, `ACCOUNT_ACTION_URL` va `ACCOUNT_EMAIL_KEY`ni birga sozlang. Resend jo‘natuvchi domeni tasdiqlangan bo‘lishi kerak.
+- Stagingda haqiqiy push obunasi, tasdiqlangan sinov emaili, qayta urinishlar va navbat holatini tekshiring. Mahalliy avtomatik test transport javoblarini simulyatsiya qiladi.
 
 Pagination uses `page` (default 1) and `limit` (default 20, max 100). Cards also accept `pageSize`. Card ownership is always derived from authentication; passing a `userId` is rejected. Word search accepts `search`, `cefrLevel` and repeated `excludeIds` parameters. List ordering is deterministic. Card and word lists include total counts and total pages; histories return `data` and `total`.
 
@@ -121,9 +137,12 @@ Ovoz profil sozlamasida sukut bo‘yicha o‘chiq. `PATCH /api/profile` orqali `
 | So‘z yoki ketma-ketlik tartibi xato | `shocked`, `black-suit-spider-man` | Shocked sound va Black Suit Spider-Man |
 | Chala gap | `alert`, `galaxy` | Metal Gear alert va Galaxy |
 | Savol tashlab ketildi | `huh-cat`, `hub-intro-sound` | HUH? Cat va Hub Intro Sound |
-| Boshqa noto‘g‘ri javob | `faah`, `chicken-on-tree-screaming` | FAAAH va Chicken on Tree Screaming |
-| To‘g‘ri javob | `encourage` | Du bist gut genug |
-| Xato so‘z qayta to‘g‘ri topildi | `romanceeeeeeeeeeeeee` | Romance |
+| Noto‘g‘ri tarjima | `faah`, `bruh`, `shocked` | FAAAH, BRUH yoki Shocked sound |
+| Diktantda noto‘g‘ri so‘z | `huh-cat`, `alert`, `dexter` | HUH? Cat, Metal Gear alert yoki Dexter |
+| Ketma-ket xatolar | Xatoga mos kengaytirilgan guruh | Masalan, ketma-ket imlo xatosida Metal Gear alert ham ishlatiladi |
+| To‘g‘ri javob | `encourage`, `romanceeeeeeeeeeeeee` | Du bist gut genug yoki Romance |
+
+Raundlar ovozlarni guruhning turli joyidan boshlab aylantiradi. Ketma-ket ikki javobda bir xil klip yangramaydi. Xotira raundida bitta yakuniy ovoz ijro etiladi. Unda tartib xatosi, chala javob va raundni o‘tkazib yuborish alohida hisobga olinadi.
 
 O‘yin ovozlarining nomi, ma’lum manbasi yoki import qilingan MP3 nomi, davomiyligi va o‘lchangan peak qiymati `assets/feedback-audio/sources.json` faylida.
 
@@ -131,11 +150,39 @@ O‘yin ovozlarining nomi, ma’lum manbasi yoki import qilingan MP3 nomi, davom
 
 Testlar format, amplituda, HTTP orqali yuklash va range javoblarini tekshiradi. Yangi URL versiyasi eskirgan keshdan foydalanishning oldini oladi. Siqilgan manbada oldindan mavjud buzilishlar to‘liq tiklanishi kafolatlanmaydi.
 
+### Media saqlovi
+
+To‘qqizta tayyor bannerning gorizontal va vertikal WebP nusxalari frontendning `public` katalogida turadi. Galereya kichik nusxalarni kerak bo‘lganda yuklaydi. Avval saqlangan banner tanlovlari o‘z identifikatorlari orqali ochiladi.
+
+O‘yin ovozlarini tashqi CDN’dan uzatish uchun frontend build muhitida `VITE_FEEDBACK_AUDIO_BASE_URL=https://assets.example.com/feedback-audio/` qiymatini bering. Foydalanish va qayta tarqatish huquqi tasdiqlangan WAV fayllarni serverdagi nomlari bilan shu yo‘lga joylashtiring. Cloudflare R2 Standard’da public bucket uchun production domenini ulang va obyektlarga `Content-Type: audio/wav` hamda kesh sarlavhasini bering. CDN ishlamasa yoki sozlanmagan bo‘lsa, frontend mavjud LexiMind API manzilidan ovozni oladi. [R2 bepul kvotasi](https://developers.cloudflare.com/r2/pricing/) · [Public bucket va domen](https://developers.cloudflare.com/r2/buckets/public-buckets/)
+
 Xato navbati tugallangan o‘yinlarning so‘zli savollaridan to‘ldiriladi. O‘quvchi `mistake_words` mashqida so‘zni to‘g‘ri topganda u navbatdan chiqadi. Parallel raundda undan keyin yuz bergan xato saqlanadi. Lug‘atda mos misol gap yoki talaffuz yozuvi bo‘lmasa, tegishli rejim `409` qaytaradi.
 
 ### Easy Vocabulary bilan solishtirish
 
 [Inglizcha o‘yinlar menyusi](https://easy-vocabulary.com/game/games.html?lang=en) mashqlarni daraja va mavzularga ajratadi. Ochiq katalogda rasm tanlash, juftlik topish, so‘z qidirish, fe’l zamonlari va talaffuzga taqlid mashqlari ham bor. LexiMind’ning diktanti so‘z talaffuzidan foydalanadi. Gap diktanti uchun har bir misol gapga alohida audio manzili kerak bo‘ladi. So‘z tanlashda keyingi foydali o‘zgarish mavzu va CEFR darajasi bo‘yicha filtrlashdir.
+
+## Render orqali joylash
+
+[`render.yaml`](render.yaml) Frankfurt mintaqasida bepul Node.js backend va React uchun Render Static Site yaratadi. Frontenddagi `/register`, `/account-action` va taklif havolalari uchun SPA yo‘naltirishi sozlangan. Deploy qo‘lda boshlanadi. [Render Blueprint](https://render.com/docs/blueprint-spec)
+
+1. LexiMind uchun alohida cloud PostgreSQL bazasini yarating. Masalan, Neon Free bazasiga 1 GB beriladi. Render Free PostgreSQL 30 kunlik. Mavjud mahalliy foydalanuvchilarni bu bazaga ko‘chirish talab qilinmaydi. [Neon Free](https://neon.com/blog/neon-free-plan-1-gb-per-project) · [Render Free](https://render.com/docs/free)
+2. Backendga yangi bazaning PostgreSQL TLS ulanishini `DATABASE_URL` orqali bering. `CORS_ORIGINS` qiymati frontendning HTTPS origin’i, `ACCOUNT_ACTION_URL` esa shu manzilning `/account-action` sahifasi bo‘ladi. Backend ishga tushishda migratsiyalar va boshlang‘ich lug‘at seed’ini bajaradi.
+3. Brevo’da yuboruvchini tasdiqlang va `BREVO_API_KEY`, `BREVO_FROM_EMAIL` qiymatlarini Render’ning backend muhitiga kiriting. `ACCOUNT_EMAIL_KEY` uchun `node -p "require('node:crypto').randomBytes(32).toString('hex')"` bilan yangi qiymat yarating. Render Free Gmail SMTP portlarini bloklaydi. Brevo va Resend HTTPS API’lari orqali OTP yuborish mumkin. [Brevo yuborish qo‘llanmasi](https://developers.brevo.com/docs/send-a-transactional-email)
+4. `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` va `CLOUDINARY_API_SECRET` faqat backendga beriladi. Frontendga `VITE_API_BASE_URL` qiymati sifatida backendning HTTPS manzilini `/api` bilan bering.
+5. Kengaytirilgan lug‘at importini quyidagi buyruq bilan cloud bazasiga bir marta bajaring. Ochiq URL’da API readiness, `/register?ref=…`, OTP va media yuklanishini tekshiring. Render Free bekor turganda uxlaydi. Fon vazifalari servis ishlayotgan vaqtda bajariladi. [Render Free](https://render.com/docs/free)
+
+### Kengaytirilgan inglizcha lug‘at
+
+Import manbalari [Princeton WordNet 3.0 arxivi](https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/corpora/wordnet.zip), [UzWordnet 1.0](https://raw.githubusercontent.com/LDKR-Group/UzWordnet/4b983edc3e922e5565d8ac5affed37143646f6fa/files/uzwordnet.json), [CEFR-J 1.5](https://raw.githubusercontent.com/openlanguageprofiles/olp-en-cefrj/d4e45b75b38f27b30dfc5c44d8c571aec7e7092f/cefrj-vocabulary-profile-1.5.csv) va [Octanove C1/C2 1.0](https://raw.githubusercontent.com/openlanguageprofiles/olp-en-cefrj/d4e45b75b38f27b30dfc5c44d8c571aec7e7092f/octanove-vocabulary-profile-c1c2-1.0.csv). WordNet zip arxivini oching va `data.noun`, `data.verb`, `data.adj`, `data.adv` hamda `index.sense` fayllari turgan katalogni bering.
+
+```sh
+npm run db:migrate
+npm run db:seed:vocabulary
+npm run db:import:vocabulary -- /data/wordnet /data/uzwordnet.json /data/cefr.csv /data/advanced.csv
+```
+
+Buyruq `backend` katalogidan, kerakli bazaga qaragan `DATABASE_URL` bilan ishga tushadi. `--inspect` parametrini oxiriga qo‘shib, bazaga yozishdan oldin qamrovni ko‘rish mumkin. WordNet bosh so‘zlari ma’lumotnoma jadvaliga tushadi. O‘quv lug‘atiga o‘zbekcha ma’no va CEFR darajasi mos kelgan so‘zlar qo‘shiladi. Import mavjud o‘quv so‘zlarini almashtirmaydi va qayta ishlatilganda takroriy yozuv qo‘shmaydi. Manbalar va litsenziya shartlari [lug‘at manbalari faylida](frontend/public/vocabulary-sources.txt).
 
 ## Architecture
 
@@ -155,7 +202,7 @@ The bounded areas are identity, vocabulary, spaced repetition and challenges. `L
 
 ## Docker files
 
-`Dockerfile` uses separate build and runtime dependency stages, Node 24, a non-root user and readiness health checks. `compose.yaml` defines PostgreSQL, a one-shot migration service and the API with a read-only filesystem, dropped capabilities and resource limits. PostgreSQL has no published host port. The API binds its published port to loopback for use behind a TLS reverse proxy.
+`backend/Dockerfile` uses separate build and runtime dependency stages, Node 24, a non-root user and readiness health checks. `backend/compose.yaml` defines PostgreSQL, a one-shot migration service and the API with a read-only filesystem, dropped capabilities and resource limits. PostgreSQL has no published host port. The API binds its published port to loopback for use behind a TLS reverse proxy.
 
 Set `POSTGRES_PASSWORD` and `COMPOSE_DATABASE_URL` consistently; use host `db` in the latter and percent-encode special password characters. `docker compose config --quiet` validates configuration without starting anything. `docker compose up --build` is an operator action when deployment is desired. No container deployment was performed during this implementation. The local verification checked Compose syntax; the CI workflow includes an image build.
 
@@ -178,7 +225,7 @@ Reference documentation: [NestJS validation](https://docs.nestjs.com/techniques/
 
 - Readiness release ichidagi barcha SQL migratsiyalari checksum’ini bazadagi yozuv bilan solishtiradi. Ishga tushishda 12 ta faol audio faylning SHA-256 qiymati ham tekshiriladi. Fayl yoki migratsiya mos kelmasa `/api/health/ready` 503 qaytaradi, liveness esa jarayon holatini alohida bildiradi.
 - Reverse proxy ishlatilganda `TRUSTED_PROXIES`ga faqat boshqariladigan proxy IP yoki CIDR qiymatlari kiritiladi. Bo‘sh sozlamada tashqaridan berilgan `X-Forwarded-For` ishonchli hisoblanmaydi.
-- Integratsion test Swagger’da ko‘rsatilgan 61 ta API amali uchun muvaffaqiyatli HTTP javobi bo‘lishini talab qiladi. Shuningdek, ruxsatlar, bir vaqtdagi profil tahrirlari, audio range va migratsiya checksum xatolari tekshiriladi.
+- Integratsion test Swagger’dagi amallarni HTTP orqali tekshiradi. Shuningdek, akkauntlararo ruxsatlar, bir vaqtdagi profil tahrirlari, bildirishnoma yetkazish, audio range va migratsiya checksum xatolari sinovdan o‘tadi.
 - Yangi indekslarni qo‘llash uchun `npm run db:migrate` ishlatiladi. Avvalgi migratsiyalar saqlangan.
 
 ### Auditdan keyingi yangilanishlar
@@ -186,7 +233,8 @@ Reference documentation: [NestJS validation](https://docs.nestjs.com/techniques/
 - `006_catalog_and_account_actions.sql` uchun PostgreSQL'da `pg_trgm` extensionini yoqish huquqi kerak. Yangi jadval `account_actions` bir martalik email amallarini saqlaydi. `npm run db:seed:vocabulary` 30 ta boshlang‘ich so‘z va ma’noni kiritadi. Qayta ishlatilganda mavjud lug‘at yozuvlarini almashtirmaydi.
 - `GET /api/words` mavzu uchun `topic` va keyingi sahifa uchun `after` qabul qiladi. Javobdagi `nextCursor` keyingi so‘rovga yuboriladi. Filtrlar o‘zgarsa sahifalashni boshidan boshlash kerak. Eski `page` parametri ishlaydi. So‘z va ma’nolar o‘qilishi bitta DB snapshot ichida bajariladi.
 - `POST /api/games` qo‘shimcha `topic` va `cefrLevel` qabul qiladi. Lug‘atli rejimlarda har safar mos katalog bo‘yicha yangi namuna tanlanadi. `sentence_dictation` rejimi admin so‘z ma’nosiga qo‘shgan HTTPS `exampleAudioUrl` yozuvidan foydalanadi. Boshlang‘ich lug‘at so‘zlarida audio yo‘q.
-- Email uchun `EMAIL_API_KEY`, `EMAIL_FROM`, `ACCOUNT_ACTION_URL` va `ACCOUNT_EMAIL_KEY` birga sozlanadi. Oxirgisi 32 bayt tasodifiy hex kalit. `ACCOUNT_ACTION_URL` frontend sahifasi bo‘lib, URL fragmentidan `action` va `token`ni o‘qiydi, keyin tegishli confirm endpointiga yuboradi. Xatlar shifrlangan navbatdan yuboriladi. SMTP yoki boshqa transport o‘rnida bu adapter Resend HTTPS API ishlatadi.
+- Email tasdiqlash va parolni tiklash uchun `backend/.env` faylidagi `SMTP_EMAIL` Gmail manzilini, `SMTP_PASS` Google App Password’ni, `ACCOUNT_EMAIL_KEY` esa OTP va xat navbatini himoyalaydigan 32 baytlik hex kalitni bildiradi. Google App Password olish uchun ikki bosqichli tasdiqlashni yoqing. Kalitni `node -p "require('node:crypto').randomBytes(32).toString('hex')"` buyrug‘i bilan bir marta yarating va saqlang.
+- 6 xonali kod 10 daqiqa amal qiladi va 5 ta xato urinishdan keyin bloklanadi. Xat ichiga havola ham qo‘shilishi uchun `ACCOUNT_ACTION_URL`ga frontendning HTTPS orqali ochiladigan `/account-action` manzilini yozing. Resend orqali jo‘natish uchun `EMAIL_API_KEY`, `EMAIL_FROM`, `ACCOUNT_ACTION_URL` va `ACCOUNT_EMAIL_KEY` ishlatiladi. Ikkala jo‘natish usuli sozlanganida, akkaunt xatlari Gmail orqali boradi. Sozlamalardan keyin backendni qayta ishga tushiring.
 - Email amallari `POST /api/auth/email-verification/request`, `POST /api/auth/email-verification/confirm`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`. Request uchun `email`, tasdiqlash uchun `token`, parolni tiklash uchun `token` va yangi `password` yuboriladi. Xat yetkazish sozlanmagan bo‘lsa request endpointi 503 qaytaradi. Mavjud foydalanuvchilar kirishi uchun email tasdiqlash majburiy qilinmagan.
 - Admin uchun `GET /api/ops/metrics` so‘rovlar soni va kechikish histogramini beradi. `ops/prometheus-alerts.yml` ogohlantirish qoidalarini beradi. Tashqi Prometheus va ogohlantirish manzilini o‘rnatish muhit sozlamasiga bog‘liq. Eskirgan yozuvlar har 15 daqiqada 1000 tagacha paketlarda tozalanadi.
 - HTTP loglarida `traceId` bor. API yaroqli W3C `traceparent` qiymatidan ID oladi yoki yangi ID yaratadi va javobda `X-Trace-Id` orqali beradi. Bu HTTP qatlamidagi bog‘lash uchun xizmat qiladi. Alohida span qabul qiluvchi servis ulanmagan.

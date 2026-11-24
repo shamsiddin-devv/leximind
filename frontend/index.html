@@ -3,16 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#faf9f6" />
     <script>
-      let savedTheme;
-      try { savedTheme = localStorage.getItem('leximind.theme'); } catch {}
-      document.documentElement.dataset.theme = savedTheme === 'dark' || savedTheme === 'light'
-        ? savedTheme
-        : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      (() => {
+        let mode;
+        try { mode = localStorage.getItem('leximind.theme-mode'); } catch {}
+        const theme = mode === 'dark' || mode === 'light' ? mode
+          : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name=theme-color]').content = theme === 'dark' ? '#111313' : '#faf9f6';
+      })();
     </script>
     <meta name="description" content="LexiMind — inglizcha so‘zlarni mashqlar, o‘yinlar va takrorlash orqali o‘rganing." />
-    <title>Home — LexiMind</title>
+    <title>Bosh sahifa — LexiMind</title>
     <link rel="stylesheet" href="/src/shared/components/LoadingScreen.css" />
   </head>
   <body>

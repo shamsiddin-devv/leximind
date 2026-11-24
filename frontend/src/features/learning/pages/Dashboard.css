@@ -1,0 +1,197 @@
+.study-home {
+  --study-accent: var(--brand-ink);
+  --study-fill: var(--brand-fill);
+  --study-tint: color-mix(in srgb, var(--study-fill) 9%, var(--panel-surface));
+  --study-edge: color-mix(in srgb, var(--study-fill) 23%, var(--line));
+  --study-display: 'Instrument Sans Variable', var(--display);
+  --study-serif: 'Instrument Serif', Georgia, serif;
+  container: study-dashboard / inline-size;
+  max-inline-size: 1376px;
+  padding-block: clamp(23px, 4.5vw, 50px) clamp(32px, 5vw, 62px);
+}
+
+.study-home-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  margin-block-end: clamp(17px, 2.6vw, 31px);
+}
+.study-home-header h1 {
+  font: 640 clamp(2.25rem, 5vw, 4.25rem)/1.04 var(--study-display);
+  letter-spacing: -.055em;
+  overflow-wrap: anywhere;
+}
+.study-home-header h1 em {
+  color: var(--study-accent);
+  font: italic 400 1.12em/.9 var(--study-serif);
+  letter-spacing: -.015em;
+}
+.study-home:lang(ru) { --study-serif: Georgia, serif; }
+.study-home-header p { margin-block-start: 10px; color: var(--muted); }
+.study-home-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.study-home-meta :is(time, span) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  background: var(--panel-surface);
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 650;
+}
+.study-home-meta svg { color: var(--study-accent); flex: none; }
+
+.study-home-focus {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, .8fr);
+  align-items: center;
+  gap: 16px;
+  min-block-size: 296px;
+  padding: clamp(20px, 4vw, 49px);
+  isolation: isolate;
+  overflow: clip;
+  border: 1px solid var(--study-edge);
+  border-radius: 24px;
+  background: radial-gradient(ellipse at 83% 25%, color-mix(in srgb, var(--study-fill) 23%, transparent), transparent 59%), var(--panel-surface);
+}
+.study-home-focus-copy { z-index: 1; min-inline-size: 0; }
+.study-home-focus-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border: 1px solid var(--study-edge);
+  border-radius: 100px;
+  background: var(--study-tint);
+  color: var(--study-accent);
+  font-size: .75rem;
+  font-weight: 700;
+}
+.study-home-focus h2 {
+  margin-block: 13px 11px;
+  font: 635 clamp(1.85rem, 4vw, 3.35rem)/1.05 var(--study-display);
+  letter-spacing: -.045em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+.study-home-focus p { max-inline-size: 44ch; color: var(--muted); font-size: .96rem; line-height: 1.56; }
+.study-home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-block-start: 22px;
+}
+.study-home-actions :is(button, a) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-block-size: 44px;
+  padding: 8px 15px;
+  border: 1px solid transparent;
+  border-radius: 100px;
+  font-size: .84rem;
+  font-weight: 750;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+.study-home-actions svg { flex: none; }
+.study-home-start { background: var(--study-fill); color: white; }
+.study-home-start:hover:not(:disabled) { background: color-mix(in srgb, var(--study-fill) 86%, #000); }
+.study-home-start:disabled { opacity: .52; cursor: default; }
+.study-home-actions .study-home-plan { border-color: var(--study-edge); color: var(--study-accent); }
+.study-home-actions .study-home-plan:hover { background: var(--study-tint); }
+
+.study-home-art {
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  place-content: center;
+  min-block-size: 195px;
+  isolation: isolate;
+}
+.study-home-art::before {
+  position: absolute;
+  z-index: -1;
+  place-self: center;
+  inline-size: min(73%, 290px);
+  aspect-ratio: 1;
+  border: 1px solid var(--study-edge);
+  border-radius: 50%;
+  box-shadow: 0 0 0 18px color-mix(in srgb, var(--study-fill) 6%, transparent),
+    0 0 0 38px color-mix(in srgb, var(--study-fill) 3%, transparent);
+  content: '';
+}
+.study-home-art img {
+  inline-size: min(100%, 420px);
+  block-size: auto;
+  filter: drop-shadow(0 18px 20px color-mix(in srgb, var(--study-fill) 24%, transparent));
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root:not([data-animations='false'], [data-reduced-motion='true']) .study-home-art img {
+    animation: study-home-book-enter 440ms var(--ease) both;
+  }
+}
+@keyframes study-home-book-enter {
+  from { opacity: .65; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.study-home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(245px, 29%);
+  align-items: start;
+  gap: clamp(14px, 2vw, 23px);
+  margin-block-start: clamp(16px, 2vw, 24px);
+}
+.study-home-main, .study-home-rail { display: grid; gap: 18px; min-inline-size: 0; }
+.study-home :is(.panel, .activity-tile) {
+  border-radius: 16px;
+  background: var(--panel-surface);
+  box-shadow: none;
+}
+.study-home :is(.summary-strip, .quick-section, .forecast) { margin-block: 0; }
+.study-home .summary-strip { padding-block: 15px; }
+.study-home .summary-strip .mini-icon, .study-home .quick-grid .tile-icon {
+  background: var(--study-tint);
+  color: var(--study-accent);
+}
+.study-home .panel-label h2, .study-home .section-heading h2 {
+  font-family: var(--study-display);
+  font-weight: 680;
+  letter-spacing: -.025em;
+}
+.study-home .quick-grid { gap: 10px; }
+.study-home .quick-grid .activity-tile:hover { border-color: var(--study-edge); background: var(--study-tint); }
+.study-home-rail .panel { padding: 16px 17px; min-inline-size: 0; }
+.study-home .study-home-word { background: var(--study-tint); }
+.study-home .study-home-word .word-title strong { overflow-wrap: anywhere; }
+
+@container study-dashboard (max-width: 720px) {
+  .study-home-grid { grid-template-columns: minmax(0, 1fr); }
+  .study-home-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
+@container study-dashboard (max-width: 520px) {
+  .study-home-focus {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+    padding: 20px;
+    border-radius: 20px;
+    background: radial-gradient(ellipse at 78% 100%, color-mix(in srgb, var(--study-fill) 20%, transparent), transparent 57%), var(--panel-surface);
+  }
+  .study-home-art { min-block-size: 0; }
+  .study-home-art::before { inline-size: min(39%, 160px); }
+  .study-home-art img { inline-size: min(61cqi, 215px); }
+  .study-home .quick-grid { grid-template-columns: minmax(0, 1fr); }
+  .study-home .quick-grid .activity-tile { min-block-size: 115px; }
+  .study-home-rail { grid-template-columns: minmax(0, 1fr); }
+  .study-home .summary-strip small { font-size: .68rem; overflow-wrap: anywhere; }
+}
+@media (forced-colors: active) {
+  .study-home-start { border-color: ButtonText; }
+}

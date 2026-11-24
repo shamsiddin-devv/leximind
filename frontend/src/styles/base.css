@@ -19,6 +19,9 @@
   --blue: #2545df;
   --blue-dark: #1b32ae;
   --radiant: #3153f4;
+  --brand-fill: var(--appearance-fill, #615bfe);
+  --brand-ink: var(--appearance-ink, #5048d9);
+  --brand-icon-ink: var(--brand-fill);
   --main-gutter: 16px;
   --ease: cubic-bezier(.2, .75, .25, 1);
   --display: 'Plus Jakarta Sans Variable', 'DM Sans Variable', sans-serif;
@@ -50,6 +53,9 @@ main .container { inline-size: min(1152px, 100%); }
 .brand { display: inline-flex; align-items: center; justify-self: start; gap: 0; font-family: var(--display); font-size: 23px; font-weight: 850; letter-spacing: -.075em; white-space: nowrap; }
 .brand > span:last-child { color: var(--blue); }
 .brand-icon { display: grid; place-items: center; width: 41px; height: 41px; margin-inline-end: 10px; color: white; background: #2849eb; border-radius: 13px; box-shadow: 0 3px 0 #1c36bb, inset 0 1px 0 #ffffff45; }
+.brand.brand-wordmark { color: var(--brand-ink); font-size: 21px; font-weight: 800; letter-spacing: -.06em; }
+.brand.brand-wordmark > span:last-child { color: inherit; }
+.brand.brand-wordmark .brand-icon { width: 28px; height: 32px; margin-inline-end: 6px; color: var(--brand-icon-ink); background: transparent; box-shadow: none; }
 .nav { display: flex; align-items: center; gap: 7px; }
 .nav a { display: flex; align-items: center; gap: 8px; padding: 11px 14px; min-height: 44px; border-radius: 12px; color: #5b6271; font-size: .9rem; font-weight: 750; white-space: nowrap; transition: background-color .2s, color .2s; }
 .nav a:hover { background: #f6f6fa; color: var(--blue); }
@@ -71,7 +77,6 @@ main .container { inline-size: min(1152px, 100%); }
 .white { color: #203ec9; background: white; box-shadow: 0 4px 0 #c8d2ff; }
 .white:hover:not(:disabled) { background: #f0f3ff; }
 .button:focus-visible { outline-color: #3153f4; }
-.hero .button:focus-visible { outline-color: #ffda82; }
 .sign-in { min-block-size: 42px; padding-inline: 15px; }
 .skip-link { position: fixed; z-index: 2; inset: 8px auto auto 8px; padding: 12px; background: white; border-radius: 8px; transform: translateY(-150%); }
 .skip-link:focus { transform: none; }

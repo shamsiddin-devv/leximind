@@ -17,32 +17,80 @@ import {
   type QuizWord,
 } from './entities/Challenge';
 import { TsFsrsScheduler } from '../infrastructure/scheduler/TsFsrsScheduler';
-import { chooseSound } from './entities/GameFeedback';
+import {
+  chooseRoundSound,
+  chooseSound,
+  gradeAnswer,
+  soundIds,
+  type AnswerFeedback,
+} from './entities/GameFeedback';
 
 describe('feedback audio selection', () => {
-  it('selects different cues for each mistake and for correct answers', () => {
-    expect(
-      chooseSound({ correct: false, mistake: 'word_order' }, 1, false),
-    ).toBe('black-suit-spider-man');
-    expect(chooseSound({ correct: false, mistake: 'skipped' }, 1, false)).toBe(
-      'hub-intro-sound',
+  const wrong = { correct: false, mistake: 'incorrect' } as const;
+  const typo = { correct: false, mistake: 'typo' } as const;
+  const skip = { correct: false, mistake: 'skipped' } as const;
+  const correct = { correct: true };
+
+  it('classifies typing and unfinished sentences independently of the sound selection', () => {
+    expect(gradeAnswer('appel', 'apple', 'text')).toEqual(typo);
+    expect(gradeAnswer('banana', 'apple', 'text')).toEqual(wrong);
+    expect(gradeAnswer('We tea drink', 'We drink tea', 'tokens').mistake).toBe(
+      'word_order',
     );
-    expect(
-      chooseSound({ correct: false, mistake: 'incorrect' }, 0, false),
-    ).toBe('faah');
-    expect(
-      chooseSound({ correct: false, mistake: 'incorrect' }, 1, false),
-    ).toBe('chicken-on-tree-screaming');
-    expect(chooseSound({ correct: false, mistake: 'typo' }, 0, false)).toBe(
-      'bruh',
+    expect(gradeAnswer('We tea', 'We drink tea', 'sentence').mistake).toBe(
+      'incomplete',
     );
-    expect(
-      chooseSound({ correct: false, mistake: 'incomplete' }, 0, false),
-    ).toBe('alert');
-    expect(chooseSound({ correct: true }, 1, true)).toBe(
+  });
+
+  it('uses distinct pools for game kinds and rotates all twelve clips across outcomes', () => {
+    expect(chooseSound('meaning_match', [wrong], 0)).toBe('faah');
+    expect(chooseSound('word_dictation', [wrong], 0)).toBe('huh-cat');
+    expect(chooseSound('visual_grid', [wrong], 0)).toBe('galaxy');
+    const examples: AnswerFeedback[] = [
+      wrong,
+      typo,
+      skip,
+      correct,
+      { correct: false, mistake: 'word_order' },
+      { correct: false, mistake: 'incomplete' },
+    ];
+    const heard = new Set(
+      gameKinds.flatMap((kind) =>
+        examples.flatMap((item) =>
+          [0, 1, 2].flatMap((seed) => [
+            chooseSound(kind, [item], seed),
+            chooseSound(kind, [item, item], seed),
+          ]),
+        ),
+      ),
+    );
+    expect(heard).toEqual(new Set(soundIds));
+  });
+
+  it('changes the cue on a second mistake and switches to a positive cue after recovery', () => {
+    expect(chooseSound('type_word', [typo], 0)).toBe('bruh');
+    expect(chooseSound('type_word', [typo, typo], 0)).toBe('alert');
+    expect(chooseSound('type_word', [typo, typo, typo], 0)).toBe('dexter');
+    expect(chooseSound('type_word', [typo, typo, correct], 0)).toBe(
       'romanceeeeeeeeeeeeee',
     );
-    expect(chooseSound({ correct: true }, 1, false)).toBe('encourage');
+    for (let seed = 0; seed < 6; seed++) {
+      expect(chooseSound('word_rush', [wrong, wrong], seed)).not.toBe(
+        chooseSound('word_rush', [wrong], seed),
+      );
+    }
+  });
+
+  it('distinguishes a partly recalled memory round from a skipped round', () => {
+    expect(chooseRoundSound('sequence_memory', [correct, skip, skip], 1)).toBe(
+      'galaxy',
+    );
+    expect(chooseRoundSound('visual_grid', [skip, skip], 1)).toBe(
+      'hub-intro-sound',
+    );
+    expect(chooseRoundSound('word_span', [correct, correct], 1)).toBe(
+      'encourage',
+    );
   });
 });
 

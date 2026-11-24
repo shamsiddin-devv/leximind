@@ -23,7 +23,7 @@ export class HealthController {
       // Readiness responses must not expose database connection details.
     }
     throw new ServiceUnavailableException(
-      'Release assets or database migrations are unavailable.',
+      'Release prerequisites are unavailable.',
     );
   }
 }

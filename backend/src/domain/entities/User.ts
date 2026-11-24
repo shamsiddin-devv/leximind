@@ -55,9 +55,7 @@ export class User {
     }
   }
 
-  update(
-    props: UserDetails & { fullName?: string; email?: string },
-  ): void {
+  update(props: UserDetails & { fullName?: string; email?: string }): void {
     const links = props.socialLinks
       ? updateSocialLinks(this.socialLinks, props.socialLinks)
       : undefined;
@@ -68,7 +66,8 @@ export class User {
     }
     if (props.email !== undefined) {
       const checkingEmail = new Email(props.email);
-      if (checkingEmail.toString() !== this.props.email.toString()) this.props.emailVerifiedAt = null;
+      if (checkingEmail.toString() !== this.props.email.toString())
+        this.props.emailVerifiedAt = null;
       this.props.email = checkingEmail;
     }
     if (props.bio !== undefined) {
@@ -77,31 +76,53 @@ export class User {
       this.props.bio = bio;
     }
     if (props.bioFormat !== undefined) {
-      this.props.bioFormat = props.bioFormat === null ? null : normalizeBioFormat(props.bioFormat, this.bio);
+      this.props.bioFormat =
+        props.bioFormat === null
+          ? null
+          : normalizeBioFormat(props.bioFormat, this.bio);
     }
     if (props.countryCode !== undefined || props.city !== undefined) {
       this.updatePlace(props.countryCode, props.city);
-    } else if (props.location !== undefined && (props.location?.trim() || null) !== this.location) {
+    } else if (
+      props.location !== undefined &&
+      (props.location?.trim() || null) !== this.location
+    ) {
       this.props.location = props.location?.trim() || null;
       this.props.countryCode = null;
       this.props.city = null;
     }
     if (props.gender !== undefined) this.props.gender = props.gender;
-    if (props.phoneNumber !== undefined) this.props.phoneNumber = props.phoneNumber;
+    if (props.phoneNumber !== undefined)
+      this.props.phoneNumber = props.phoneNumber;
     if (links) this.props.socialLinks = links;
-    if (props.profilePublic !== undefined) this.props.profilePublic = props.profilePublic;
-    if (props.profileSharing !== undefined) this.props.profileSharing = props.profileSharing;
-    if (props.publicStatistics !== undefined) this.props.publicStatistics = props.publicStatistics;
-    if (props.publicCefr !== undefined) this.props.publicCefr = props.publicCefr;
+    if (props.profilePublic !== undefined)
+      this.props.profilePublic = props.profilePublic;
+    if (props.profileSharing !== undefined)
+      this.props.profileSharing = props.profileSharing;
+    if (props.publicStatistics !== undefined)
+      this.props.publicStatistics = props.publicStatistics;
+    if (props.publicCefr !== undefined)
+      this.props.publicCefr = props.publicCefr;
     if (props.publicBio !== undefined) this.props.publicBio = props.publicBio;
-    if (props.publicSocialLinks !== undefined) this.props.publicSocialLinks = props.publicSocialLinks;
+    if (props.publicSocialLinks !== undefined)
+      this.props.publicSocialLinks = props.publicSocialLinks;
   }
 
-  private updatePlace(countryCode: string | null | undefined, city: string | null | undefined) {
+  private updatePlace(
+    countryCode: string | null | undefined,
+    city: string | null | undefined,
+  ) {
     const country = countryCode === undefined ? this.countryCode : countryCode;
-    const nextCity = city === undefined ? (country === this.countryCode ? this.city : null) : city?.trim() || null;
-    if (country !== null && !/^[A-Z]{2}$/.test(country)) throw new BadRequestError('Invalid country code.');
-    if (nextCity && !country) throw new BadRequestError('A city requires a country.');
+    const nextCity =
+      city === undefined
+        ? country === this.countryCode
+          ? this.city
+          : null
+        : city?.trim() || null;
+    if (country !== null && !/^[A-Z]{2}$/.test(country))
+      throw new BadRequestError('Invalid country code.');
+    if (nextCity && !country)
+      throw new BadRequestError('A city requires a country.');
     this.props.countryCode = country;
     this.props.city = nextCity;
     if (!country) {
@@ -131,14 +152,30 @@ export class User {
   get emailVerifiedAt() {
     return this.props.emailVerifiedAt ?? null;
   }
-  get bio() { return this.props.bio ?? null; }
-  get bioFormat() { return this.props.bioFormat ?? null; }
-  get countryCode() { return this.props.countryCode ?? null; }
-  get city() { return this.props.city ?? null; }
-  get location() { return this.props.location ?? null; }
-  get gender() { return this.props.gender ?? null; }
-  get phoneNumber() { return this.props.phoneNumber ?? null; }
-  get socialLinks(): SocialLinks { return this.props.socialLinks ?? {}; }
+  get bio() {
+    return this.props.bio ?? null;
+  }
+  get bioFormat() {
+    return this.props.bioFormat ?? null;
+  }
+  get countryCode() {
+    return this.props.countryCode ?? null;
+  }
+  get city() {
+    return this.props.city ?? null;
+  }
+  get location() {
+    return this.props.location ?? null;
+  }
+  get gender() {
+    return this.props.gender ?? null;
+  }
+  get phoneNumber() {
+    return this.props.phoneNumber ?? null;
+  }
+  get socialLinks(): SocialLinks {
+    return this.props.socialLinks ?? {};
+  }
   get privacy(): ProfilePrivacy {
     return {
       profilePublic: this.props.profilePublic ?? false,
@@ -150,7 +187,13 @@ export class User {
     };
   }
   get hasProfileBadge() {
-    return Boolean(this.emailVerifiedAt && this.location && this.gender && this.gender !== 'undisclosed' && this.phoneNumber);
+    return Boolean(
+      this.emailVerifiedAt &&
+      this.location &&
+      this.gender &&
+      this.gender !== 'undisclosed' &&
+      this.phoneNumber,
+    );
   }
   get createdAt() {
     return this.props.createdAt;

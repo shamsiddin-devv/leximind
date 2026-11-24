@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type MouseEvent } from 'react';
 import { ArrowUpRight, Search, X } from 'lucide-react';
+import { useInterfaceLanguage } from '../../../app/language';
+import { shellCopy } from '../../../app/shellCopy';
 import { Link, navigate } from '../../../app/router';
 import { explain } from '../../../shared/services/api';
 import type { Word } from '../../../shared/types/api';
@@ -10,6 +12,8 @@ import './VocabularySearch.css';
 type SearchPreview = { term: string; words?: Word[]; total?: number; error?: string };
 
 export function VocabularySearch({ token, onNavigate }: { token: string; onNavigate: () => void }) {
+  const language = useInterfaceLanguage();
+  const copy = shellCopy[language];
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const results = useRef<HTMLUListElement>(null);
@@ -47,11 +51,11 @@ export function VocabularySearch({ token, onNavigate }: { token: string; onNavig
         .then(({ data, total }) => {
           if (!controller.signal.aborted) setPreview({ term, words: data, total });
         }).catch((error) => {
-          if (!controller.signal.aborted) setPreview({ term, error: explain(error) });
+          if (!controller.signal.aborted) setPreview({ term, error: language === 'uz' ? explain(error) : copy.searchFailed });
         });
     }, 180);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [term, token]);
+  }, [term, token, language, copy]);
 
   function chooseResult(event: MouseEvent<HTMLAnchorElement>) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -84,11 +88,11 @@ export function VocabularySearch({ token, onNavigate }: { token: string; onNavig
   }
 
   return <>
-    <button type="button" className="app-search-trigger" aria-label="Lug‘atdan qidirish"
+    <button type="button" className="app-search-trigger" aria-label={copy.searchTitle}
       aria-haspopup="dialog" aria-keyshortcuts="Meta+K Control+Alt+Shift+K" aria-controls="app-vocabulary-search"
-      title="Lug‘atdan qidirish (⌘K)" onClick={openSearch}>
+      title={copy.searchTitle + ' (⌘K)'} onClick={openSearch}>
       <Search size={18} strokeWidth={1.6} aria-hidden="true" />
-      <span>Qidirish</span>
+      <span>{copy.search}</span>
     </button>
     <dialog ref={dialog} id="app-vocabulary-search" className="app-dialog app-search-dialog" data-backdrop="clear"
       aria-labelledby="app-vocabulary-search-title" closedby="any"
@@ -101,34 +105,34 @@ export function VocabularySearch({ token, onNavigate }: { token: string; onNavig
       }}
       onKeyDown={moveFocus} onClose={() => { pressedBackdrop.current = false; setQuery(''); setPreview(undefined); }}>
       <div className="app-dialog-heading">
-        <h2 id="app-vocabulary-search-title">Lug‘atdan qidirish</h2>
-        <button type="button" className="app-dialog-close" aria-label="Qidiruvni yopish" onClick={() => dialog.current?.close()}>
+        <h2 id="app-vocabulary-search-title">{copy.searchTitle}</h2>
+        <button type="button" className="app-dialog-close" aria-label={copy.searchClose} onClick={() => dialog.current?.close()}>
           <X size={16} aria-hidden="true" />
         </button>
       </div>
-      <form role="search" aria-label="Qidiruv oynasi" className="app-search-form" onSubmit={submitSearch}>
+      <form role="search" aria-label={copy.searchTitle} className="app-search-form" onSubmit={submitSearch}>
         <label className="app-search-field">
           <Search size={19} aria-hidden="true" />
-          <input ref={input} type="search" name="search" aria-label="So‘z qidiring" placeholder="Qidirish" autoComplete="off"
+          <input ref={input} type="search" name="search" aria-label={copy.searchPlaceholder} placeholder={copy.search} autoComplete="off"
             maxLength={wordSearchLength} value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
-        <button type="submit" className="app-dialog-button" data-tone="accent" disabled={!term}>Qidirish</button>
+        <button type="submit" className="app-dialog-button" data-tone="accent" disabled={!term}>{copy.search}</button>
       </form>
       {term && <div className="app-search-results">
         <p className="app-search-status" role="status">
-          {current?.error ?? (current?.words ? (current.total ? current.total + ' ta mos natija' : 'Mos so‘z topilmadi.') : 'Qidirilmoqda…')}
+          {current?.error ?? (current?.words ? (current.total ? copy.matches(current.total) : copy.noWords) : copy.searching)}
         </p>
-        {!!current?.words?.length && <ul ref={results} aria-label="Lug‘at natijalari">
+        {!!current?.words?.length && <ul ref={results} aria-label={copy.searchResults}>
           {current.words.map((word) => <li key={word.id}>
             <Link className="app-search-result" href={vocabularyHref(word.text)} onClick={chooseResult}>
-              <span className="app-search-word"><strong lang="en">{word.text}</strong>{word.sense[0]?.translationUz && <small>{word.sense[0].translationUz}</small>}</span>
+              <span className="app-search-word"><strong lang="en">{word.text}</strong>{word.sense[0]?.translationUz && <small lang="uz">{word.sense[0].translationUz}</small>}</span>
               <span className="level">{word.cefrLevel}</span><ArrowUpRight size={16} aria-hidden="true" />
             </Link>
           </li>)}
         </ul>}
       </div>}
       <div className="app-search-keys">
-        <span><kbd>↑</kbd> <kbd>↓</kbd> Tanlash</span><span><kbd>Enter</kbd> Ochish</span><span><kbd>Esc</kbd> Yopish</span>
+        <span><kbd>↑</kbd> <kbd>↓</kbd> {copy.choose}</span><span><kbd>Enter</kbd> {copy.open}</span><span><kbd>Esc</kbd> {copy.close}</span>
       </div>
     </dialog>
   </>;

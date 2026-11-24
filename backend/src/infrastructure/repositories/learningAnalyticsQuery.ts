@@ -35,11 +35,21 @@ const learningActivityCtes = `
       END AS skill
     FROM challenges g CROSS JOIN calendar p
     WHERE g.user_id=$1 AND g.kind<>'assessment' AND g.completed_at<=now() AND g.result IS NOT NULL
+  ), social_rewards AS (
+    SELECT request_id AS id, awarded_at, points
+    FROM friendship_rewards WHERE user_id=$1 AND awarded_at<=now()
+    UNION ALL
+    SELECT id, rewarded_at, reward_xp
+    FROM referrals WHERE referrer_id=$1 AND rewarded_at<=now()
   ), events AS (
-    SELECT s.day, s.seconds, coalesce(r.hits, 0)*10 AS xp, r.hits, r.attempts, 'vocabulary'::text AS skill, true AS session
+    SELECT s.day, s.seconds, coalesce(r.hits, 0)*10 AS xp, r.hits, r.attempts, 'vocabulary'::text AS skill,
+      true AS session, true AS learning
     FROM session_history s LEFT JOIN session_scores r ON s.id=r.id
     UNION ALL
-    SELECT day, seconds, xp, hits, attempts, skill, false FROM game_results
+    SELECT day, seconds, xp, hits, attempts, skill, false, true FROM game_results
+    UNION ALL
+    SELECT (f.awarded_at AT TIME ZONE p.timezone)::date, 0, f.points, NULL, NULL, NULL, false, false
+    FROM social_rewards f CROSS JOIN calendar p WHERE f.points>0
   )`;
 
 export const learningAnalyticsQuery = `${learningActivityCtes}, totals AS (
@@ -85,13 +95,31 @@ export const learningAnalyticsQuery = `${learningActivityCtes}, totals AS (
   FROM calendar p CROSS JOIN totals t
 `;
 
+export const completedWeekNotificationQuery = `${learningActivityCtes}
+  SELECT
+    (SELECT count(*)::integer FROM events
+     WHERE learning AND day>=p.week_start-7 AND day<p.week_start) AS count,
+    (SELECT floor(coalesce(sum(seconds),0)/60)::integer FROM events
+     WHERE day>=p.week_start-7 AND day<p.week_start) AS minutes,
+    (SELECT count(*)::integer FROM first_words
+     WHERE day>=p.week_start-7 AND day<p.week_start) AS words
+  FROM calendar p
+`;
+
+export const xpProgressNotificationQuery = `${learningActivityCtes}
+  SELECT
+    coalesce(sum(xp) FILTER (WHERE day < p.today-1),0)::float8 AS previous,
+    coalesce(sum(xp),0)::float8 AS current
+  FROM calendar p CROSS JOIN events
+`;
+
 export const learningCalendarQuery = `${learningActivityCtes}, selected_month AS (
     SELECT today, daily_study_minutes, daily_new_words,
       coalesce(($2::text || '-01')::date, month_start) AS start
     FROM calendar
   ), active_days AS (
     SELECT day, floor(sum(seconds))::float8 AS seconds, sum(xp)::float8 AS xp,
-      count(*) FILTER (WHERE session)::integer AS sessions
+      count(*) FILTER (WHERE session)::integer AS sessions, bool_or(learning) AS active
     FROM events, selected_month WHERE day>=start AND day<start+interval '1 month'
     GROUP BY day
   ), new_words AS (
@@ -104,7 +132,7 @@ export const learningCalendarQuery = `${learningActivityCtes}, selected_month AS
     (
       SELECT jsonb_agg(jsonb_build_object(
         'date', d.day::date::text, 'studySeconds', coalesce(a.seconds, 0), 'xp', coalesce(a.xp, 0),
-        'sessions', coalesce(a.sessions, 0), 'newWords', coalesce(w.count, 0), 'active', a.day IS NOT NULL
+        'sessions', coalesce(a.sessions, 0), 'newWords', coalesce(w.count, 0), 'active', coalesce(a.active, false)
       ) ORDER BY d.day)
       FROM generate_series(m.start, m.start+interval '1 month'-interval '1 day', interval '1 day') AS d(day)
       LEFT JOIN active_days a ON a.day=d.day::date
@@ -149,9 +177,13 @@ export const learningAchievementsQuery = `${learningActivityCtes}, streak_days A
     UNION ALL
     SELECT 'marathon', day, floor(sum(seconds) OVER (PARTITION BY date_trunc('month', day::timestamp) ORDER BY day))
     FROM daily_time
+    UNION ALL
+    SELECT 'social', (f.awarded_at AT TIME ZONE p.timezone)::date,
+      row_number() OVER (ORDER BY f.awarded_at,f.id)
+    FROM social_rewards f CROSS JOIN calendar p
   )
   SELECT rule.id, rule.target, rule."rewardXp",
-    CASE WHEN rule.id='social' THEN NULL ELSE coalesce(max(m.progress),0)::float8 END AS progress,
+    coalesce(max(m.progress),0)::float8 AS progress,
     min(m.day) FILTER (WHERE m.progress>=rule.target)::text AS "earnedOn"
   FROM jsonb_to_recordset($2::jsonb) AS rule(id text,target integer,"rewardXp" integer)
   LEFT JOIN milestones m ON rule.id=m.id GROUP BY rule.id,rule.target,rule."rewardXp"

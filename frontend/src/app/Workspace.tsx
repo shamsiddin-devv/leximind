@@ -4,11 +4,11 @@ import { api, ApiError, explain } from '../shared/services/api';
 import type { Activity, Level, Profile, Round, Session, User } from '../shared/types/api';
 import { Notice } from '../shared/components/UI';
 import { SectionIntroPage } from '../shared/components/SectionIntroPage';
+import { ReferralsPage } from '../features/referrals/ReferralsPage';
 import { ProfilePage } from '../features/profile/pages/ProfilePage';
 import { SettingsPage } from '../features/profile/components/SettingsPage';
-import { useNotificationPreferences } from '../features/profile/hooks/useNotificationPreferences';
+import { useAccountUiPreferences } from '../features/profile/hooks/useAccountUiPreferences';
 import { usePreferenceSave } from '../features/profile/hooks/usePreferenceSave';
-import { useProfileAppearance } from '../features/profile/hooks/useProfileAppearance';
 import { Dashboard } from '../features/learning/pages/Dashboard';
 import { LearningSessionsPage } from '../features/learning/pages/LearningSessionsPage';
 import { StudyPlanPage } from '../features/learning/pages/StudyPlanPage';
@@ -27,6 +27,7 @@ import { Catalog } from '../features/vocabulary/pages/Catalog';
 import { CollectionsPage } from '../features/vocabulary/pages/CollectionsPage';
 import { TopicsExplorerPage } from '../features/vocabulary/pages/TopicsExplorerPage';
 import { AppLayout } from './layouts/AppLayout';
+import { updateInterfaceSettings, useInterfaceSetting } from './interfacePreferences';
 import type { AccountAccess } from './layouts/SidebarAccountMenu';
 import { navigationPages, settingsNavigation } from './navigation';
 import { navigate, routes, settingsParent } from './router';
@@ -37,14 +38,13 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
 }) {
   const { snapshot, error: dataError, reload, updateProfile } = useLearningData(token, onSessionLost);
   const preferences = usePreferenceSave(token, updateProfile);
-  const profileAppearance = useProfileAppearance(user.id);
-  const notifications = useNotificationPreferences(user.id);
+  const { appearance: profileAppearance, notifications } = useAccountUiPreferences(user.id, token);
   const [round, setRound] = useState<{ source: string; value: Round }>();
   const [review, setReview] = useState<{ source: string; value: Session }>();
   const [busy, setBusy] = useState(false);
   const [soundSaving, setSoundSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const sidebarCollapsed = useInterfaceSetting('sidebarCollapsed');
   const [error, setError] = useState('');
   const startRequest = useRef<AbortController | null>(null);
   const currentRound = round?.source === path ? round.value : undefined;
@@ -131,8 +131,8 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
   }
 
   return <AppLayout path={path} token={token} user={user} accountAccess={accountAccess} practicing={Boolean(currentRound || currentReview)}
-    dueCount={notifications.values.review ? (snapshot?.plan.availableNow ?? 0) : 0} sound={sound} soundAvailable={Boolean(snapshot) && !soundSaving} onToggleSound={() => void toggleSound()}
-    collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed}
+    sound={sound} soundAvailable={Boolean(snapshot) && !soundSaving} onToggleSound={() => void toggleSound()}
+    collapsed={sidebarCollapsed} onCollapsedChange={(collapsed) => updateInterfaceSettings({ sidebarCollapsed: collapsed })}
     onExitPractice={endPractice} loggingOut={loggingOut} onLogout={() => void logout()}>
     {(error || dataError) && <div className="container global-notice"><Notice error>{error || dataError}</Notice>
       {dataError && <button className="button secondary" onClick={reload}>Qayta urinish</button>}</div>}
@@ -148,6 +148,7 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
         autoplayPronunciation={autoplayPronunciation}
         doneActionLabel={path === routes.studyPlan ? 'Rejaga qaytish' : path === routes.learningSessions ? 'Seanslar tarixiga' : undefined} />
       : path === routes.vocabulary ? <Catalog token={token} onChange={reload} />
+      : path === routes.referrals ? <ReferralsPage token={token} />
       : path === routes.collections ? <CollectionsPage key={user.id} token={token} userId={user.id} />
       : path === routes.topics ? <TopicsExplorerPage key={user.id} token={token} busy={busy}
         onStart={(topic) => void startActivity('type_word', undefined, topic)} />
@@ -170,7 +171,7 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
         preferences={preferences} notifications={notifications} appearance={profileAppearance} statistics={snapshot?.stats} forecast={snapshot?.plan.forecast}
         onUserChange={onUserChange} onPasswordChanged={onSessionLost} onDeleted={onLogout} />
       : page?.intro ? <SectionIntroPage title={page.label} icon={page.icon} {...page.intro} />
-      : <Dashboard name={user.fullName} profile={snapshot?.profile} plan={snapshot?.plan} history={snapshot?.history ?? []} stats={snapshot?.stats} busy={busy}
+      : <Dashboard name={user.fullName} token={token} profile={snapshot?.profile} plan={snapshot?.plan} history={snapshot?.history ?? []} stats={snapshot?.stats} busy={busy}
         onStart={() => void daily()} onActivity={(kind) => void startActivity(kind)} />}
   </AppLayout>;
 }

@@ -6,6 +6,7 @@ const { join } = require('node:path');
 const { Pool } = require('pg');
 const request = require('supertest');
 const { NestFactory } = require('@nestjs/core');
+const { generateVAPIDKeys } = require('web-push');
 const { migrate } = require('../scripts/migrate.cjs');
 process.env.TZ = 'Asia/Tashkent';
 const base = process.env.TEST_DATABASE_URL;
@@ -21,6 +22,8 @@ let app,
   adminPool,
   api,
   emailWorker,
+  avatarWorker,
+  notificationWorker,
   contract,
   token,
   otherToken,
@@ -35,6 +38,9 @@ const other = () => ({ Authorization: 'Bearer ' + otherToken });
 const successfulRoutes = new Set();
 const sentAccountEmails = [];
 const uploadedAvatars = new Set();
+const testVapid = generateVAPIDKeys();
+let failAvatarRemoval = false;
+let failAvatarUploadResponse = false;
 before(async () => {
   adminPool = new Pool({ connectionString: base });
   await adminPool.query('CREATE DATABASE "' + database + '"');
@@ -50,16 +56,25 @@ before(async () => {
   process.env.PORT = '3000';
   process.env.CORS_ORIGINS = 'http://localhost:5173';
   process.env.TRUSTED_PROXIES = '';
+  process.env.SMTP_EMAIL = '';
+  process.env.SMTP_PASS = '';
   process.env.EMAIL_API_KEY = 'test-provider-key';
   process.env.EMAIL_FROM = 'LexiMind <test@example.com>';
   process.env.ACCOUNT_ACTION_URL = 'https://example.com/account-action';
   process.env.ACCOUNT_EMAIL_KEY = 'a1'.repeat(32);
+  process.env.NOTIFICATION_DELIVERY_ENABLED = 'true';
+  process.env.VAPID_SUBJECT = 'mailto:test@example.com';
+  process.env.VAPID_PUBLIC_KEY = testVapid.publicKey;
+  process.env.VAPID_PRIVATE_KEY = testVapid.privateKey;
+  process.env.CLOUDINARY_CLOUD_NAME = 'test';
+  process.env.CLOUDINARY_API_KEY = 'test';
+  process.env.CLOUDINARY_API_SECRET = 'test';
   const { AppModule } = require('../dist/src/app.module');
   const {
     AccountActionMailer,
   } = require('../dist/src/infrastructure/auth/AccountActionMailer');
-  AccountActionMailer.prototype.deliver = async function (email, kind, token) {
-    sentAccountEmails.push({ email, kind, token });
+  AccountActionMailer.prototype.deliver = async function (email, kind, token, _digest, code) {
+    sentAccountEmails.push({ email, kind, token, code });
     return true;
   };
   const {
@@ -68,17 +83,21 @@ before(async () => {
   const {
     CloudinaryAvatarStorage,
   } = require('../dist/src/infrastructure/media/CloudinaryAvatarStorage');
-  CloudinaryAvatarStorage.prototype.upload = async function () {
-    const publicId = 'LexiMind/' + randomUUID();
+  CloudinaryAvatarStorage.prototype.request = async function (action, form) {
+    if (action === 'destroy') {
+      if (failAvatarRemoval) throw Error('Simulated storage outage');
+      return Response.json({ result: uploadedAvatars.delete(form.get('public_id')) ? 'ok' : 'not found' });
+    }
+    const publicId = form.get('folder') + '/' + form.get('public_id');
     uploadedAvatars.add(publicId);
-    return {
-      publicId,
-      url: 'https://res.cloudinary.com/test/image/upload/' + publicId + '.jpg',
-    };
+    if (failAvatarUploadResponse) return Response.json({});
+    return Response.json({
+      public_id: publicId,
+      secure_url: 'https://res.cloudinary.com/test/image/upload/' + publicId + '.jpg',
+    });
   };
-  CloudinaryAvatarStorage.prototype.remove = async function (publicId) {
-    uploadedAvatars.delete(publicId);
-  };
+  const { AvatarCleanupWorker } = require('../dist/src/infrastructure/media/AvatarCleanupWorker');
+  const { LearningNotificationWorker } = require('../dist/src/infrastructure/repositories/LearningNotificationWorker');
   const { configureApp } = require('../dist/src/presentation/configure-app');
   app = await NestFactory.create(AppModule, {
     logger: false,
@@ -102,6 +121,8 @@ before(async () => {
   await app.init();
   api = request(app.getHttpServer());
   emailWorker = app.get(AccountEmailWorker);
+  avatarWorker = app.get(AvatarCleanupWorker);
+  notificationWorker = app.get(LearningNotificationWorker);
 });
 after(async () => {
   if (app) await app.close();
@@ -146,6 +167,23 @@ test('complete API and database lifecycle', async (t) => {
       ]);
     }
     await api.get('/api/health/ready').expect(200);
+  });
+  await t.test('requires an account email provider for production readiness', async () => {
+    const { ConfigService } = require('@nestjs/config');
+    const { ReleaseReadiness } = require('../dist/src/infrastructure/ReleaseReadiness');
+    const offline = new ReleaseReadiness(pool, new ConfigService({
+      NODE_ENV: 'production',
+      ACCOUNT_MAIL_PROVIDER: null,
+    }));
+    offline.logger = { error() {} };
+    offline.onModuleInit();
+    assert.equal(await offline.isReady(), false);
+    const gmail = new ReleaseReadiness(pool, new ConfigService({
+      NODE_ENV: 'production',
+      ACCOUNT_MAIL_PROVIDER: 'gmail',
+    }));
+    gmail.onModuleInit();
+    assert.equal(await gmail.isReady(), true);
   });
   await t.test(
     'documents request schemas and rejects malformed or oversized bodies',
@@ -272,6 +310,19 @@ test('complete API and database lifecycle', async (t) => {
           .expect(200)
       ).body;
       assert.notEqual(second.avatarUrl, first.avatarUrl);
+      failAvatarRemoval = true;
+      try {
+        await avatarWorker.flush();
+      } finally {
+        failAvatarRemoval = false;
+      }
+      assert.equal(uploadedAvatars.size, 2);
+      const pending = await pool.query('SELECT attempts, lease_id, next_attempt_at > now() AS deferred FROM avatar_cleanup_jobs');
+      assert.deepEqual(pending.rows, [{ attempts: 1, lease_id: null, deferred: true }]);
+      await avatarWorker.flush();
+      assert.equal(uploadedAvatars.size, 2);
+      await pool.query("UPDATE avatar_cleanup_jobs SET next_attempt_at = now() - interval '1 second'");
+      await avatarWorker.flush();
       assert.equal(uploadedAvatars.size, 1);
       assert.equal(
         (await api.get('/api/users/me').set(auth()).expect(200)).body.avatarUrl,
@@ -283,6 +334,18 @@ test('complete API and database lifecycle', async (t) => {
         .set(auth())
         .expect(200);
       assert.equal(removed.body.avatarUrl, null);
+      await avatarWorker.flush();
+      assert.equal(uploadedAvatars.size, 0);
+      failAvatarUploadResponse = true;
+      try {
+        await api.put('/api/users/me/avatar').set(auth()).send({ image }).expect(503);
+      } finally {
+        failAvatarUploadResponse = false;
+      }
+      const orphaned = await pool.query('SELECT attempts, lease_id, next_attempt_at > now() AS deferred FROM avatar_cleanup_jobs');
+      assert.deepEqual(orphaned.rows, [{ attempts: 0, lease_id: null, deferred: true }]);
+      await pool.query("UPDATE avatar_cleanup_jobs SET next_attempt_at = now() - interval '1 second'");
+      await avatarWorker.flush();
       assert.equal(uploadedAvatars.size, 0);
     },
   );
@@ -390,6 +453,10 @@ test('complete API and database lifecycle', async (t) => {
     assert.equal(r.body.text, 'apple');
     assert.equal(r.body.sense[0].orderIndex, 0);
     assert.equal(r.body.audioUrl, 'https://example.com/apple.mp3');
+    await api.get('/api/words/daily').expect(401);
+    const daily = await api.get('/api/words/daily').set(auth()).expect(200);
+    assert.equal(daily.body.word.id, wordId);
+    assert.equal(daily.body.word.sense[0].translationUz, 'olma');
     await api
       .get('/api/words/' + randomUUID())
       .set(auth())
@@ -536,10 +603,13 @@ test('complete API and database lifecycle', async (t) => {
         .expect(409);
     },
   );
-  await t.test('isolates another account from private data', async () => {
+  await t.test('saves onboarding preferences and isolates another account from private data', async () => {
     await api
       .post('/api/auth/register')
-      .send({ fullName: 'Other', email: 'other@example.com', password })
+      .send({
+        fullName: 'Other', email: 'other@example.com', password,
+        dailyStudyMinutes: 20, dailyNewWords: 12, studyLevel: 'B2',
+      })
       .expect(201);
     otherToken = (
       await api
@@ -547,6 +617,11 @@ test('complete API and database lifecycle', async (t) => {
         .send({ email: 'other@example.com', password })
         .expect(200)
     ).body.accessToken;
+    const { body: preferences } = await api.get('/api/profile').set(other()).expect(200);
+    assert.equal(preferences.dailyStudyMinutes, 20);
+    assert.equal(preferences.dailyNewWords, 12);
+    assert.equal(preferences.studyLevel, 'B2');
+    assert.equal(preferences.level, 'A1');
     await api
       .get('/api/cards/' + cardId)
       .set(other())
@@ -560,6 +635,65 @@ test('complete API and database lifecycle', async (t) => {
       0,
     );
     assert.deepEqual((await api.get('/api/cards/collection').set(other()).expect(200)).body, { data: [], total: 0 });
+  });
+  await t.test('persists owner-scoped collection entries and never revives deleted imports', async () => {
+    const endpoint = '/api/collection-entries';
+    const entry = {
+      id: randomUUID(),
+      createdAt: '2026-01-02T03:04:05.000Z',
+      kind: 'phrase',
+      text: 'Take care',
+      translation: 'Ehtiyot bo‘ling',
+      example: 'Take care of yourself.',
+      topic: 'Kundalik',
+      progress: 30,
+    };
+    const { id, createdAt, ...draft } = entry;
+    await api.get(endpoint).expect(401);
+    await api.post(endpoint).set(auth()).send({ entries: [{ ...entry, progress: 101 }] }).expect(400);
+    const added = await api.post(endpoint).set(auth()).send({ entries: [entry] }).expect(201);
+    assert.deepEqual(added.body, [{ ...entry, pinned: false }]);
+    const listing = await api.get(endpoint).set(auth()).expect('Cache-Control', 'no-store').expect(200);
+    assert.deepEqual(listing.body, { data: [{ ...entry, pinned: false }], total: 1 });
+    assert.deepEqual((await api.get(endpoint).set(other()).expect(200)).body, { data: [], total: 0 });
+    await api.put(endpoint + '/' + id).set(other()).send(draft).expect(404);
+    await api.delete(endpoint + '/' + id).set(other()).expect(204);
+    const changed = { ...draft, text: 'Take great care', progress: 75 };
+    assert.deepEqual(
+      (await api.put(endpoint + '/' + id).set(auth()).send(changed).expect(200)).body,
+      { id, createdAt, ...changed, pinned: false },
+    );
+    assert.deepEqual(
+      (await api.post(endpoint).set(auth()).send({ entries: [entry] }).expect(201)).body,
+      [{ id, createdAt, ...changed, pinned: false }],
+    );
+    const changePin = endpoint + '/pins/personal/' + id;
+    const importPins = endpoint + '/pins/import';
+    await api.put(changePin).set(other()).send({ pinned: true }).expect(404);
+    await api.post(importPins).set(other()).send({ ids: [id] }).expect(204);
+    const owned = async () => (await api.get(endpoint).set(auth()).expect(200)).body.data[0];
+    assert.equal((await owned()).pinned, false);
+    await api.post(importPins).set(auth()).send({ ids: [id] }).expect(204);
+    assert.equal((await owned()).pinned, true);
+    await api.put(changePin).set(auth()).send({ pinned: false }).expect(204);
+    await api.post(importPins).set(auth()).send({ ids: [id] }).expect(204);
+    assert.equal((await owned()).pinned, false);
+
+    const catalogPin = endpoint + '/pins/card/' + cardId;
+    await api.put(catalogPin).set(other()).send({ pinned: true }).expect(404);
+    await api.put(catalogPin).set(auth()).send({ pinned: 'true' }).expect(400);
+    await api.put(catalogPin).set(auth()).send({ pinned: true }).expect(204);
+    assert.equal((await api.get('/api/cards/collection').set(auth()).expect(200)).body.data.find((item) => item.id === cardId).pinned, true);
+    await api.put(catalogPin).set(auth()).send({ pinned: false }).expect(204);
+
+    await api.delete(endpoint + '/' + id).set(auth()).expect(204);
+    assert.deepEqual((await api.post(endpoint).set(auth()).send({ entries: [entry] }).expect(201)).body, []);
+    assert.deepEqual((await api.get(endpoint).set(auth()).expect(200)).body, { data: [], total: 0 });
+    const { rows: [tombstone] } = await pool.query(
+      'SELECT text, translation, example, topic, progress, deleted_at IS NOT NULL AS deleted FROM collection_entries WHERE id=$1 AND user_id=$2',
+      [id, userId],
+    );
+    assert.deepEqual(tombstone, { text: '', translation: '', example: '', topic: '', progress: 0, deleted: true });
   });
   await t.test('persists private social links and merges partial edits', async () => {
     const endpoint = '/api/users/me';
@@ -815,7 +949,7 @@ test('complete API and database lifecycle', async (t) => {
         assert.equal(byId.get('streak-30').progress, 3);
         assert.equal(byId.get('streak-30').earnedOn, null);
         assert.equal(byId.get('words-1000').progress, 1);
-        assert.equal(byId.get('social').progress, null);
+        assert.equal(byId.get('social').progress, 0);
         const otherAchievements = (await api.get('/api/achievements').set(other()).expect(200)).body;
         assert.ok(otherAchievements.every(({ earnedOn }) => earnedOn === null));
       } finally {
@@ -1129,7 +1263,7 @@ test('complete API and database lifecycle', async (t) => {
       ).body;
       assert.equal(first.expectedAnswer, 'apple');
       assert.equal(first.feedback.mistake, 'typo');
-      assert.equal(first.sound.url, '/api/feedback-audio/bruh.wav?v=4');
+      assert.match(first.sound.url, /^\/api\/feedback-audio\/(bruh|dexter)\.wav\?v=4$/);
       assert.equal(duplicate.sound, undefined);
       assert.equal(duplicate.result.score, 0);
       await api.get('/api/mistakes-notebook').expect(401);
@@ -1208,6 +1342,21 @@ test('complete API and database lifecycle', async (t) => {
         .set(auth())
         .send({ gameType: 'mistake_words' })
         .expect(409);
+      const { body: translationRound } = await api
+        .post('/api/games').set(auth()).send({ gameType: 'meaning_match' }).expect(201);
+      const { rows: [{ answers }] } = await pool.query(
+        'SELECT answers FROM challenges WHERE id=$1', [translationRound.id],
+      );
+      const translationAttempts = '/api/games/' + translationRound.id + '/attempts';
+      const optionAt = (index) => translationRound.payload.questions[index].options
+        .find((option) => option !== answers[index]);
+      const { body: firstWrong } = await api.post(translationAttempts).set(auth())
+        .send({ index: 0, answer: optionAt(0) }).expect(200);
+      const { body: secondWrong } = await api.post(translationAttempts).set(auth())
+        .send({ index: 1, answer: optionAt(1) }).expect(200);
+      assert.ok(['faah', 'bruh', 'shocked'].includes(firstWrong.sound.id));
+      assert.ok(['black-suit-spider-man', 'shocked', 'chicken-on-tree-screaming'].includes(secondWrong.sound.id));
+      assert.notEqual(firstWrong.sound.id, secondWrong.sound.id);
       await api
         .patch('/api/profile')
         .set(auth())
@@ -1627,6 +1776,52 @@ test('complete API and database lifecycle', async (t) => {
     },
   );
 
+  await t.test('confirms account actions with expiring single-use email codes', async () => {
+    await pool.query('DELETE FROM rate_limits');
+    const email = 'otp-learner@example.com';
+    const login = { email, password: 'Original8!' };
+    await api.post('/api/auth/register').send({ ...login, fullName: 'Email code learner' }).expect(201);
+    const { accessToken } = (await api.post('/api/auth/login').send(login).expect(200)).body;
+    const account = { Authorization: 'Bearer ' + accessToken };
+    const verifyRoute = '/api/auth/email-verification';
+    const resetRoute = '/api/auth/password-reset';
+    const mails = (kind) => sentAccountEmails.filter((mail) => mail.email === email && mail.kind === kind);
+
+    await api.post(verifyRoute + '/request').send({ email }).expect(202);
+    await api.post(verifyRoute + '/request').send({ email }).expect(202);
+    await emailWorker.flush();
+    assert.equal(mails('verify_email').length, 1);
+    const [verification] = mails('verify_email');
+    assert.match(verification.code, /^[0-9]{6}$/);
+    const wrong = verification.code === '000000' ? '000001' : '000000';
+    for (let i = 0; i < 5; i += 1) {
+      await api.post(verifyRoute + '/confirm-code').send({ email, code: wrong }).expect(400);
+    }
+    await api.post(verifyRoute + '/confirm-code').send({ email, code: verification.code }).expect(400);
+    assert.equal((await api.get('/api/users/me').set(account).expect(200)).body.emailVerifiedAt, null);
+    await pool.query(
+      "UPDATE account_actions SET otp_expires_at=now()-interval '1 second' WHERE email=$1 AND kind='verify_email'",
+      [email],
+    );
+    await api.post(verifyRoute + '/request').send({ email }).expect(202);
+    await emailWorker.flush();
+    const fresh = mails('verify_email')[1];
+    await api.post(verifyRoute + '/confirm-code').send({ email: email.toUpperCase(), code: fresh.code }).expect(204);
+    await api.post(verifyRoute + '/confirm').send({ token: fresh.token }).expect(400);
+    assert.ok((await api.get('/api/users/me').set(account).expect(200)).body.emailVerifiedAt);
+
+    await api.post(resetRoute + '/request').send({ email }).expect(202);
+    await emailWorker.flush();
+    const [reset] = mails('reset_password');
+    assert.match(reset.code, /^[0-9]{6}$/);
+    const body = { email, code: reset.code, password: 'Changed88!' };
+    await api.post(resetRoute + '/confirm-code').send(body).expect(204);
+    await api.post(resetRoute + '/confirm-code').send(body).expect(400);
+    await api.post(resetRoute + '/confirm').send({ token: reset.token, password: body.password }).expect(400);
+    await api.get('/api/users/me').set(account).expect(401);
+    await api.post('/api/auth/login').send({ email, password: body.password }).expect(200);
+  });
+
   await t.test('exposes route-template metrics to admins', async () => {
     await api.get('/api/ops/metrics').expect(401);
     const response = await api.get('/api/ops/metrics').set(auth()).expect(200);
@@ -1659,6 +1854,116 @@ test('complete API and database lifecycle', async (t) => {
     const remaining = (await api.get('/api/auth/sessions').set(auth()).expect(200)).body;
     assert.equal(remaining.length, 1);
     assert.equal(remaining[0].current, true);
+  });
+
+  await t.test('syncs UI preferences across sessions and cleans private banners', async () => {
+    const address = { email: 'preferences@example.com', password: 'Local88!', fullName: 'Preferences test' };
+    const { body: owner } = await api.post('/api/auth/register').send(address).expect(201);
+    const connect = async () => {
+      const { body } = await api.post('/api/auth/login')
+        .send({ email: address.email, password: address.password }).expect(200);
+      return { Authorization: 'Bearer ' + body.accessToken };
+    };
+    const first = await connect();
+    const second = await connect();
+    const endpoint = '/api/users/me/ui-preferences';
+    const shared = '/api/users/shared/' + owner.id;
+    await api.get(endpoint).expect(401);
+    await api.patch(endpoint).send({ notifications: { review: false } }).expect(401);
+    assert.deepEqual((await api.get(endpoint).set(first).expect(200)).body, {
+      appearance: null, notifications: null, interfaceSettings: null,
+    });
+    assert.deepEqual((await api.get(endpoint).set(other()).expect(200)).body, {
+      appearance: null, notifications: null, interfaceSettings: null,
+    });
+    await api.patch(endpoint).set(first).send({ appearance: { banner: 'https://example.com/a.jpg' } }).expect(400);
+    await api.patch(endpoint).set(first).send({ appearance: { image: 'data:image/jpeg;base64,abcd' } }).expect(400);
+    await api.patch(endpoint).set(first).send({ appearance: { metrics: [null, null, null, null, null, null] } }).expect(400);
+    await api.patch(endpoint).set(first).send({ notifications: { review: null } }).expect(400);
+    await api.patch(endpoint).set(first).send({ interfaceSettings: { language: 'fr' } }).expect(400);
+    await api.patch(endpoint).set(first).send({ interfaceSettings: { appearance: { accent: 'url(example.com)' } } }).expect(400);
+    await api.patch(endpoint).set(first).send({ interfaceSettings: { appearance: { accent: 'DEFAULT' } } }).expect(400);
+    await api.patch(endpoint).set(first).send({ interfaceSettings: { sidebarCollapsed: null } }).expect(400);
+    const { body: initial } = await api.patch(endpoint).set(first).send({
+      initialize: true,
+      appearance: { layout: 'vertical', banner: '/profile-banners/dunes.jpg' },
+      notifications: { review: false },
+      interfaceSettings: {
+        language: 'ru', themeMode: 'dark', sidebarCollapsed: true,
+        appearance: { accent: '#123ABC', density: 'compact' },
+      },
+    }).expect(200);
+    assert.equal(initial.appearance.layout, 'vertical');
+    assert.equal(initial.appearance.statsStyle, 'grid');
+    const { body: updated } = await api.patch(endpoint).set(second).send({
+      appearance: { position: 'right', overlay: 42, content: { bio: false } },
+      notifications: { streak: true },
+      interfaceSettings: { appearance: { textSize: 'large', animations: false, reducedMotion: true } },
+    }).expect(200);
+    assert.deepEqual(updated.interfaceSettings, {
+      language: 'ru', themeMode: 'dark', sidebarCollapsed: true,
+      appearance: { accent: '#123ABC', density: 'compact', textSize: 'large', animations: false, reducedMotion: true },
+    });
+    assert.deepEqual(updated.appearance.content, { bio: false, email: true, charts: true, achievements: true });
+    assert.equal(updated.appearance.banner, '/profile-banners/dunes.jpg');
+    assert.equal(updated.notifications.review, false);
+    const { body: afterOldImport } = await api.patch(endpoint).set(first).send({
+      initialize: true, appearance: { layout: 'horizontal' }, notifications: { streak: false },
+      interfaceSettings: { themeMode: 'light', appearance: { accent: '#aaaaaa' } },
+    }).expect(200);
+    assert.deepEqual(afterOldImport, updated);
+    assert.deepEqual((await api.get(endpoint).set(second).expect(200)).body, updated);
+
+    await api.get(shared).expect(404);
+    await api.patch('/api/users/me').set(first).send({ profilePublic: true, profileSharing: true }).expect(200);
+    const { body: stockProfile } = await api.get(shared).expect(200);
+    assert.deepEqual(stockProfile.appearance, {
+      banner: '/profile-banners/dunes.jpg', position: 'right', height: 'medium', overlay: 42,
+    });
+    assert.equal('notifications' in stockProfile, false);
+    assert.equal('interfaceSettings' in stockProfile, false);
+    const { previewNews, publishNews } = require('../scripts/publish-news.cjs');
+    const announcement = { slug: 'new-exercises-test', title: 'Yangi mashqlar', body: 'Yangi tinglash mashqlari qo‘shildi.' };
+    assert.equal((await previewNews(pool, announcement)).recipients, 0);
+    assert.equal((await publishNews(pool, announcement)).published, 0);
+    await api.patch(endpoint).set(first).send({ notifications: { news: true } }).expect(200);
+    assert.deepEqual(await previewNews(pool, announcement), {
+      ...announcement, preview: true, alreadyPublished: false, recipients: 1,
+    });
+    const duplicate = await Promise.all([
+      publishNews(pool, announcement),
+      publishNews(pool, announcement),
+    ]);
+    assert.equal(duplicate.reduce((count, report) => count + report.published, 0), 1);
+    assert.equal(duplicate.filter((report) => report.alreadyPublished).length, 1);
+    const { body: inbox } = await api.get('/api/notifications').set(second).expect(200);
+    assert.deepEqual(inbox.data.find(({ type }) => type === 'news')?.data, announcement);
+    const { body: otherNews } = await api.get('/api/notifications').set(other()).expect(200);
+    assert.equal(otherNews.data.some(({ type }) => type === 'news'), false);
+    await assert.rejects(publishNews(pool, { ...announcement, title: 'Boshqa matn' }), /boshqa matnga/);
+    await pool.query("DELETE FROM user_notifications WHERE user_id=$1 AND type='news'", [owner.id]);
+    assert.equal((await publishNews(pool, announcement)).published, 0);
+
+    const image = 'data:image/jpeg;base64,/9j/2Q==';
+    const { body: uploaded } = await api.patch(endpoint).set(first).send({ appearance: { image } }).expect(200);
+    assert.match(uploaded.appearance.banner, /^https:\/\/res\.cloudinary\.com\/test\/image\/upload\/LexiMind\/banners\//);
+    assert.equal(uploaded.appearance.layout, 'vertical');
+    assert.equal((await api.get(shared).expect(200)).body.appearance.banner, uploaded.appearance.banner);
+
+    await api.patch(endpoint).set(first).send({ appearance: { banner: '/profile-cover.jpg' } }).expect(200);
+    const { rows: [oldBanner] } = await pool.query('SELECT public_id FROM avatar_cleanup_jobs WHERE public_id LIKE $1', ['LexiMind/banners/%']);
+    assert.ok(oldBanner);
+    await avatarWorker.flush();
+    assert.equal(uploadedAvatars.has(oldBanner.public_id), false);
+
+    await api.patch(endpoint).set(first).send({ appearance: { image } }).expect(200);
+    await api.delete('/api/users/me').set(first).send({ currentPassword: address.password }).expect(204);
+    const { rowCount } = await pool.query('SELECT user_id FROM user_ui_preferences WHERE user_id = $1', [owner.id]);
+    assert.equal(rowCount, 0);
+    const { rows: [deletedBanner] } = await pool.query('SELECT public_id FROM avatar_cleanup_jobs WHERE public_id LIKE $1', ['LexiMind/banners/%']);
+    assert.ok(deletedBanner);
+    await avatarWorker.flush();
+    assert.equal(uploadedAvatars.has(deletedBanner.public_id), false);
   });
 
   await t.test('honors sharing and field-level privacy in public profiles', async () => {
@@ -1729,6 +2034,95 @@ test('complete API and database lifecycle', async (t) => {
     await api.get(endpoint).expect(404);
   });
 
+  await t.test('credits a referral only once after email verification', async () => {
+    await pool.query('DELETE FROM rate_limits');
+    const endpoint = '/api/referrals';
+    const readXp = async (headers) =>
+      (await api.get('/api/statistics/analytics').set(headers).expect(200)).body;
+    const summary = async (headers = auth()) =>
+      (await api.get(endpoint).set(headers).expect('Cache-Control', 'no-store').expect(200)).body;
+    const before = await readXp(auth());
+
+    await api.get(endpoint).expect(401);
+    await api.get('/api/friends').set(auth()).expect(404);
+    const invite = await summary();
+    assert.equal(invite.rewardXp, 50);
+    assert.equal(invite.registered, 0);
+    assert.notEqual((await summary(other())).code, invite.code);
+    const registration = {
+      fullName: 'Referred learner',
+      email: 'referred@example.com',
+      password: 'Referral8!',
+      referralCode: invite.code,
+    };
+    await api.post('/api/auth/register').send({ ...registration, referralCode: 'broken' }).expect(400);
+    await api.post('/api/auth/register').send(registration).expect(201);
+    await api.post('/api/auth/register').send(registration).expect(409);
+
+    const pending = await summary();
+    assert.equal(pending.pending, 1);
+    assert.equal(pending.rewarded, 0);
+    assert.equal((await readXp(auth())).totalXp, before.totalXp);
+    assert.deepEqual(Object.keys(pending.recent[0]).sort(), ['id', 'registeredAt', 'rewardXp', 'rewardedAt']);
+    assert.equal((await summary(other())).registered, 0);
+
+    const verify = '/api/auth/email-verification';
+    await api.post(verify + '/request').send({ email: registration.email }).expect(202);
+    await emailWorker.flush();
+    const mail = sentAccountEmails.find(({ email, kind }) => email === registration.email && kind === 'verify_email');
+    assert.ok(mail);
+    const responses = await Promise.all([
+      api.post(verify + '/confirm-code').send({ email: registration.email, code: mail.code }),
+      api.post(verify + '/confirm-code').send({ email: registration.email, code: mail.code }),
+    ]);
+    assert.deepEqual(responses.map(({ status }) => status).sort(), [204, 400]);
+    await api.post(verify + '/confirm').send({ token: mail.token }).expect(400);
+
+    const earned = await summary();
+    assert.equal(earned.rewarded, 1);
+    assert.equal(earned.pending, 0);
+    assert.equal(earned.earnedXp, 50);
+    assert.ok(earned.recent[0].rewardedAt);
+    const after = await readXp(auth());
+    assert.equal(after.totalXp, before.totalXp + 50);
+    assert.equal(after.studySeconds, before.studySeconds);
+    assert.equal(after.weeks.at(-1).xp, before.weeks.at(-1).xp + 50);
+    const { body: standings } = await api.get('/api/leaderboard?period=all').set(auth()).expect(200);
+    assert.equal(standings.own.xp, after.totalXp);
+    const { body: achievements } = await api.get('/api/achievements').set(auth()).expect(200);
+    assert.equal(achievements.find(({ id }) => id === 'social').progress, 1);
+    const { body: device } = await api.post('/api/auth/login')
+      .send({ email: registration.email, password: registration.password }).expect(200);
+    await api.delete('/api/users/me').set('Authorization', 'Bearer ' + device.accessToken)
+      .send({ currentPassword: registration.password }).expect(204);
+    assert.equal((await summary()).earnedXp, 50);
+  });
+
+  await t.test('keeps notifications usable without exposing historical friendship requests', async () => {
+    const endpoint = '/api/notifications';
+    const { id: actorId } = (await api.get('/api/users/me').set(other()).expect(200)).body;
+    const { rows } = await pool.query(
+      "INSERT INTO user_notifications (user_id,actor_id,type,dedupe_key,data) VALUES ($1,$2,'friend_request','legacy-test','{}'),($1,NULL,'news','referral-test-news','{}') RETURNING id,type",
+      [userId, actorId],
+    );
+    try {
+      await api.get(endpoint).expect(401);
+      const visible = rows.find(({ type }) => type === 'news').id;
+      const legacy = rows.find(({ type }) => type === 'friend_request').id;
+      const inbox = (await api.get(endpoint).set(auth()).expect(200)).body;
+      assert.ok(inbox.data.some(({ id }) => id === visible));
+      assert.ok(!inbox.data.some(({ id }) => id === legacy));
+      await api.patch(endpoint + '/' + visible + '/read').set(other()).expect(204);
+      await api.patch(endpoint + '/' + visible + '/read').set(auth()).expect(204);
+      const read = (await api.get(endpoint).set(auth()).expect(200)).body;
+      assert.ok(read.data.find(({ id }) => id === visible).readAt);
+      await api.patch(endpoint + '/read-all').set(auth()).expect(204);
+      assert.equal((await api.get(endpoint).set(auth()).expect(200)).body.unreadCount, 0);
+    } finally {
+      await pool.query('DELETE FROM user_notifications WHERE id=ANY($1::uuid[])', [rows.map(({ id }) => id)]);
+    }
+  });
+
   await t.test('signs out other devices while preserving the current account session', async () => {
     const { email } = (await api.get('/api/users/me').set(auth()).expect(200)).body;
     const { body: device } = await api.post('/api/auth/login')
@@ -1742,12 +2136,251 @@ test('complete API and database lifecycle', async (t) => {
     assert.equal(remaining[0].current, true);
   });
 
+  await t.test('creates personalized learning notifications once with real activity', async () => {
+    const email = 'notification-test@example.com';
+    const { body: learner } = await api.post('/api/auth/register')
+      .send({ email, password, fullName: 'Notifications learner' }).expect(201);
+    // Pick a real zone where both afternoon checks are due, independent of the test runner clock.
+    const zone = (await pool.query(
+      `SELECT name FROM pg_timezone_names WHERE name NOT LIKE 'posix/%'
+       AND (now() AT TIME ZONE name)::time BETWEEN time '19:00' AND time '22:00'
+       ORDER BY name LIMIT 1`,
+    )).rows[0].name;
+    await pool.query(
+      `UPDATE learner_profiles SET timezone=$2, streak_day=1,
+        study_reminder_enabled=true, study_reminder_time='18:00',
+        last_session_at=(((now() AT TIME ZONE $2)::date-1)::timestamp+interval '12 hours')
+          AT TIME ZONE $2 AT TIME ZONE 'UTC' WHERE user_id=$1`,
+      [learner.id, zone],
+    );
+    await pool.query(
+      `INSERT INTO user_ui_preferences (user_id, notifications)
+       VALUES ($1,'{"review":true,"streak":true,"achievements":true,"progress":true,"weekly":true}')`,
+      [learner.id],
+    );
+    const { rows: [card] } = await pool.query(
+      `INSERT INTO cards(user_id,word_id,stability,difficulty,due,reps,state,lapses)
+       VALUES ($1,$2,2,4,now() AT TIME ZONE 'UTC'-interval '1 hour',1,'REVIEW',0) RETURNING id`,
+      [learner.id, wordId],
+    );
+    const { rows: [yesterday] } = await pool.query(
+      `INSERT INTO sessions (user_id, status, started_at, ended_at)
+       SELECT user_id, 'completed', last_session_at-interval '10 minutes', last_session_at
+       FROM learner_profiles WHERE user_id=$1 RETURNING id`,
+      [learner.id],
+    );
+    await pool.query(
+      `INSERT INTO session_tasks(session_id,card_id,format,order_index,completed,correct)
+       VALUES ($1,$2,'meaning_match',0,true,true)`,
+      [yesterday.id, card.id],
+    );
+    await pool.query(
+      `INSERT INTO sessions (user_id,status,started_at,ended_at)
+       SELECT $1,'completed', moment-interval '15 minutes', moment FROM (
+         SELECT (date_trunc('week',now() AT TIME ZONE $2)-interval '5 days')
+           AT TIME ZONE $2 AT TIME ZONE 'UTC' AS moment
+       ) t`,
+      [learner.id, zone],
+    );
+    await pool.query(
+      `INSERT INTO assessment_result (user_id,resulting_level,correct_count,total_question,taken_at)
+       VALUES ($1,'B1',8,10,now() AT TIME ZONE 'UTC'-interval '4 minutes')`,
+      [learner.id],
+    );
+    await pool.query(
+      `INSERT INTO challenges (user_id, kind, payload, answers, expires_at, completed_at, result, created_at)
+       SELECT user_id, 'sequence_memory', '{}', '[]',
+        (last_session_at AT TIME ZONE 'UTC') + interval '1 hour',
+        last_session_at AT TIME ZONE 'UTC', '{"score":90,"correctCount":7,"totalQuestion":7}',
+        (last_session_at AT TIME ZONE 'UTC') - interval '1 minute'
+       FROM learner_profiles WHERE user_id=$1`,
+      [learner.id],
+    );
+    const work = async () => {
+      await pool.query('UPDATE notification_schedules SET next_check_at=now() WHERE user_id=$1', [learner.id]);
+      await notificationWorker.flush();
+      return (await pool.query(
+        'SELECT type,data FROM user_notifications WHERE user_id=$1 ORDER BY type,id',
+        [learner.id],
+      )).rows;
+    };
+    const first = await work();
+    assert.deepEqual(first.find((row) => row.type === 'review')?.data, { count: 1 });
+    assert.deepEqual(first.find((row) => row.type === 'streak')?.data, { count: 1 });
+    assert.ok(first.some((row) => row.type === 'progress' && row.data.level === 'B1'));
+    assert.ok(first.some((row) => row.type === 'progress' && row.data.count === 100));
+    assert.ok(first.some((row) => row.type === 'daily'));
+    assert.ok(first.some((row) => row.type === 'achievements' && row.data.achievementId === 'perfect-session'));
+    assert.ok(first.some((row) => row.type === 'weekly' && row.data.minutes >= 15));
+    assert.deepEqual(await work(), first);
+  });
+  await t.test('uses provider idempotency and treats expired push endpoints as gone', async (transportTest) => {
+    const { NotificationTransport } = require('../dist/src/infrastructure/notifications/NotificationTransport');
+    const transport = app.get(NotificationTransport);
+    const pending = {
+      id: randomUUID(),
+      notificationId: randomUUID(),
+      channel: 'email',
+      expiresAt: new Date(Date.now() + 60_000),
+    };
+    const target = { userId, type: 'weekly', email: 'synthetic@example.com', data: { count: 3, minutes: 18, words: 7 } };
+    let payload;
+    let emails = 0;
+    transportTest.mock.method(globalThis, 'fetch', async (url, init) => {
+      assert.equal(url, 'https://api.resend.com/emails');
+      assert.equal(init.headers['Idempotency-Key'], 'leximind-notification/' + pending.id);
+      if (payload !== undefined) assert.equal(init.body, payload);
+      payload = init.body;
+      assert.match(payload, /https:\/\/example\.com\/settings\/notifications/);
+      assert.match(payload, /3 ta mashq, 18 daqiqa/);
+      emails += 1;
+      return emails === 1
+        ? new Response(null, { status: 429, headers: { 'Retry-After': '90' } })
+        : new Response(null, { status: 200 });
+    });
+    assert.deepEqual(await transport.deliver(pending, target), { status: 'retry', afterSeconds: 90 });
+    assert.deepEqual(await transport.deliver(pending, target), { status: 'sent' });
+    assert.equal(emails, 2);
+
+    const endpoint = 'https://web.push.apple.com/test_endpoint_secret';
+    const tag = pending.notificationId.replaceAll('-', '');
+    const push = transportTest.mock.method(transport, 'sendPush', async (destination, payload, options) => {
+      assert.equal(destination.endpoint, endpoint);
+      assert.equal(options.topic, tag);
+      assert.equal(JSON.parse(payload).tag, tag);
+      assert.ok(!payload.includes(target.email));
+      throw { statusCode: 410 };
+    });
+    assert.deepEqual(await transport.deliver({ ...pending, channel: 'push' }, {
+      ...target, endpoint, p256dh: generateVAPIDKeys().publicKey, auth: Buffer.alloc(16, 6).toString('base64url'),
+    }), { status: 'gone' });
+    assert.equal(push.mock.callCount(), 1);
+  });
+
+  await t.test('validates push ownership and retries opted-in deliveries', async () => {
+    const endpoint = '/api/notifications/push-subscriptions';
+    const { NotificationDeliveryWorker } = require('../dist/src/infrastructure/notifications/NotificationDeliveryWorker');
+    const { NotificationDeliveryRepository } = require('../dist/src/infrastructure/notifications/NotificationDeliveryRepository');
+    const { NotificationTransport } = require('../dist/src/infrastructure/notifications/NotificationTransport');
+    const worker = app.get(NotificationDeliveryWorker);
+    const queue = app.get(NotificationDeliveryRepository);
+    const transport = app.get(NotificationTransport);
+    const calls = [];
+    const original = transport.deliver;
+    let pushStatus = 'retry';
+    transport.deliver = async (job, target) => {
+      calls.push([job.channel, target.userId, job.notificationId]);
+      return { status: job.channel === 'push' ? pushStatus : 'sent' };
+    };
+    try {
+      await api.get('/api/notifications/delivery').expect(401);
+      const { body: availability } = await api.get('/api/notifications/delivery').set(auth()).expect(200);
+      assert.deepEqual(availability, { pushPublicKey: testVapid.publicKey, emailAvailable: true, deviceIds: [] });
+      const push = {
+        endpoint: 'https://fcm.googleapis.com/fcm/send/leximind_test_endpoint',
+        keys: { p256dh: generateVAPIDKeys().publicKey, auth: Buffer.alloc(16, 8).toString('base64url') },
+      };
+      const register = (payload = push, headers = auth()) => api.post(endpoint).set(headers).send(payload);
+      await api.post(endpoint).send(push).expect(401);
+      await register({ ...push, endpoint: 'https://127.0.0.1/push/private_endpoint' }).expect(400);
+      await register({ ...push, endpoint: 'https://fcm.googleapis.com.example.com/fcm/send/leximind_test_endpoint' }).expect(400);
+      await register({ ...push, keys: { ...push.keys, p256dh: Buffer.alloc(65).toString('base64url') } }).expect(400);
+      const { body: first } = await register().expect(201);
+      assert.deepEqual((await register().expect(201)).body, first);
+      const deliveryFor = async (headers) => (await api.get('/api/notifications/delivery').set(headers).expect(200)).body.deviceIds;
+      assert.deepEqual(await deliveryFor(auth()), [first.id]);
+      assert.deepEqual(await deliveryFor(other()), []);
+      await api.delete(endpoint + '/' + first.id).set(other()).expect(204);
+      assert.equal((await pool.query('SELECT id FROM notification_push_subscriptions WHERE id=$1', [first.id])).rowCount, 1);
+      await register({ ...push, keys: { ...push.keys, auth: Buffer.alloc(16, 9).toString('base64url') } }, other()).expect(409);
+      const { body: moved } = await register(push, other()).expect(201);
+      assert.notEqual(moved.id, first.id);
+      assert.deepEqual(await deliveryFor(auth()), []);
+      assert.deepEqual(await deliveryFor(other()), [moved.id]);
+      const { body: subscription } = await register().expect(201);
+      assert.notEqual(subscription.id, moved.id);
+
+      const updatePrefs = (patch) => pool.query(
+        `INSERT INTO user_ui_preferences(user_id,notifications) VALUES ($1,$2::jsonb)
+         ON CONFLICT (user_id) DO UPDATE
+           SET notifications=coalesce(user_ui_preferences.notifications,'{}') || excluded.notifications`,
+        [userId, JSON.stringify(patch)],
+      );
+      await updatePrefs({ push: true, email: true, weekly: true, review: true });
+      await pool.query('UPDATE users SET email_verified_at=now() WHERE id=$1', [userId]);
+      await pool.query('UPDATE user_notifications SET read_at=now() WHERE user_id=$1', [userId]);
+      const createNotice = async (type) => (await pool.query(
+        'INSERT INTO user_notifications(user_id,type,dedupe_key) VALUES($1,$2,$3) RETURNING id',
+        [userId, type, randomUUID()],
+      )).rows[0].id;
+      const getJobs = async (id) => (await pool.query(
+        'SELECT channel,attempts,outcome,available_at>now() AS deferred FROM notification_delivery_jobs WHERE notification_id=$1 ORDER BY channel',
+        [id],
+      )).rows;
+      const weekly = await createNotice('weekly');
+      await Promise.all([queue.enqueue(['email', 'push']), queue.enqueue(['email', 'push'])]);
+      await worker.flush();
+      let jobs = await getJobs(weekly);
+      assert.deepEqual(jobs.map(({ channel, outcome }) => [channel, outcome]), [['email', 'delivered'], ['push', null]]);
+      assert.equal(jobs[1].attempts, 1);
+      assert.equal(jobs[1].deferred, true);
+      await pool.query("UPDATE notification_delivery_jobs SET available_at=now() WHERE notification_id=$1 AND channel='push'", [weekly]);
+      pushStatus = 'sent';
+      await worker.flush();
+      jobs = await getJobs(weekly);
+      assert.equal(jobs[1].attempts, 2);
+      assert.equal(jobs[1].outcome, 'delivered');
+      assert.equal(calls.filter(([channel]) => channel === 'email').length, 1);
+      assert.equal(calls.filter(([channel]) => channel === 'push').length, 2);
+      assert.ok(calls.every(([, owner, notice]) => owner === userId && notice === weekly));
+
+      const review = await createNotice('review');
+      await queue.enqueue(['push']);
+      await updatePrefs({ push: false });
+      await worker.flush();
+      assert.equal((await getJobs(review))[0].outcome, 'skipped');
+      assert.equal(calls.length, 3);
+
+      await updatePrefs({ push: true });
+      pushStatus = 'gone';
+      await createNotice('review');
+      await queue.enqueue(['push']);
+      await worker.flush();
+      assert.equal((await pool.query('SELECT id FROM notification_push_subscriptions WHERE id=$1', [subscription.id])).rowCount, 0);
+      const { body: restored } = await register().expect(201);
+      await api.delete(endpoint + '/' + restored.id).set(auth()).expect(204);
+      assert.equal((await pool.query('SELECT id FROM notification_push_subscriptions WHERE id=$1', [restored.id])).rowCount, 0);
+    } finally {
+      transport.deliver = original;
+    }
+  });
+
   await t.test('deleting account cascades personal state', async () => {
     await api.delete('/api/users/me').set(auth()).expect(400);
     await api.delete('/api/users/me').set(auth())
       .send({ currentPassword: 'wrong' }).expect(400);
+    const image =
+      'data:image/jpeg;base64,' +
+      Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64');
+    await api.put('/api/users/me/avatar').set(auth()).send({ image }).expect(200);
+    assert.equal(uploadedAvatars.size, 1);
     await api.delete('/api/users/me').set(auth())
       .send({ currentPassword: 'Reset88!' }).expect(204);
+    assert.equal((await pool.query('SELECT public_id FROM avatar_cleanup_jobs')).rowCount, 1);
+    await avatarWorker.flush();
+    assert.equal(uploadedAvatars.size, 0);
+    assert.equal((await pool.query('SELECT public_id FROM avatar_cleanup_jobs')).rowCount, 0);
+    assert.equal(
+      (await pool.query('SELECT id FROM user_notifications WHERE user_id=$1 OR actor_id=$1', [userId])).rowCount,
+      0,
+    );
+    assert.equal((await pool.query('SELECT request_id FROM friendship_rewards WHERE user_id=$1', [userId])).rowCount, 0);
+    assert.equal((await pool.query('SELECT id FROM friendships WHERE requester_id=$1 OR recipient_id=$1', [userId])).rowCount, 0);
+    assert.equal((await pool.query('SELECT id FROM referrals WHERE referrer_id=$1', [userId])).rowCount, 0);
+    assert.equal(
+      (await pool.query('SELECT count(*)::integer AS n FROM collection_entries WHERE user_id=$1', [userId])).rows[0].n,
+      0,
+    );
     assert.equal(
       (
         await pool.query(
@@ -1781,7 +2414,7 @@ test('complete API and database lifecycle', async (t) => {
       const missing = operations.filter(
         (operation) => !successfulRoutes.has(operation),
       );
-      assert.equal(operations.length, 77);
+      assert.equal(operations.length, 95);
       assert.deepEqual(missing, []);
     },
   );

@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Headers, Param, ParseUUIDPipe, Post, HttpCode } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  HttpCode,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public, CurrentUser } from '../../security';
@@ -12,8 +22,10 @@ import { userView } from '../../serializers';
 import { AccountSessions } from '../../../application/use-cases/user/AccountSessions';
 import { AccountActions } from '../../../application/use-cases/user/AccountActions';
 import {
+  ConfirmEmailCodeDto,
   ConfirmEmailDto,
   RequestAccountActionDto,
+  ResetPasswordCodeDto,
   ResetPasswordDto,
 } from './dto/account-action.dto';
 @Controller('auth')
@@ -80,6 +92,15 @@ export class AuthController {
 
   @Public()
   @ApiOperation({ security: [] })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('email-verification/confirm-code')
+  @HttpCode(204)
+  confirmEmailCode(@Body() dto: ConfirmEmailCodeDto) {
+    return this.accountActions.confirmCode(dto.email, dto.code, 'verify_email');
+  }
+
+  @Public()
+  @ApiOperation({ security: [] })
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('password-reset/request')
   @HttpCode(202)
@@ -95,6 +116,20 @@ export class AuthController {
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.accountActions.confirm(
       dto.token,
+      'reset_password',
+      dto.password,
+    );
+  }
+
+  @Public()
+  @ApiOperation({ security: [] })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('password-reset/confirm-code')
+  @HttpCode(204)
+  resetPasswordCode(@Body() dto: ResetPasswordCodeDto) {
+    return this.accountActions.confirmCode(
+      dto.email,
+      dto.code,
       'reset_password',
       dto.password,
     );

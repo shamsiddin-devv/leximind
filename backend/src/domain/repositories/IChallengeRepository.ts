@@ -6,7 +6,11 @@ import {
   QuizWord,
 } from '../entities/Challenge';
 import type { CefrLevel } from '../entities/Word';
-import type { NotebookCount, NotebookEntry, NotebookMistake } from '../entities/MistakesNotebook';
+import type {
+  NotebookCount,
+  NotebookEntry,
+  NotebookMistake,
+} from '../entities/MistakesNotebook';
 export interface VocabularyFilter {
   cefrLevel?: CefrLevel;
   topic?: string;
@@ -16,7 +20,10 @@ export interface ChallengeTransaction {
   finish(data: ChallengeData, result: ChallengeResult): Promise<void>;
   saveAttempts(data: ChallengeData): Promise<void>;
   audioEnabled(userId: string): Promise<boolean>;
-  recordNotebookMistakes(data: ChallengeData, mistakes: readonly NotebookMistake[]): Promise<void>;
+  recordNotebookMistakes(
+    data: ChallengeData,
+    mistakes: readonly NotebookMistake[],
+  ): Promise<void>;
 }
 export interface IChallengeRepository {
   vocabulary(
@@ -38,8 +45,17 @@ export interface IChallengeRepository {
     page: number,
     limit: number,
   ): Promise<{ data: unknown[]; total: number }>;
-  notebook(userId: string, page: number, limit: number, kinds: readonly ChallengeKind[] | null, onlyOpen: boolean):
-    Promise<{ entries: NotebookEntry[]; counts: NotebookCount[] }>;
+  notebook(
+    userId: string,
+    page: number,
+    limit: number,
+    kinds: readonly ChallengeKind[] | null,
+    onlyOpen: boolean,
+  ): Promise<{ entries: NotebookEntry[]; counts: NotebookCount[] }>;
   notebookEntry(userId: string, id: string): Promise<NotebookEntry | null>;
-  setNotebookResolved(userId: string, id: string, resolved: boolean): Promise<{ resolvedAt: Date | null } | null>;
+  setNotebookResolved(
+    userId: string,
+    id: string,
+    resolved: boolean,
+  ): Promise<{ resolvedAt: Date | null } | null>;
 }

@@ -15,3 +15,11 @@ export class ConfirmEmailDto {
 export class ResetPasswordDto extends ConfirmEmailDto {
   @IsString() @MinLength(MIN_PASSWORD_LENGTH) @MaxLength(72) password!: string;
 }
+
+export class ConfirmEmailCodeDto extends RequestAccountActionDto {
+  @IsString() @Matches(/^[0-9]{6}$/) code!: string;
+}
+
+export class ResetPasswordCodeDto extends ConfirmEmailCodeDto {
+  @IsString() @MinLength(MIN_PASSWORD_LENGTH) @MaxLength(72) password!: string;
+}

@@ -22,7 +22,7 @@ export const achievementCatalog: AchievementDefinition[] = [
   { id: 'words-2000', name: 'Til ustasi', requirement: '2 000 ta so‘zni yodlang', category: 'vocabulary', rarity: 'legendary', icon: BookOpen },
   { id: 'perfect-session', name: 'Mukammal seans', requirement: 'Bir seansda 100% aniqlikka erishing', category: 'accuracy', rarity: 'rare', icon: CheckCheck },
   { id: 'night-owl', name: 'Tungi boyqush', requirement: 'Soat 23:00 dan keyin 15 ta seans boshlang va yakunlang', category: 'habits', rarity: 'common', icon: Moon },
-  { id: 'social', name: 'Ijtimoiy parvoz', requirement: '10 ta do‘stni taklif qiling', category: 'social', rarity: 'rare', icon: Users },
+  { id: 'social', name: 'Ijtimoiy parvoz', requirement: '10 ta foydalanuvchini LexiMind’ga taklif qiling', category: 'social', rarity: 'rare', icon: Users },
   { id: 'marathon', name: 'Marafon', requirement: 'Bir oyda 10 soat o‘rganing', category: 'habits', rarity: 'legendary', icon: Timer },
 ];
 

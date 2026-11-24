@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { CreateWordUseCase } from '../../../application/use-cases/word/CreateWordUseCase';
 import { GetWordByIdUseCase } from '../../../application/use-cases/word/GetWordByIdUseCase';
+import { GetDailyWord } from '../../../application/use-cases/word/GetDailyWord';
 import { SearchWordUseCase } from '../../../application/use-cases/word/SearchWordUseCase';
 import { CreateManyWordsUseCase } from '../../../application/use-cases/word/create-many-words/CreateManyWordsUseCase';
 import { ManageWordUseCase } from '../../../application/use-cases/word/ManageWordUseCase';
@@ -26,10 +27,15 @@ export class WordController {
   constructor(
     private readonly create: CreateWordUseCase,
     private readonly get: GetWordByIdUseCase,
+    private readonly daily: GetDailyWord,
     private readonly search: SearchWordUseCase,
     private readonly bulk: CreateManyWordsUseCase,
     private readonly manage: ManageWordUseCase,
   ) {}
+  @Get('daily') async featured() {
+    const word = await this.daily.execute();
+    return { word: word ? wordView(word) : null };
+  }
   @Get(':id') async byId(@Param('id', ParseUUIDPipe) id: string) {
     return wordView(await this.get.execute(id));
   }

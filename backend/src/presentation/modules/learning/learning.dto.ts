@@ -17,9 +17,20 @@ import { type GameKind, gameKinds } from '../../../domain/entities/Challenge';
 import { IReviewRating } from '../../../domain/services/IReviewRatingService';
 import { CEFR_LEVELS, type CefrLevel } from '../../../domain/entities/Word';
 import type { SessionData } from '../../../domain/entities/LearningSession';
-import { leaderboardPeriods, reviewModes, reviewQueues, studyReminderTimePattern, type LeaderboardPeriod, type ReviewMode, type ReviewQueue } from '../../../domain/repositories/ILearningRepository';
+import {
+  leaderboardPeriods,
+  reviewModes,
+  reviewQueues,
+  studyReminderTimePattern,
+  type LeaderboardPeriod,
+  type ReviewMode,
+  type ReviewQueue,
+} from '../../../domain/repositories/ILearningRepository';
 import { PaginationDto } from '../../pagination.dto';
-import { notebookCategories, type NotebookCategory } from '../../../domain/entities/MistakesNotebook';
+import {
+  notebookCategories,
+  type NotebookCategory,
+} from '../../../domain/entities/MistakesNotebook';
 
 export class MistakesNotebookDto extends PaginationDto {
   @ValidateIf((_object: unknown, value: unknown) => value !== undefined)

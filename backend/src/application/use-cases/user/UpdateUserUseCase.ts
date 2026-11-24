@@ -11,10 +11,14 @@ export class UpdateUserUseCase {
   ) {}
 
   execute(id: string, { currentPassword, ...details }: UpdateUserUseCaseDto) {
-    const email = details.email === undefined ? undefined : new Email(details.email);
+    const email =
+      details.email === undefined ? undefined : new Email(details.email);
     return this.users.edit(id, async (user, passwordHash) => {
       if (email && !user.email.equals(email)) {
-        if (!currentPassword || !(await this.hashes.compare(currentPassword, passwordHash))) {
+        if (
+          !currentPassword ||
+          !(await this.hashes.compare(currentPassword, passwordHash))
+        ) {
           throw new BadRequestError('Current password is incorrect.');
         }
       }

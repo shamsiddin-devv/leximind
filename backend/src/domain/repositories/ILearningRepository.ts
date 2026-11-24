@@ -65,17 +65,34 @@ export interface LearningAnalytics {
   activeWords: number;
   accuracy: number | null;
   studySeconds: number;
-  weeks: { date: string; xp: number; accuracy: number | null; newWords: number }[];
+  weeks: {
+    date: string;
+    xp: number;
+    accuracy: number | null;
+    newWords: number;
+  }[];
   days: { date: string; studySeconds: number }[];
   months: { date: string; studySeconds: number }[];
-  skills: Partial<Record<'vocabulary' | 'grammar' | 'listening' | 'reading' | 'writing', number>>;
+  skills: Partial<
+    Record<
+      'vocabulary' | 'grammar' | 'listening' | 'reading' | 'writing',
+      number
+    >
+  >;
 }
 export interface LearningCalendar {
   today: string;
   monthStart: string;
   dailyStudyMinutes: number;
   dailyNewWords: number;
-  days: { date: string; studySeconds: number; newWords: number; sessions: number; xp: number; active: boolean }[];
+  days: {
+    date: string;
+    studySeconds: number;
+    newWords: number;
+    sessions: number;
+    xp: number;
+    active: boolean;
+  }[];
 }
 export interface TopicProgress {
   topic: string;
@@ -118,9 +135,17 @@ export interface Profile {
   xpMultiplier: number;
   lastSessionAt: Date | null;
 }
-export type ProfilePreferences = Pick<Profile,
-  'studyLevel' | 'timezone' | 'dailyNewWords' | 'dailyStudyMinutes' | 'reviewMode' |
-  'studyReminderEnabled' | 'studyReminderTime' | 'feedbackAudioEnabled' | 'autoplayPronunciation'
+export type ProfilePreferences = Pick<
+  Profile,
+  | 'studyLevel'
+  | 'timezone'
+  | 'dailyNewWords'
+  | 'dailyStudyMinutes'
+  | 'reviewMode'
+  | 'studyReminderEnabled'
+  | 'studyReminderTime'
+  | 'feedbackAudioEnabled'
+  | 'autoplayPronunciation'
 >;
 export interface SessionTask extends ReviewPrompt {
   id: string;
@@ -147,7 +172,12 @@ export interface LearningTransaction {
   activeSession(userId: string): Promise<SessionData | null>;
   session(id: string, userId: string): Promise<SessionData | null>;
   tasks(id: string): Promise<SessionTask[]>;
-  dueCards(userId: string, limit: number, newLimit: number, queue?: ReviewQueue): Promise<Card[]>;
+  dueCards(
+    userId: string,
+    limit: number,
+    newLimit: number,
+    queue?: ReviewQueue,
+  ): Promise<Card[]>;
   createSession(userId: string, cardIds: string[]): Promise<SessionData>;
   card(id: string, userId: string): Promise<Card | null>;
   saveReview(
@@ -195,9 +225,7 @@ export interface ILearningRepository {
   topics(userId: string): Promise<TopicProgress[]>;
   achievements(userId: string): Promise<AchievementProgress[]>;
   leaderboard(userId: string, period: LeaderboardPeriod): Promise<Leaderboard>;
-  statistics(
-    userId: string,
-  ): Promise<{
+  statistics(userId: string): Promise<{
     cards: number;
     due: number;
     reviews: number;

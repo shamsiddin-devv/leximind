@@ -4,6 +4,8 @@ import { Link, routes } from '../../../app/router';
 import { Notice } from '../../../shared/components/UI';
 import { api, explain } from '../../../shared/services/api';
 import type { User } from '../../../shared/types/api';
+import { EmailCodeField } from '../../auth/components/EmailCodeField';
+import { useEmailCodeCooldown } from '../../auth/hooks/useEmailCodeCooldown';
 import { LocationFields } from './LocationFields';
 
 export type VerificationProps = { user: User; token: string; onUserChange: (user: User) => void };
@@ -17,7 +19,8 @@ export function badgeRequirements(user: User) {
   ];
 }
 
-const emailSteps = ['Email manzili', 'Tasdiqlash xati', 'Tasdiqlandi'];
+const emailSteps = ['Email manzili', 'Bir martalik kod', 'Tasdiqlandi'];
+type VerificationAction = 'send' | 'check' | 'code';
 
 function VerificationLayout({ title, description, labels, step, children }: {
   title: string; description: string; labels: string[]; step: number; children: ReactNode;
@@ -36,31 +39,38 @@ function VerificationLayout({ title, description, labels, step, children }: {
 
 function useEmailVerification({ user, token, onUserChange }: VerificationProps) {
   const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState<'send' | 'check'>();
+  const [busy, setBusy] = useState<VerificationAction>();
   const [feedback, setFeedback] = useState<{ message: string; error?: boolean }>();
+  const codeCooldown = useEmailCodeCooldown();
 
-  async function verify(action: 'send' | 'check') {
-    if (busy) return;
+  async function verify(action: VerificationAction, code?: FormDataEntryValue | null) {
+    if (busy || (action === 'send' && codeCooldown.coolingDown)) return;
     setBusy(action);
     setFeedback(undefined);
     try {
       if (action === 'send') {
         await api('/auth/email-verification/request', { method: 'POST', body: { email: user.email } });
         setSent(true);
-        setFeedback({ message: 'Tasdiqlash xati so‘raldi.' });
+        codeCooldown.markSent();
+        setFeedback({ message: 'Tasdiqlash xati so‘raldi. Xat kelmasa, spam papkasini ham tekshiring.' });
       } else {
+        if (action === 'code') {
+          await api('/auth/email-verification/confirm-code', { method: 'POST', body: { email: user.email, code } });
+        }
         const next = await api<User>('/users/me', { token });
         onUserChange(next);
-        if (!next.emailVerifiedAt) setFeedback({ message: 'Email hali tasdiqlanmagan. Xatdagi havolani ochib, qayta tekshiring.' });
+        if (!next.emailVerifiedAt) setFeedback({ message: 'Email hali tasdiqlanmagan. Xatdagi kodni kiriting.' });
       }
     } catch (error) {
-      setFeedback({ error: true, message: explain(error, { 503: 'Email yuborish xizmati hozircha sozlanmagan.' }) });
+      const errors: Record<number, string> = { 503: 'Email yuborish xizmati hozircha ishlamayapti.' };
+      if (action === 'code') errors[400] = 'Kod noto‘g‘ri, muddati tugagan yoki urinishlar chegarasiga yetilgan.';
+      setFeedback({ error: true, message: explain(error, errors) });
     } finally {
       setBusy(undefined);
     }
   }
 
-  return { sent, busy, feedback, verify };
+  return { sent, busy, feedback, verify, coolingDown: codeCooldown.coolingDown };
 }
 
 export function EmailVerification(props: VerificationProps) {
@@ -72,25 +82,33 @@ export function EmailVerification(props: VerificationProps) {
       <Mail size={24} aria-hidden="true" /><h2>Email tasdiqlandi</h2><p>{props.user.email}</p>
       <Link className="button secondary" href={routes.settingsProfileBadge}>Profil tasdiq belgisiga o‘tish <ArrowRight size={16} aria-hidden="true" /></Link>
     </div> : <>
-      <h2>{step === 0 ? 'Email manzilingizni tekshiring' : 'Xatdagi havolani oching'}</h2>
-      <p>{step === 0 ? 'Tasdiqlash havolasi shu manzilga yuboriladi.' : 'Xat kelmasa, spam papkasini ham tekshiring. Havolani ochganingizdan keyin bu yerda holatni yangilashingiz mumkin.'}</p>
+      <h2 id="verify-email-heading">{step === 0 ? 'Email manzilingizni tekshiring' : 'Tasdiqlash kodini kiriting'}</h2>
+      <p>{step === 0 ? 'Bir martalik kod shu manzilga yuboriladi.' : 'Kodni LexiMind yuborgan xatdan topasiz.'}</p>
       <p className="privacy-verification-address"><Mail size={17} aria-hidden="true" />{props.user.email}</p>
       {email.feedback && <Notice error={email.feedback.error}>{email.feedback.message}</Notice>}
-      <div className="privacy-flow-actions">
-        {step === 0 ? <>
+      {step === 0 ? <div className="privacy-flow-actions">
           <Link className="button quiet" href={routes.settingsAccount}>Emailni o‘zgartirish</Link>
           <button type="button" className="button primary" disabled={!!email.busy} onClick={() => void email.verify('send')}>
-            <Send size={16} aria-hidden="true" />{email.busy === 'send' ? 'Yuborilmoqda…' : 'Tasdiqlash xatini yuborish'}
+            <Send size={16} aria-hidden="true" />{email.busy === 'send' ? 'Yuborilmoqda…' : 'Kod yuborish'}
           </button>
-        </> : <>
-          <button type="button" className="button secondary" disabled={!!email.busy} onClick={() => void email.verify('send')}>
-            {email.busy === 'send' ? 'Yuborilmoqda…' : 'Xatni qayta yuborish'}
+      </div> : <form className="privacy-step-form" aria-labelledby="verify-email-heading" onSubmit={(event) => {
+        event.preventDefault();
+        void email.verify('code', new FormData(event.currentTarget).get('code'));
+      }}>
+        <EmailCodeField id="verification-code" />
+        <div className="privacy-flow-actions">
+          <button type="submit" className="button primary" disabled={!!email.busy}>
+            {email.busy === 'code' ? 'Tekshirilmoqda…' : 'Emailni tasdiqlash'}
           </button>
-          <button type="button" className="button primary" disabled={!!email.busy} onClick={() => void email.verify('check')}>
+          <button type="button" className="button secondary" disabled={!!email.busy || email.coolingDown} onClick={() => void email.verify('send')}>
+            {email.busy === 'send' ? 'Yuborilmoqda…' : 'Kodni qayta yuborish'}
+          </button>
+          <button type="button" className="button quiet" disabled={!!email.busy} onClick={() => void email.verify('check')}>
             {email.busy === 'check' ? 'Tekshirilmoqda…' : 'Holatni tekshirish'}
           </button>
-        </>}
-      </div>
+        </div>
+        {email.coolingDown && <p>1 daqiqadan keyin yangi kod so‘rashingiz mumkin.</p>}
+      </form>}
     </>}
   </VerificationLayout>;
 }

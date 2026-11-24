@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+import { validateVapidCredentials } from './notifications/push-configuration';
 
 export function validateEnvironment(env: Record<string, unknown>) {
   const url = typeof env.DATABASE_URL === 'string' ? env.DATABASE_URL : '';
@@ -62,7 +63,8 @@ export function validateEnvironment(env: Record<string, unknown>) {
       );
     }
   }
-  validateAccountEmail(env);
+  const accountMailProvider = validateAccountEmail(env);
+  validateNotificationDelivery(env);
   return {
     ...env,
     NODE_ENV: mode,
@@ -72,32 +74,85 @@ export function validateEnvironment(env: Record<string, unknown>) {
     AUTH_TTL_SECONDS: ttl,
     CORS_ORIGINS: origins.join(','),
     TRUSTED_PROXIES: trustedProxies,
+    ACCOUNT_MAIL_PROVIDER: accountMailProvider,
+    NOTIFICATION_DELIVERY_ENABLED: env.NOTIFICATION_DELIVERY_ENABLED === 'true',
   };
 }
 
-function validateAccountEmail(env: Record<string, unknown>) {
-  const emailValues = [
-    'EMAIL_API_KEY',
-    'EMAIL_FROM',
-    'ACCOUNT_ACTION_URL',
-    'ACCOUNT_EMAIL_KEY',
-  ].map((key) => {
-    const value = env[key];
-    return typeof value === 'string' && value.trim().length > 0;
-  });
-  if (emailValues.some(Boolean) && !emailValues.every(Boolean)) {
-    throw new Error('Configure all account email variables together.');
-  }
+function validateNotificationDelivery(env: Record<string, unknown>) {
+  const enabled = env.NOTIFICATION_DELIVERY_ENABLED;
   if (
-    emailValues[3] &&
-    !/^[a-f0-9]{64}$/i.test(env.ACCOUNT_EMAIL_KEY as string)
+    enabled !== undefined &&
+    enabled !== '' &&
+    enabled !== 'true' &&
+    enabled !== 'false'
   )
+    throw new Error('NOTIFICATION_DELIVERY_ENABLED must be true or false.');
+
+  const [subject, publicKey, privateKey] = [
+    env.VAPID_SUBJECT,
+    env.VAPID_PUBLIC_KEY,
+    env.VAPID_PRIVATE_KEY,
+  ].map((value) => (typeof value === 'string' ? value.trim() : ''));
+  if (subject || publicKey || privateKey) {
+    try {
+      validateVapidCredentials({ subject, publicKey, privateKey });
+    } catch {
+      throw new Error(
+        'Configure a valid VAPID_SUBJECT and matching VAPID key pair.',
+      );
+    }
+  }
+}
+
+export type AccountMailProvider = 'gmail' | 'resend' | 'brevo';
+
+function validateAccountEmail(
+  env: Record<string, unknown>,
+): AccountMailProvider | null {
+  const value = (key: string) =>
+    typeof env[key] === 'string' ? env[key].trim() : '';
+  const smtpEmail = value('SMTP_EMAIL');
+  const smtpPass = value('SMTP_PASS');
+  const apiKey = value('EMAIL_API_KEY');
+  const from = value('EMAIL_FROM');
+  const brevoKey = value('BREVO_API_KEY');
+  const brevoFrom = value('BREVO_FROM_EMAIL');
+  const actionUrl = value('ACCOUNT_ACTION_URL');
+  const localKey = value('ACCOUNT_EMAIL_KEY');
+  if (Boolean(smtpEmail) !== Boolean(smtpPass)) {
+    throw new Error('Configure SMTP_EMAIL and SMTP_PASS together.');
+  }
+  if (smtpEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(smtpEmail)) {
+    throw new Error('SMTP_EMAIL must be an email address.');
+  }
+  if ((apiKey || from) && (!apiKey || !from || !actionUrl)) {
+    throw new Error(
+      'Resend requires EMAIL_API_KEY, EMAIL_FROM and ACCOUNT_ACTION_URL.',
+    );
+  }
+  if ((brevoKey || brevoFrom) && (!brevoKey || !brevoFrom || !actionUrl)) {
+    throw new Error(
+      'Brevo requires BREVO_API_KEY, BREVO_FROM_EMAIL and ACCOUNT_ACTION_URL.',
+    );
+  }
+  if (brevoFrom && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(brevoFrom)) {
+    throw new Error('BREVO_FROM_EMAIL must be an email address.');
+  }
+  const provider = brevoKey
+    ? 'brevo'
+    : smtpEmail
+      ? 'gmail'
+      : apiKey
+        ? 'resend'
+        : null;
+  if ((provider || localKey) && !/^[a-f0-9]{64}$/i.test(localKey))
     throw new Error(
       'ACCOUNT_EMAIL_KEY must contain 32 random bytes represented as hex.',
     );
-  if (emailValues[2]) {
+  if (actionUrl) {
     try {
-      const action = new URL(env.ACCOUNT_ACTION_URL as string);
+      const action = new URL(actionUrl);
       if (
         action.protocol !== 'https:' ||
         action.username ||
@@ -112,4 +167,5 @@ function validateAccountEmail(env: Record<string, unknown>) {
       );
     }
   }
+  return provider;
 }

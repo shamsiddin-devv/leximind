@@ -1,0 +1,164 @@
+.welcome-login { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.welcome-login main { display: grid; align-items: center; justify-items: center; padding: 40px 24px; }
+.welcome-login-content { width: min(100%, 384px); }
+.welcome-login-mobile-brand { display: none; }
+.welcome-login-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 32px; color: var(--welcome-muted); font-size: 12px; }
+.welcome-login-back:hover, .welcome-login-recover:hover { color: var(--welcome-accent); }
+.welcome-login h1 { font-size: 32px; line-height: 1.1; letter-spacing: -.025em; }
+.welcome-login-content > p { margin-top: 8px; color: var(--welcome-muted); }
+.welcome-login-form { margin-top: 30px; }
+.welcome-login-fields, .welcome-register-fields { display: grid; gap: 16px; }
+.welcome-field { display: grid; min-width: 0; gap: 5px; }
+.welcome-field label { color: var(--welcome-muted); font-size: 12px; }
+.welcome-login-fields label { text-transform: uppercase; letter-spacing: .08em; }
+.welcome-field input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  padding: 0 16px;
+  border: 1px solid var(--welcome-control-edge);
+  border-radius: 12px;
+  background: var(--welcome-bg);
+  color: var(--welcome-text);
+  outline-offset: 2px;
+}
+.welcome-field input::placeholder { color: var(--welcome-muted); }
+.welcome-code-address { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: .84rem; overflow-wrap: anywhere; }
+.welcome-code-address button { border: 0; padding: 4px 0; background: transparent; color: var(--welcome-accent); font-weight: 680; }
+.welcome-code-address button:disabled { color: var(--welcome-muted); }
+.welcome-login-form > .welcome-code-address { margin-block-start: 12px; }
+.welcome-input-wrap { position: relative; }
+.welcome-input-wrap:has(.welcome-input-icon) input { padding-left: 43px; }
+.welcome-input-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--welcome-muted); pointer-events: none; }
+.welcome-input-password input { padding-right: 45px; }
+.welcome-input-password input::-ms-reveal { display: none; }
+.welcome-input-password[data-reveal-after-input] input:placeholder-shown + button { visibility: hidden; }
+.welcome-password-toggle { display: grid; place-items: center; position: absolute; inset: 3px 4px 3px auto; width: 44px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--welcome-muted); outline-offset: -1px; }
+.welcome-password-toggle:hover { color: var(--welcome-accent); }
+.welcome-login-form > .welcome-button { width: 100%; margin-top: 24px; }
+.welcome-login-form > .welcome-button:only-child { margin-top: 0; }
+.welcome-login-divider { display: flex; align-items: center; gap: 12px; margin-block: 24px; color: var(--welcome-muted); font-size: 10px; letter-spacing: .13em; text-transform: uppercase; }
+.welcome-login-divider::before, .welcome-login-divider::after { content: ''; flex: 1; border-top: 1px solid var(--welcome-rule); }
+.welcome-login-register { width: 100%; }
+.welcome-login-recover { display: block; width: fit-content; margin: 24px auto 0; color: var(--welcome-muted); font-size: 12px; }
+.welcome-login-aside {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 24px;
+  min-width: 0;
+  min-height: 100svh;
+  padding: clamp(24px, 3.75vw, 56px);
+  border-left: 1px solid var(--welcome-line);
+  background: radial-gradient(ellipse at bottom left, var(--welcome-glow), transparent 65%), var(--welcome-panel);
+}
+.welcome-login-aside .brand-wordmark { justify-self: start; }
+.welcome-login-pitch { align-self: center; }
+.welcome-login-pitch > p:first-child { color: var(--welcome-text); font: 38px/1.1 var(--welcome-serif); }
+.welcome-login-pitch em { color: var(--welcome-accent); }
+.welcome-login-pitch > p + p { max-width: 385px; margin-top: 22px; color: var(--welcome-muted); }
+.welcome-login-pitch ul { display: flex; flex-wrap: wrap; gap: 7px; margin: 32px 0 0; }
+.welcome-login-pitch li { padding: 4px 9px; border: 1px solid var(--welcome-line); border-radius: 8px; color: var(--welcome-muted); font-size: 10px; }
+.welcome-login-pitch [data-highlight] { border-color: color-mix(in oklab, var(--welcome-line), var(--welcome-accent) 46%); background: var(--welcome-tint); color: var(--welcome-accent); }
+.welcome-login-aside dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding-top: 24px; border-top: 1px solid var(--welcome-line); }
+.welcome-login-aside dl > div { display: flex; flex-direction: column-reverse; }
+.welcome-login-aside dt { color: var(--welcome-muted); font-size: 10px; letter-spacing: .085em; text-transform: uppercase; }
+.welcome-login-aside dd { font-size: 16px; font-weight: 750; }
+
+.welcome-register-header { border-bottom: 1px solid var(--welcome-rule); }
+.welcome-register-track { display: flex; align-items: center; gap: 16px; min-height: 64px; width: min(720px, calc(100% - 40px)); margin-inline: auto; color: var(--welcome-muted); font-size: 11px; }
+.welcome-back-circle, .welcome-register-exit { display: grid; place-items: center; flex: none; width: 32px; height: 32px; background: transparent; }
+.welcome-back-circle { border: 1px solid var(--welcome-line); border-radius: 50%; }
+.welcome-register-exit { border-radius: 8px; }
+.welcome-back-circle:hover, .welcome-register-exit:hover { background: var(--welcome-panel); color: var(--welcome-text); }
+.welcome-step-track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); flex: 1; gap: 6px; }
+.welcome-step-track span { height: 3px; border-radius: 99px; background: var(--welcome-line); }
+.welcome-step-track [data-reached] { background: var(--welcome-accent); }
+.welcome-registration .welcome-register-main { width: min(624px, calc(100% - 40px)); margin-inline: auto; padding-block: 64px 48px; }
+.welcome-register-heading { margin-bottom: 40px; }
+.welcome-register-heading > .welcome-referral-note { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 14px; padding: 6px 10px; border-radius: 8px; background: var(--welcome-tint); color: var(--welcome-accent); font-size: .82rem; font-weight: 650; }
+.welcome-register-heading h1 { margin-top: 12px; font-size: 34px; line-height: 1.1; letter-spacing: -.025em; }
+.welcome-register-heading p { margin-top: 12px; color: var(--welcome-muted); }
+.welcome-options, .welcome-answers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.welcome-options button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 74px;
+  padding: 13px 16px;
+  border: 1px solid var(--welcome-line);
+  border-radius: 16px;
+  background: var(--welcome-panel);
+  text-align: left;
+  line-height: 1.35;
+}
+.welcome-options button:not(:disabled):hover, .welcome-options button[aria-pressed=true] { border-color: var(--welcome-fill); background: var(--welcome-tint); }
+.welcome-options button:disabled { opacity: .72; }
+.welcome-options strong, .welcome-options small { display: block; }
+.welcome-options small, .welcome-register-actions small, .welcome-register-fields small { color: var(--welcome-muted); }
+.welcome-options .welcome-tile-icon { color: var(--welcome-muted); }
+.welcome-options button[aria-pressed=true] .welcome-tile-icon { background: var(--welcome-fill); color: #fff; }
+.welcome-option-check { margin-left: auto; color: var(--welcome-accent); }
+.welcome-register-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 32px; }
+.welcome-register-actions .welcome-button { flex: none; }
+.welcome-register-actions .welcome-primary { padding-inline: 27px; }
+.welcome-register-actions a:not(.welcome-button) { color: var(--welcome-accent); }
+
+.welcome-question-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--welcome-muted); font-size: 12px; }
+.welcome-question-meta strong { color: var(--welcome-text); font-weight: 600; }
+.welcome-question-meta > span + span { padding: 3px 9px; border: 1px solid var(--welcome-line); border-radius: 99px; font-size: 11px; }
+.welcome-question-progress { display: block; width: 100%; height: 4px; margin-block: 12px 24px; overflow: hidden; border: 0; border-radius: 99px; appearance: none; background: var(--welcome-line); }
+.welcome-question-progress::-webkit-progress-bar { background: var(--welcome-line); }
+.welcome-question-progress::-webkit-progress-value { background: var(--welcome-fill); border-radius: 99px; }
+.welcome-question-progress::-moz-progress-bar { background: var(--welcome-fill); border-radius: 99px; }
+.welcome-question, .welcome-placement, .welcome-register-fields { padding: 28px; border: 1px solid var(--welcome-line); border-radius: 16px; background: var(--welcome-panel); }
+.welcome-question h2 { margin-bottom: 24px; font-size: 22px; line-height: 1.3; }
+.welcome-answers button { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 46px; padding: 10px 15px; border: 1px solid var(--welcome-line); border-radius: 12px; background: var(--welcome-bg); text-align: left; }
+.welcome-answers button:hover:enabled { border-color: var(--welcome-accent); }
+.welcome-answers [data-feedback=correct] { border-color: var(--welcome-good); color: var(--welcome-good); }
+.welcome-answers [data-feedback=wrong] { border-color: var(--welcome-bad); color: var(--welcome-bad); }
+.welcome-answer-feedback { margin-top: 14px; color: var(--welcome-text); font-size: 13px; }
+.welcome-placement { padding: 32px; }
+.welcome-placement-top { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 24px; align-items: center; }
+.welcome-placement-ring { display: grid; align-content: center; justify-items: center; width: 96px; height: 96px; border: 2px solid var(--welcome-fill); border-radius: 50%; background: var(--welcome-tint); }
+.welcome-placement-ring strong { font: 600 25px/1.15 var(--welcome-display); }
+.welcome-placement-ring small { color: var(--welcome-muted); font-size: 10px; text-transform: uppercase; }
+.welcome-placement .welcome-eyebrow { color: var(--welcome-accent); }
+.welcome-placement h2 { margin-block: 8px; font-size: 25px; line-height: 1.1; }
+.welcome-placement p { color: var(--welcome-muted); }
+.welcome-placement dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+.welcome-placement dl > div { padding: 12px 15px; border-radius: 12px; background: color-mix(in oklab, var(--welcome-panel), var(--welcome-line) 24%); }
+.welcome-placement dt { color: var(--welcome-muted); font-size: 10px; text-transform: uppercase; }
+.welcome-placement dd { margin-top: 4px; font-size: 13px; }
+.welcome-register-fields { gap: 17px; }
+.welcome-password-settings { width: min(100%, 624px); }
+.welcome-password-settings .welcome-register-heading { margin-bottom: 28px; }
+.welcome-password-settings .welcome-register-actions { justify-content: flex-end; }
+
+@media (max-width: 767px) {
+  .welcome-login { grid-template-columns: minmax(0, 1fr); }
+  .welcome-login main { min-height: 100svh; padding-block: 28px; }
+  .welcome-login-mobile-brand { display: block; margin-bottom: 24px; }
+  .welcome-login-aside { display: none; }
+  .welcome-registration .welcome-register-main { padding-top: 44px; }
+  .welcome-register-heading h1 { font-size: 30px; }
+}
+@media (max-width: 480px) {
+  .welcome-register-track { gap: 8px; }
+  .welcome-register-heading { margin-bottom: 28px; }
+  .welcome-options { gap: 9px; }
+  .welcome-options button { gap: 8px; padding-inline: 10px; font-size: 13px; }
+  .welcome-options .welcome-tile-icon { width: 30px; height: 33px; }
+  .welcome-options small { font-size: 10px; }
+  .welcome-option-check { width: 13px; }
+  .welcome-register-actions { flex-wrap: wrap; }
+  .welcome-register-actions .welcome-primary { margin-left: auto; }
+  .welcome-question, .welcome-placement, .welcome-register-fields { padding: 20px; }
+  .welcome-placement-top { grid-template-columns: 72px minmax(0, 1fr); gap: 14px; }
+  .welcome-placement-ring { width: 72px; height: 72px; }
+  .welcome-placement dl { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+}
+@media (max-width: 330px) {
+  .welcome-options, .welcome-answers { grid-template-columns: minmax(0, 1fr); }
+}

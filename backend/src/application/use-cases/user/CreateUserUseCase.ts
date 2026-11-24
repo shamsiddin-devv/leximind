@@ -27,7 +27,16 @@ export class CreateUserUseCase {
       email: checkingEmail,
     });
 
-    const row = await this.userRepo.create(user, hashPassword);
+    const row = await this.userRepo.create(
+      user,
+      hashPassword,
+      {
+        studyLevel: dto.studyLevel,
+        dailyStudyMinutes: dto.dailyStudyMinutes,
+        dailyNewWords: dto.dailyNewWords,
+      },
+      dto.referralCode,
+    );
     return row;
   }
 }

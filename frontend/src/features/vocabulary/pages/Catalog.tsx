@@ -54,7 +54,7 @@ export function Catalog({ token, onChange }: { token: string; onChange: () => vo
 
   return <div className="container screen inner-screen">
     <div className="page-intro"><span className="tile-icon blue"><BookOpen size={26} /></span><h1 lang="en">Vocabulary</h1>
-      <p>Inglizcha so‘zlarni toping va takrorlash uchun kartalaringizga qo‘shing.</p></div>
+      <p>Inglizcha so‘zlarni toping va takrorlash uchun kartalaringizga qo‘shing. <a href="/vocabulary-sources.txt" target="_blank" rel="noopener">Lug‘at manbalari</a></p></div>
     <div className="catalog-toolbar">
       <label className="search-box" htmlFor={searchId}><Search size={19} /><input id={searchId} type="search" aria-label="So‘z qidirish" placeholder="So‘z qidiring…" maxLength={wordSearchLength} value={query}
         onChange={(event) => navigate(vocabularyHref(event.target.value, level, 1, topic), true)} /></label>

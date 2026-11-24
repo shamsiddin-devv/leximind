@@ -2,9 +2,8 @@ import type { NavigationItem } from '../../../app/navigation';
 import { routes } from '../../../app/router';
 import { Notice } from '../../../shared/components/UI';
 import type { Plan, Profile, Statistics, User } from '../../../shared/types/api';
-import type { NotificationPreferences } from '../hooks/useNotificationPreferences';
+import type { NotificationPreferences, ProfileAppearanceState } from '../hooks/useAccountUiPreferences';
 import type { PreferenceSave } from '../hooks/usePreferenceSave';
-import type { ProfileAppearanceState } from '../hooks/useProfileAppearance';
 import { LearningPreferencesForm } from './LearningPreferencesForm';
 import { AccountSettings } from './AccountSettings';
 import { AppearanceSettings } from './AppearanceSettings';
@@ -49,7 +48,7 @@ export function SettingsPage({ path, section, user, profile, statistics, forecas
       panel = <AccountSettings user={user} token={token} onUserChange={onUserChange} onDeleted={onDeleted} />;
       break;
     case routes.settingsNotifications:
-      panel = <NotificationSettings profile={profile} preferences={preferences} notifications={notifications} />;
+      panel = <NotificationSettings profile={profile} preferences={preferences} notifications={notifications} token={token} user={user} />;
       break;
     case routes.settingsAppearance:
       panel = <AppearanceSettings />;

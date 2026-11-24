@@ -4,7 +4,7 @@ import { ProfileHero } from '../components/ProfileHero';
 import { ProfileActivitySummary } from '../components/ProfileActivitySummary';
 import { AccountDetails, LearningPreferences, ProfileSectionHeading, type ProfileIdentityDraft } from '../components/ProfileSettingsPanels';
 import type { Profile, Statistics, User } from '../../../shared/types/api';
-import type { ProfileAppearanceState } from '../hooks/useProfileAppearance';
+import type { ProfileAppearanceState } from '../hooks/useAccountUiPreferences';
 import type { PreferenceSave } from '../hooks/usePreferenceSave';
 import './ProfilePage.css';
 

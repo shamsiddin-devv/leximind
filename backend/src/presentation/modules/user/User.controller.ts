@@ -65,10 +65,8 @@ export class UserController {
     return ownUserView(await this.avatar.execute(u.id, null));
   }
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  @Patch('me/password') changePassword(
-    @CurrentUser() u: Identity,
-    @Body() dto: ChangePasswordDto,
-  ) {
+  @Patch('me/password')
+  changePassword(@CurrentUser() u: Identity, @Body() dto: ChangePasswordDto) {
     return this.password.execute(u.id, dto);
   }
   @Throttle({ default: { limit: 5, ttl: 60_000 } })

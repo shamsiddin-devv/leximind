@@ -7,7 +7,7 @@ export function Notice({ children, error = false }: { children: ReactNode; error
   </div>;
 }
 
-export function Speak({ text, url, autoplay = false }: { text: string; url?: string | null; autoplay?: boolean }) {
+export function Speak({ text, url, autoplay = false, label = 'Talaffuzni tinglash' }: { text: string; url?: string | null; autoplay?: boolean; label?: string }) {
   const player = useRef<HTMLAudioElement | null>(null);
   const speech = useRef<SpeechSynthesisUtterance | null>(null);
   const stop = useCallback(() => {
@@ -38,5 +38,5 @@ export function Speak({ text, url, autoplay = false }: { text: string; url?: str
     if (autoplay) speak();
     return stop;
   }, [autoplay, speak, stop]);
-  return <button type="button" className="icon-button speak" aria-label="Talaffuzni tinglash" onClick={speak}><Volume2 size={19} /></button>;
+  return <button type="button" className="icon-button speak" aria-label={label} onClick={speak}><Volume2 size={19} /></button>;
 }

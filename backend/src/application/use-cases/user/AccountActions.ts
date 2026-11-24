@@ -14,16 +14,25 @@ export interface AccountActionStore {
     digest: string,
     expires: Date,
     encryptedToken: string,
+    codeDigest: string,
   ): Promise<void>;
   consume(
     digest: string,
     kind: AccountActionKind,
     passwordHash?: string,
   ): Promise<boolean>;
+  consumeCode(
+    email: string,
+    kind: AccountActionKind,
+    codeDigest: string,
+    hashPassword?: () => Promise<string>,
+  ): Promise<boolean>;
 }
 export interface AccountActionMailer {
   ensureConfigured(): void;
-  seal(token: string): string;
+  generateCode(): string;
+  digestCode(email: string, kind: AccountActionKind, code: string): string;
+  seal(token: string, code: string): string;
 }
 
 export class AccountActions {
@@ -40,14 +49,17 @@ export class AccountActions {
     const account = await this.users.findByEmail(new Email(email).toString());
     if (!account?.id) return;
     const token = this.tokens.generate();
+    const code = this.mailer.generateCode();
+    const address = account.email.toString();
     const ttl = kind === 'verify_email' ? 60 * 60_000 : 20 * 60_000;
     await this.actions.issue(
       account.id,
-      account.email.toString(),
+      address,
       kind,
       this.tokens.digest(token),
       new Date(Date.now() + ttl),
-      this.mailer.seal(token),
+      this.mailer.seal(token, code),
+      this.mailer.digestCode(address, kind, code),
     );
   }
 
@@ -61,6 +73,28 @@ export class AccountActions {
       password === undefined ? undefined : await this.hashes.hash(password);
     if (!(await this.actions.consume(this.tokens.digest(token), kind, hash))) {
       throw new BadRequestError('Invalid or expired account action.');
+    }
+  }
+
+  async confirmCode(
+    email: string,
+    code: string,
+    kind: AccountActionKind,
+    password?: string,
+  ) {
+    this.mailer.ensureConfigured();
+    if (kind === 'reset_password') validatePassword(password!);
+    const address = new Email(email).toString();
+    const digest = this.mailer.digestCode(address, kind, code);
+    if (
+      !(await this.actions.consumeCode(
+        address,
+        kind,
+        digest,
+        password === undefined ? undefined : () => this.hashes.hash(password),
+      ))
+    ) {
+      throw new BadRequestError('Invalid or expired account action code.');
     }
   }
 }

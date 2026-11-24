@@ -19,6 +19,7 @@ export interface CardResult {
 }
 
 export type CollectionCard = {
+  pinned: boolean;
   id: string;
   text: string;
   translation: string;
@@ -35,7 +36,11 @@ export interface ICardRepository {
   findById(id: string): Promise<Card | null>;
   findUnique(userId: string, wordId: string): Promise<Card | null>;
   findAll(filter: CardFilters): Promise<CardResult>;
-  listCollection(userId: string, page: number, limit: number): Promise<{ data: CollectionCard[]; total: number }>;
+  listCollection(
+    userId: string,
+    page: number,
+    limit: number,
+  ): Promise<{ data: CollectionCard[]; total: number }>;
   create(data: Card): Promise<Card>;
   createMany(data: Card[]): Promise<void>;
 }
