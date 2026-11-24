@@ -22,10 +22,10 @@ export class WordSense {
 
     if (
       typeof props.exampleSentence !== 'string' ||
-      !props.exampleSentence.trim() ||
+      (props.exampleSentence !== '' && !props.exampleSentence.trim()) ||
       props.exampleSentence.length > 255
     ) {
-      throw new BadRequestError('Example sentence is required.');
+      throw new BadRequestError('Example sentence is invalid.');
     }
 
     if (

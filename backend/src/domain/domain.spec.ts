@@ -146,6 +146,16 @@ describe('identity and vocabulary invariants', () => {
         }),
     ).toThrow();
   });
+  it('accepts an imported dictionary sense without an example sentence', () => {
+    const sense = new WordSense({
+      definition: 'a small woody plant',
+      exampleSentence: '',
+      translationUz: 'buta',
+      orderIndex: 0,
+    });
+    expect(sense.exampleSentence).toBe('');
+    expect(sense.translationUz).toBe('buta');
+  });
 });
 
 describe('spaced repetition and learner calendar', () => {
