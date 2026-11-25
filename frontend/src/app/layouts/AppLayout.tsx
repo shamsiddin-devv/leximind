@@ -121,11 +121,11 @@ function SidebarNavigation({ group, activePath, onSelect, id }: {
   function renderLink({ href, label, icon: Icon }: NavigationItem) {
     const learning = href === routes.vocabulary ? 'vocabulary' : href === routes.games ? 'games' : undefined;
     return <Link key={href} href={href} lang={language === 'ru' ? 'ru' : 'en'} className="app-nav-link"
-      data-learning={learning} data-tour-anchor={learning}
+      data-tour-anchor={learning}
       aria-current={activePath === href ? 'page' : undefined} onClick={(event) => onSelect(event, href)}>
-      <Icon size={learning ? 20 : 17} strokeWidth={1.7} aria-hidden="true" />
+      <Icon size={17} strokeWidth={1.7} aria-hidden="true" />
       <span>{routeLabel(language, href, label)}</span>
-      {learning && <span className="app-nav-learning-spark" aria-hidden="true"><Sparkle size={13} fill="currentColor" /></span>}
+      {learning && <Sparkle className="app-nav-learning-badge" size={13} aria-hidden="true" />}
     </Link>;
   }
 
@@ -137,8 +137,7 @@ function SidebarNavigation({ group, activePath, onSelect, id }: {
         <p className="app-nav-heading" aria-hidden="true">{groupLabel(language, group.title)}</p>
         {group.items.map(renderLink)}
       </div>
-      {indicator && <span className="app-nav-indicator" aria-hidden="true"
-        data-featured={indicator.path === routes.vocabulary || indicator.path === routes.games || undefined} style={{
+      {indicator && <span className="app-nav-indicator" aria-hidden="true" style={{
         left: indicator.left, width: indicator.width, height: indicator.height,
         transform: 'translateY(' + indicator.top + 'px)',
       }} />}
