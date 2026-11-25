@@ -119,7 +119,7 @@
   box-shadow: 0 9px 24px #18253820;
 }
 .app-quick-popover { inset-inline: calc(var(--rail-width) + max(159px, var(--panel-visible)) + var(--topbar-search-width) + 12px) auto; }
-.app-drawer .getting-started-mobile-link { color: var(--shell-accent-ink); padding-inline: 12px; min-block-size: 44px; }
+.app-drawer .app-mobile-tour-link { color: var(--shell-accent-ink); padding-inline: 12px; min-block-size: 44px; }
 .app-popover-title { padding: 5px 8px 8px; font-size: .86rem; font-weight: 800; overflow-wrap: anywhere; }
 .app-popover-note { padding: 6px 8px; font-size: .79rem; line-height: 1.45; }
 .app-popover-item {
@@ -251,29 +251,6 @@
   transition: background-color .18s ease, color .18s ease, box-shadow .18s ease;
 }
 .app-nav-link > svg { flex: none; }
-.app-nav-link[data-learning] > svg {
-  color: var(--shell-accent-ink);
-  background: color-mix(in srgb, var(--shell-accent) 12%, transparent);
-  box-sizing: content-box;
-  padding: 3px;
-  margin-inline-start: -3px;
-  border-radius: 6px;
-}
-.app-nav-link[data-learning] > span:first-of-type { min-inline-size: 0; overflow-wrap: anywhere; }
-.app-nav-learning-tag {
-  margin-inline-start: auto;
-  border-radius: 5px;
-  padding: 2px 4px;
-  background: color-mix(in srgb, var(--shell-accent) 12%, transparent);
-  color: var(--shell-accent-ink);
-  font-size: .66rem;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-.app-nav-link[data-learning][aria-current='page'] :is(svg, .app-nav-learning-tag) {
-  background: #fff3;
-  color: inherit;
-}
 .app-rail .app-nav-link,
 .app-nav-group-button { justify-content: center; padding-inline: 0; min-block-size: 42px; }
 .app-nav-group-button { width: 100%; border: 0; background: transparent; }
@@ -294,8 +271,8 @@
   opacity: 0;
   pointer-events: none;
 }
-[data-indicator] > .app-nav-indicator { opacity: 1; }
-[data-indicator] .app-nav-link:is([aria-current='page'], [aria-current='location']) { background: transparent; box-shadow: none; }
+[data-indicator] > .app-nav-indicator:not([data-featured]) { opacity: 1; }
+[data-indicator] .app-nav-link:is([aria-current='page'], [aria-current='location']):not([data-learning]) { background: transparent; box-shadow: none; }
 
 .app-workspace { display: flex; flex-direction: column; min-inline-size: 0; }
 .app-workspace > main:has(> .profile-page) { --main-gutter: 16px; }
@@ -434,10 +411,110 @@
 
 :root[data-theme='dark'] :is(.app-sidebar, .app-sidebar-panel, .app-drawer-panel) { background: var(--night-surface); }
 :root[data-theme='dark'] .app-account-avatar { background: var(--night-selection); color: var(--night-link); }
-:root[data-theme='dark'] .app-nav-link:hover:not([aria-current='page'], [aria-current='location'], [data-active], :where(.app-nav-logout *)),
+:root[data-theme='dark'] .app-nav-link:hover:not([aria-current='page'], [aria-current='location'], [data-active], [data-learning], :where(.app-nav-logout *)),
 :root[data-theme='dark'] .app-drawer .app-control:hover { background: var(--night-highlight); color: var(--ink); }
 
 @media (forced-colors: active) {
   .app-nav-link:is([aria-current='page'], [aria-current='location']),
   .app-nav-group-button[data-active] { outline: 2px solid Highlight; outline-offset: -2px; }
+}
+/* Primary learning entry points */
+.app-nav-group .app-nav-link[data-learning] {
+  --capsule-highlight: #8366ff;
+  --capsule-sheen: #e0d9ff;
+  --capsule-rim: #a799ea;
+  --capsule-surface: #f5f1ff;
+  --capsule-shadow: #5c39da33;
+  --capsule-text: #393075;
+  --capsule-icon: #5642c7;
+  position: relative;
+  isolation: isolate;
+  gap: 8px;
+  min-block-size: 46px;
+  padding: 5px 8px 5px 12px;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  background:
+    linear-gradient(106deg, var(--capsule-surface) 15%, color-mix(in srgb, var(--capsule-surface), var(--capsule-highlight) 10%)) padding-box,
+    linear-gradient(132deg, var(--capsule-highlight), var(--capsule-rim) 23%, transparent 48%, var(--capsule-rim) 74%, var(--capsule-highlight)) border-box;
+  box-shadow: inset 0 0 9px var(--capsule-shadow), 0 2px 5px var(--capsule-shadow);
+  color: var(--capsule-text);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.app-nav-group .app-nav-link[data-learning='games'] {
+  --capsule-highlight: #647dff;
+  --capsule-sheen: #c2d5ff;
+}
+.app-nav-group .app-nav-link[data-learning]::before,
+.app-nav-group .app-nav-link[data-learning]::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+.app-nav-group .app-nav-link[data-learning]::before {
+  inset: -2px auto -2px -4px;
+  width: 23px;
+  border-radius: 55% 8% 15% 55%;
+  background: linear-gradient(140deg, var(--capsule-highlight) 4%, #e0d9ff 29%, var(--capsule-highlight) 48%, #5028bb 82%);
+  transform: skewX(-10deg);
+  mask-image: linear-gradient(90deg, #000 12%, transparent 95%);
+}
+.app-nav-group .app-nav-link[data-learning]::after {
+  inset: auto -11px -24px auto;
+  width: 70px;
+  height: 40px;
+  border: 1px solid var(--capsule-rim);
+  border-radius: 55% 0 0;
+  background: linear-gradient(130deg, transparent, var(--capsule-highlight));
+  transform: rotate(-16deg);
+}
+.app-nav-group .app-nav-link[data-learning] > svg {
+  color: var(--capsule-icon);
+  filter: drop-shadow(0 1px 5px var(--capsule-shadow));
+}
+.app-nav-link[data-learning] > span:first-of-type {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-nav-learning-spark {
+  display: grid;
+  flex: 0 0 23px;
+  width: 23px;
+  height: 23px;
+  margin-inline-start: auto;
+  place-items: center;
+  border: 1px solid var(--capsule-rim);
+  border-radius: 50%;
+  color: var(--capsule-icon);
+  background: radial-gradient(circle, var(--capsule-sheen), var(--capsule-surface) 75%);
+  box-shadow: 0 0 10px var(--capsule-shadow);
+}
+.app-shell .app-nav-group .app-nav-link[data-learning]:is(:hover, [aria-current='page']) {
+  border-color: var(--capsule-highlight);
+  box-shadow: inset 0 0 12px var(--capsule-shadow), 0 2px 8px var(--capsule-shadow);
+  color: var(--capsule-text);
+}
+.app-nav-link[data-learning]:is(:hover, [aria-current='page']) .app-nav-learning-spark {
+  border-color: var(--capsule-highlight);
+  box-shadow: 0 0 12px var(--capsule-highlight);
+}
+:root[data-theme='dark'] .app-nav-group .app-nav-link[data-learning] {
+  --capsule-rim: #594489;
+  --capsule-surface: #110f24;
+  --capsule-shadow: #7a48fb55;
+  --capsule-text: #e8e1ff;
+  --capsule-icon: #d5c9ff;
+  --capsule-sheen: #512b8f;
+}
+:root[data-theme='dark'] .app-nav-group .app-nav-link[data-learning='games'] {
+  --capsule-rim: #4e5097;
+  --capsule-sheen: #303680;
+  --capsule-icon: #e2ddff;
+}
+@media (forced-colors: active) {
+  .app-nav-group .app-nav-link[data-learning] { border-color: ButtonText; }
+  .app-nav-group .app-nav-link[data-learning][aria-current='page'] { border-color: Highlight; }
 }

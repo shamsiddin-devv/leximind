@@ -31,7 +31,7 @@
 .study-home:lang(ru) { --study-serif: Georgia, serif; }
 .study-home-header p { margin-block-start: 10px; color: var(--muted); }
 .study-home-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
-.study-home-meta :is(time, span, .study-home-guide-link) {
+.study-home-meta :is(time, span) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -44,11 +44,6 @@
   font-weight: 650;
 }
 .study-home-meta svg { color: var(--study-accent); flex: none; }
-.study-home-meta .study-home-guide-link { color: var(--study-accent); min-block-size: 32px; }
-.study-home-guide-link:hover { border-color: var(--study-edge); background: var(--study-tint); }
-@media (pointer: coarse) {
-  .study-home-meta .study-home-guide-link { min-block-size: 44px; }
-}
 
 .study-home-focus {
   position: relative;
