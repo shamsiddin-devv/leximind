@@ -111,7 +111,13 @@ export type Attempt = {
   sound?: { url: string };
 };
 export type GameScore = { id: string; gameType: GameKind; score: number; playedAt: string };
-export type SessionToken = { accessToken: string; expiresAt: string };
+export type SessionToken = {
+  accessToken: string;
+  expiresAt: string;
+  sessionId?: string;
+  refreshToken?: string;
+  refreshExpiresAt?: string;
+};
 
 export type Statistics = {
   cards: number; due: number; reviews: number; sessions: number;

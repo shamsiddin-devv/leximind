@@ -4,20 +4,22 @@ import { Link, routes } from '../../../app/router';
 import { Notice } from '../../../shared/components/UI';
 import type { Profile, User } from '../../../shared/types/api';
 import type { ProfileAppearanceState } from '../hooks/useAccountUiPreferences';
+import type { ProfileAppearance } from '../data/profileAppearance';
 import { ProfileAvatarEditor } from './ProfileAvatarEditor';
 import { ProfileBannerEditor } from './ProfileBannerEditor';
 import { ProfileCover } from './ProfilePresentation';
 
-export function ProfileHero({ user, identity, profile, token, appearance, onUserChange }: {
+export function ProfileHero({ user, identity, profile, token, appearance, layout, onUserChange }: {
   user: User;
   identity: Pick<User, 'fullName' | 'bio'>;
   profile?: Profile;
   token: string;
   appearance: ProfileAppearanceState;
+  layout: ProfileAppearance['layout'];
   onUserChange: (user: User) => void;
 }) {
   const { saved, saveBanner, ready, saving, error, retry } = appearance;
-  const vertical = saved.layout === 'vertical';
+  const vertical = layout === 'vertical';
   const [shareStatus, setShareStatus] = useState('');
   const canShare = user.privacy?.profilePublic && user.privacy.profileSharing;
 
@@ -46,7 +48,7 @@ export function ProfileHero({ user, identity, profile, token, appearance, onUser
     triggerClassName={vertical ? 'profile-vertical-photo' : undefined} />;
 
   return <div className="customized-profile-hero">
-    <ProfileCover appearance={saved} user={user} identity={identity} level={profile?.level}
+    <ProfileCover appearance={{ ...saved, layout }} user={user} identity={identity} level={profile?.level}
       avatar={<ProfileAvatarEditor user={user} token={token} onUserChange={onUserChange} />}
       toolbar={<div className="profile-cover-toolbar" role="group" aria-label="Banner amallari">
         <button type="button" lang="en"

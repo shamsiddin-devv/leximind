@@ -63,7 +63,7 @@ export function App() {
   let content;
   if (legacy) content = <><Redirect to={legacy} /><LoadingScreen /></>;
   else if (restoringSession && !session.error) content = <LoadingScreen />;
-  else if (restoringSession && (protectedPage || signInPage)) content = <main id="main" className="loading-screen" tabIndex={-1}>
+  else if (restoringSession && (protectedPage || signInPage || path === routes.home)) content = <main id="main" className="loading-screen" tabIndex={-1}>
     <div className="container">
       <Notice error>{session.error}</Notice><div className="notice-stack session-actions">
         <button className="button primary" onClick={session.retry}>Qayta urinish</button>
@@ -72,7 +72,7 @@ export function App() {
     </div>
   </main>;
   else if (protectedPage) {
-    if (session.token && session.user) content = <Workspace key={session.token} path={path} token={session.token} user={session.user}
+    if (session.token && session.user) content = <Workspace key={session.key} path={path} token={session.token} user={session.user}
       accountAccess={{ accounts: session.accounts, addAccount: session.addAccount, switchAccount: session.switchAccount }}
       onUserChange={session.updateUser} onSessionLost={clearCurrent} onLogout={() => { if (clear(session.token)) navigate(routes.home, true); }} />;
     else content = <><Redirect to={routes.login} /><LoadingScreen /></>;
@@ -90,7 +90,7 @@ export function App() {
   } else if (sharedProfileId) {
     content = <SharedProfile key={sharedProfileId} id={sharedProfileId} token={session.user ? token : undefined} />;
   } else if (path === routes.home) {
-    content = <LandingPage signedIn={Boolean(session.user)} language={language} />;
+    content = session.user ? <><Redirect to={routes.dashboard} /><LoadingScreen /></> : <LandingPage signedIn={false} language={language} />;
   } else {
     content = <PublicLayout signedIn={Boolean(session.user)}>
       {path === routes.demo ? <DemoPage />

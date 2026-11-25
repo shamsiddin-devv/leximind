@@ -112,7 +112,7 @@ export function AuthPage({ mode, link, signedIn, referralCode, onLogin, onConfir
         await api('/auth/register', { ...options, body: { fullName, email, password, ...preferences, referralCode: ref } });
         registered = true;
       }
-      const session = await api<SessionToken>('/auth/login', { ...options, body: { email, password } });
+      const session = await api<SessionToken>('/auth/login', { ...options, body: { email, password, rememberSession: true } });
       if (!request.signal.aborted) { onLogin(session); navigate(ref ? routes.settingsVerifyEmail : routes.dashboard, true); }
     } catch (failure) {
       if (request.signal.aborted) return;

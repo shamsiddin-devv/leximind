@@ -44,6 +44,7 @@ export function configureApp(app: INestApplication) {
       'Content-Range',
       'ETag',
       'Retry-After',
+      'WWW-Authenticate',
     ],
   });
   app.use(

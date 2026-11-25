@@ -15,6 +15,7 @@ function cdnBase(value: string | undefined) {
 const cdn = cdnBase(import.meta.env.VITE_FEEDBACK_AUDIO_BASE_URL);
 const feedbackClip = /^\/api\/feedback-audio\/([a-z0-9-]+\.wav(?:\?v=\d+)?)$/;
 const cdnStartTimeoutMs = 1800;
+export const repeatedWrongAnswerSound = '/api/feedback-audio/shocked.wav?v=4';
 
 export function playFeedbackAudio(path: string) {
   const filename = feedbackClip.exec(path)?.[1];

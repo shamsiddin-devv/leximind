@@ -17,7 +17,7 @@ import { LoginUseCase } from '../../../application/use-cases/user/LoginUseCase';
 import { CreateUserUseCase } from '../../../application/use-cases/user/CreateUserUseCase';
 import { LogoutUseCase } from '../../../application/use-cases/user/LogoutUseCase';
 import { CreateUserDto } from './dto/create-user.dto';
-import { LoginDto } from './dto/login.dto';
+import { LoginDto, RefreshSessionDto } from './dto/login.dto';
 import { userView } from '../../serializers';
 import { AccountSessions } from '../../../application/use-cases/user/AccountSessions';
 import { AccountActions } from '../../../application/use-cases/user/AccountActions';
@@ -51,7 +51,15 @@ export class AuthController {
   @ApiOperation({ security: [] })
   @HttpCode(200)
   signIn(@Body() dto: LoginDto, @Headers('user-agent') userAgent?: string) {
-    return this.login.execute(dto.email, dto.password, userAgent);
+    return this.login.execute(dto.email, dto.password, userAgent, dto.rememberSession);
+  }
+  @Public()
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @Post('refresh')
+  @ApiOperation({ security: [] })
+  @HttpCode(200)
+  refresh(@Body() dto: RefreshSessionDto) {
+    return this.login.refresh(dto.refreshToken);
   }
   @Post('logout') @HttpCode(204) async logout(@CurrentUser() user: Identity) {
     await this.signOut.execute(user);

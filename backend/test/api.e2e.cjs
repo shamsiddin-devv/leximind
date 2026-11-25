@@ -274,6 +274,27 @@ test('complete API and database lifecycle', async (t) => {
     );
     await api.get('/api/users/me').set(auth()).expect(200);
   });
+  await t.test('renews remembered sessions and revokes replayed or signed-out refresh tokens', async () => {
+    const login = { email: 'first@example.com', password, rememberSession: true };
+    const authorize = (session) => ({ Authorization: 'Bearer ' + session.accessToken });
+    const { body: initial } = await api.post('/api/auth/login').send(login).expect(200);
+    const db = await pool.query('SELECT refresh_token_hash FROM auth_sessions WHERE id=$1', [initial.sessionId]);
+    assert.equal(db.rows[0].refresh_token_hash, createHash('sha256').update(initial.refreshToken).digest('hex'));
+    assert.ok(Date.parse(initial.refreshExpiresAt) > Date.parse(initial.expiresAt));
+    await pool.query("UPDATE auth_sessions SET access_expires_at=now()-interval '1 second' WHERE id=$1", [initial.sessionId]);
+    await api.get('/api/users/me').set(authorize(initial)).expect('www-authenticate', 'Bearer error="invalid_token"').expect(401);
+    const { body: next } = await api.post('/api/auth/refresh').send({ refreshToken: initial.refreshToken }).expect(200);
+    assert.equal(next.sessionId, initial.sessionId);
+    assert.equal(next.refreshExpiresAt, initial.refreshExpiresAt);
+    assert.notEqual(next.refreshToken, initial.refreshToken);
+    await api.get('/api/users/me').set(authorize(next)).expect(200);
+    await api.post('/api/auth/refresh').send({ refreshToken: initial.refreshToken }).expect(401);
+    await api.get('/api/users/me').set(authorize(next)).expect(401);
+    await api.post('/api/auth/refresh').send({ refreshToken: next.refreshToken }).expect(401);
+    const { body: signedOut } = await api.post('/api/auth/login').send(login).expect(200);
+    await api.post('/api/auth/logout').set(authorize(signedOut)).expect(204);
+    await api.post('/api/auth/refresh').send({ refreshToken: signedOut.refreshToken }).expect(401);
+  });
   await t.test(
     'forbids user enumeration and catalog mutation for learners',
     async () => {
@@ -2409,7 +2430,7 @@ test('complete API and database lifecycle', async (t) => {
       const missing = operations.filter(
         (operation) => !successfulRoutes.has(operation),
       );
-      assert.equal(operations.length, 95);
+      assert.equal(operations.length, 96);
       assert.deepEqual(missing, []);
     },
   );

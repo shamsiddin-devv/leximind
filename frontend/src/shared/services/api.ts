@@ -23,8 +23,8 @@ export function explain(error: unknown, custom: Record<number, string> = {}) {
     503: 'Xizmat vaqtincha ishlamayapti. Birozdan keyin qayta urining.',
   } as Record<number, string>)[error.status] ?? 'So‘rovni bajarishda xatolik yuz berdi.';
 }
-const unauthorizedListeners = new Set<(rejectedToken: string) => void>();
-export function observeUnauthorized(listener: (rejectedToken: string) => void) {
+const unauthorizedListeners = new Set<(rejectedToken: string) => Promise<string | undefined>>();
+export function observeUnauthorized(listener: (rejectedToken: string) => Promise<string | undefined>) {
   unauthorizedListeners.add(listener);
   return () => { unauthorizedListeners.delete(listener); };
 }
@@ -33,14 +33,22 @@ export async function api<T>(path: string, options: { token?: string; method?: s
   const headers = new Headers({ Accept: 'application/json' });
   if (options.token) headers.set('Authorization', 'Bearer ' + options.token);
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
-  const response = await fetch(apiRoot + path, {
+  const request = () => fetch(apiRoot + path, {
     method: options.method ?? 'GET',
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
     signal: options.signal,
   });
-  if (response.status === 401 && options.token && !options.signal?.aborted) {
-    for (const listener of unauthorizedListeners) listener(options.token);
+  let response = await request();
+  if (response.status === 401 && response.headers.get('WWW-Authenticate')?.includes('invalid_token') && options.token && !options.signal?.aborted) {
+    for (const listener of unauthorizedListeners) {
+      const renewed = await listener(options.token);
+      if (renewed && renewed !== options.token) {
+        headers.set('Authorization', 'Bearer ' + renewed);
+        response = await request();
+        break;
+      }
+    }
   }
   if (!response.ok) throw new ApiError(response.status, response.headers.get('X-Request-Id') ?? undefined);
   if (response.status === 204 || (response.status === 202 && !response.headers.get('Content-Type')?.includes('json'))) return undefined as T;

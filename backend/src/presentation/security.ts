@@ -9,7 +9,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { Request } from 'express';
+import { Request, type Response } from 'express';
 import {
   AUTH_REPOSITORY,
   type IAuthRepository,
@@ -44,8 +44,10 @@ export class AuthGuard implements CanActivate {
     const identity = await this.sessions.resolve(
       this.tokens.digest(header.slice(7)),
     );
-    if (!identity)
+    if (!identity) {
+      ctx.switchToHttp().getResponse<Response>().setHeader('WWW-Authenticate', 'Bearer error="invalid_token"');
       throw new UnauthorizedException('Session invalid or expired.');
+    }
     req.identity = identity;
     if (
       this.reflector.getAllAndOverride<boolean>('admin', targets) &&

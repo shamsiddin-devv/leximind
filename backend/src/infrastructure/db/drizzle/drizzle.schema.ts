@@ -321,9 +321,17 @@ export const authSessions = pgTable('auth_sessions', {
   tokenHash: char('token_hash', { length: 64 }).notNull().unique(),
   userAgent: varchar('user_agent', { length: 512 }),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }),
+  refreshTokenHash: char('refresh_token_hash', { length: 64 }).unique(),
   createdAt: timestamp('created_at', { withTimezone: true })
     .defaultNow()
     .notNull(),
+});
+export const usedSessionRefreshTokens = pgTable('used_session_refresh_tokens', {
+  tokenHash: char('token_hash', { length: 64 }).primaryKey(),
+  sessionId: uuid('session_id')
+    .notNull()
+    .references(() => authSessions.id, { onDelete: 'cascade' }),
 });
 export const accountActions = pgTable('account_actions', {
   tokenHash: char('token_hash', { length: 64 }).primaryKey(),

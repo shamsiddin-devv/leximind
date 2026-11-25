@@ -4,7 +4,7 @@ import { api, explain } from '../../../shared/services/api';
 import type { Attempt, Result, Round } from '../../../shared/types/api';
 import { activities } from '../activities';
 import { Notice, Speak } from '../../../shared/components/UI';
-import { playFeedbackAudio } from '../feedbackAudio';
+import { playFeedbackAudio, repeatedWrongAnswerSound } from '../feedbackAudio';
 import { MemoryRound } from '../components/MemoryRound';
 
 export type ActiveRound = Round & { demoAnswers?: string[] };
@@ -144,12 +144,24 @@ export function Practice({ round, token, onDone, onClose, soundEnabled, autoplay
         <div className="stimulus">{question.options.map((option, optionIndex) => <button type="button" key={optionIndex} className="filter"
           disabled={tokens.includes(optionIndex) || !!feedback || busy} onClick={() => setTokens((current) => [...current, optionIndex])}>{option}</button>)}</div>
       </>}
-      {question && multipleChoice && <div className="choices" aria-busy={busy} key={'choices-' + index}>{question.options.map((option, optionIndex) => <button type="button" key={option}
-        className={`choice ${answer === option ? 'selected' : ''} ${feedback && option === feedback.expectedAnswer ? 'correct' : ''} ${feedback && answer === option && !feedback.feedback.correct ? 'wrong' : ''}`}
-        aria-pressed={answer === option} disabled={!!feedback || busy || expired} onClick={() => { setAnswer(option); void submit(option); }}>
-        <span className="choice-key" aria-hidden="true">{String.fromCharCode(65 + optionIndex)}</span>{option}
-        {feedback && (option === feedback.expectedAnswer ? <Check className="choice-result" size={21} aria-hidden="true" />
-          : answer === option ? <CircleX className="choice-result" size={20} aria-hidden="true" /> : null)}</button>)}</div>}
+      {question && multipleChoice && <div className="choices" aria-busy={busy} key={'choices-' + index}>{question.options.map((option, optionIndex) => {
+        const wrong = Boolean(feedback && answer === option && !feedback.feedback.correct);
+        const canReplay = wrong && soundEnabled && !round.demoAnswers && (round.kind === 'meaning_match' || round.kind === 'word_rush');
+        const correct = feedback && option === feedback.expectedAnswer;
+        return <button type="button" key={option}
+          className={`choice ${answer === option ? 'selected' : ''} ${correct ? 'correct' : ''} ${wrong ? 'wrong' : ''}`}
+          aria-description={canReplay ? 'Ovozni qayta eshitish uchun bosing' : undefined}
+          aria-pressed={answer === option} disabled={busy || (feedback ? !canReplay : expired)}
+          onClick={() => {
+            if (canReplay) { sound(repeatedWrongAnswerSound); return; }
+            setAnswer(option);
+            void submit(option);
+          }}>
+          <span className="choice-key" aria-hidden="true">{String.fromCharCode(65 + optionIndex)}</span>{option}
+          {correct && <Check className="choice-result" size={21} aria-hidden="true" />}
+          {wrong && <CircleX className="choice-result" size={20} aria-hidden="true" />}
+        </button>;
+      })}</div>}
       {question && (question.input === 'text' || question.input === 'sentence') && <label className="answer-label">Javobingiz
         <input value={answer} onChange={(event) => setAnswer(event.target.value)} maxLength={255}
           autoComplete="off" spellCheck={false} placeholder="Inglizcha yozing…" disabled={!!feedback || busy || expired} />

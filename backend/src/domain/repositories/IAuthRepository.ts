@@ -9,6 +9,7 @@ export type AccountSession = {
   createdAt: Date;
   expiresAt: Date;
 };
+export type SessionRefresh = { tokenHash: string; accessExpiresAt: Date };
 
 export interface IAuthRepository {
   create(
@@ -17,7 +18,13 @@ export interface IAuthRepository {
     expiresAt: Date,
     expectedPasswordHash: string,
     userAgent?: string,
-  ): Promise<boolean>;
+    refresh?: SessionRefresh,
+  ): Promise<string | null>;
+  rotateRefresh(
+    currentHash: string,
+    accessHash: string,
+    refresh: SessionRefresh,
+  ): Promise<{ id: string; expiresAt: Date; accessExpiresAt: Date } | null>;
   resolve(tokenHash: string): Promise<Identity | null>;
   list(userId: string): Promise<AccountSession[]>;
   revoke(sessionId: string, userId: string): Promise<void>;
