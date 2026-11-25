@@ -129,7 +129,7 @@ export const learnerProfiles = pgTable('learner_profiles', {
     .default(false),
   feedbackAudioEnabled: boolean('feedback_audio_enabled')
     .notNull()
-    .default(false),
+    .default(true),
   xpMultiplier: integer('xp_multiplier').notNull(),
   lastSessionAt: timestamp('last_session_at'),
   createdAt: timestamp().defaultNow().notNull(),

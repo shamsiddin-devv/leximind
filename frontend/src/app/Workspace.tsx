@@ -49,7 +49,7 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
   const startRequest = useRef<AbortController | null>(null);
   const currentRound = round?.source === path ? round.value : undefined;
   const currentReview = review?.source === path ? review.value : undefined;
-  const sound = snapshot?.profile.feedbackAudioEnabled ?? false;
+  const sound = snapshot?.profile.feedbackAudioEnabled ?? true;
   const autoplayPronunciation = snapshot?.profile.autoplayPronunciation ?? false;
   const reminder = useStudyReminder(user.id, snapshot?.profile, snapshot?.scores[0]?.playedAt);
   const page = navigationPages.get(path);

@@ -1242,13 +1242,8 @@ test('complete API and database lifecycle', async (t) => {
       assert.equal(
         (await api.get('/api/profile').set(auth()).expect(200)).body
           .feedbackAudioEnabled,
-        false,
+        true,
       );
-      await api
-        .patch('/api/profile')
-        .set(auth())
-        .send({ feedbackAudioEnabled: true })
-        .expect(200);
       const requests = await Promise.all([
         api.post(path).set(auth()).send({ index: 0, answer: 'appel' }),
         api.post(path).set(auth()).send({ index: 0, answer: 'appel' }),
