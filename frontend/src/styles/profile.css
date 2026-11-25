@@ -338,4 +338,4 @@
   .profile-identity p { font-size: .79rem; }
 }
 
-.profile-verified-badge { display: inline-flex; margin-inline-start: 7px; color: #c7b8ff; vertical-align: middle; }
+.profile-verified-badge { display: inline-flex; margin-inline-start: 7px; vertical-align: middle; }

@@ -1,0 +1,9 @@
+.verified-badge.lucide {
+  flex: none;
+  color: #fff;
+}
+.verified-badge.lucide > path:first-child {
+  fill: #2469dd;
+  stroke: #2469dd;
+}
+.verified-badge.lucide > path:last-child { stroke-width: 2.3; }

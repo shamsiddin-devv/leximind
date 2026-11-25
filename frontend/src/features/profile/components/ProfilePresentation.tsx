@@ -1,5 +1,6 @@
 import { useId, type CSSProperties, type ReactNode } from 'react';
-import { Award, BadgeCheck, BookOpen, ChartNoAxesColumn, CircleCheck, Clock3, Flame, Mail, MapPin, Target, Zap } from 'lucide-react';
+import { Award, BookOpen, ChartNoAxesColumn, CircleCheck, Clock3, Flame, Mail, MapPin, Target, Zap } from 'lucide-react';
+import { VerifiedBadge } from '../../../shared/components/VerifiedBadge';
 import type { Plan, Profile, Statistics, User } from '../../../shared/types/api';
 import { profileBannerSource, profileMetrics, type ProfileAppearance, type ProfileMetric } from '../data/profileAppearance';
 import { profileLinkHref, profileSocialPlatforms } from '../data/socialLinks';
@@ -58,7 +59,7 @@ export function ProfileCover({ appearance, user, identity = user, level, avatar,
         {avatar}
         <div className="profile-identity">
           <Heading id={id}>{identity.fullName}
-            {user.hasProfileBadge && <BadgeCheck size={21} className="profile-verified-badge" aria-label="Tasdiqlangan profil" />}
+            {user.hasProfileBadge && <VerifiedBadge size={21} className="profile-verified-badge" />}
           </Heading>
           {preview && appearance.content.email && user.email && <p className="profile-cover-email">
             {!vertical && <Mail size={15} aria-hidden="true" />} {user.email}

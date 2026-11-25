@@ -1,4 +1,12 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  PhoneVerificationController,
+  TelegramPhoneWebhookController,
+} from './phone-verification.controller';
+import { VerifyProfilePhone } from '../../../application/use-cases/user/VerifyProfilePhone';
+import { PhoneChallengeRepository } from '../../../infrastructure/repositories/PhoneChallengeRepository';
+import { TelegramPhoneBot } from '../../../infrastructure/auth/TelegramPhoneBot';
 import { UserUiPreferencesController } from './user-ui-preferences.controller';
 import { UserUiPreferences } from '../../../application/use-cases/user/UserUiPreferences';
 import { DrizzleUserUiPreferenceRepository } from '../../../infrastructure/repositories/DrizzleUserUiPreferenceRepository';
@@ -28,9 +36,26 @@ import { AvatarCleanupWorker } from '../../../infrastructure/media/AvatarCleanup
     UserController,
     UserUiPreferencesController,
     ReferralsController,
+    PhoneVerificationController,
+    TelegramPhoneWebhookController,
   ],
   providers: [
     ReferralRepository,
+    PhoneChallengeRepository,
+    {
+      provide: TelegramPhoneBot,
+      useFactory: (config: ConfigService) =>
+        TelegramPhoneBot.fromConfig(config),
+      inject: [ConfigService],
+    },
+    {
+      provide: VerifyProfilePhone,
+      useFactory: (
+        challenges: PhoneChallengeRepository,
+        bot: TelegramPhoneBot | null,
+      ) => new VerifyProfilePhone(challenges, bot),
+      inject: [PhoneChallengeRepository, TelegramPhoneBot],
+    },
     {
       provide: GetReferrals,
       useFactory: (referrals: ReferralRepository) =>

@@ -106,7 +106,6 @@ a.shared-ranking-row:hover { background: var(--shared-soft); }
 .shared-ranking-avatar img { inline-size: 100%; block-size: 100%; object-fit: cover; }
 .shared-ranking-name { display: flex; align-items: center; gap: 5px; min-inline-size: 0; }
 .shared-ranking-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.shared-ranking-name svg { flex: none; color: var(--shared-accent); }
 .shared-ranking-xp { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .shared-ranking-results > .shared-profile-note { padding: 6px 9px; }
 .shared-ranking-link {

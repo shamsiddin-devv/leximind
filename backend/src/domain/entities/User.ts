@@ -12,6 +12,7 @@ const countryNames = new Intl.DisplayNames(['uz', 'en'], { type: 'region' });
 
 export const genders = ['female', 'male', 'other', 'undisclosed'] as const;
 export type Gender = (typeof genders)[number];
+export const uzbekPhoneNumberPattern = /^[+]998[0-9]{9}$/;
 export const phoneNumberPattern = /^[+][1-9][0-9]{7,14}$/;
 
 export type ProfilePrivacy = {
@@ -29,6 +30,9 @@ export type UserDetails = Partial<ProfilePrivacy> & {
   location?: string | null;
   countryCode?: string | null;
   city?: string | null;
+  administrativeRegion?: string | null;
+  streetAddress?: string | null;
+  addressDetails?: string | null;
   gender?: Gender | null;
   phoneNumber?: string | null;
   socialLinks?: SocialLinksPatch;
@@ -40,6 +44,7 @@ export interface IUserProps extends Omit<UserDetails, 'socialLinks'> {
   email: Email;
   createdAt?: Date;
   emailVerifiedAt?: Date | null;
+  phoneVerifiedAt?: Date | null;
   avatar?: Avatar | null;
   socialLinks?: SocialLinks;
 }
@@ -90,10 +95,28 @@ export class User {
       this.props.location = props.location?.trim() || null;
       this.props.countryCode = null;
       this.props.city = null;
+      this.clearPrivateAddress();
     }
+    if (props.administrativeRegion !== undefined) {
+      const region = props.administrativeRegion?.trim() || null;
+      if (this.administrativeRegion !== region) this.clearPrivateAddress();
+      this.props.administrativeRegion = region;
+    }
+    if (props.streetAddress !== undefined) {
+      const street = props.streetAddress?.trim() || null;
+      if (this.streetAddress !== street) this.props.addressDetails = null;
+      this.props.streetAddress = street;
+    }
+    if (props.addressDetails !== undefined)
+      this.props.addressDetails = props.addressDetails?.trim() || null;
     if (props.gender !== undefined) this.props.gender = props.gender;
-    if (props.phoneNumber !== undefined)
+    if (
+      props.phoneNumber !== undefined &&
+      props.phoneNumber !== this.phoneNumber
+    ) {
       this.props.phoneNumber = props.phoneNumber;
+      this.props.phoneVerifiedAt = null;
+    }
     if (links) this.props.socialLinks = links;
     if (props.profilePublic !== undefined)
       this.props.profilePublic = props.profilePublic;
@@ -123,6 +146,8 @@ export class User {
       throw new BadRequestError('Invalid country code.');
     if (nextCity && !country)
       throw new BadRequestError('A city requires a country.');
+    if (country !== this.countryCode || nextCity !== this.city)
+      this.clearPrivateAddress();
     this.props.countryCode = country;
     this.props.city = nextCity;
     if (!country) {
@@ -132,6 +157,25 @@ export class User {
     const label = countryNames.of(country) ?? country;
     const place = nextCity ? nextCity + ', ' + label : label;
     this.props.location = Array.from(place).length <= 100 ? place : label;
+  }
+
+  private clearPrivateAddress() {
+    this.props.administrativeRegion = null;
+    this.props.streetAddress = null;
+    this.props.addressDetails = null;
+  }
+
+  get administrativeRegion() {
+    return this.props.administrativeRegion ?? null;
+  }
+  get streetAddress() {
+    return this.props.streetAddress ?? null;
+  }
+  get addressDetails() {
+    return this.props.addressDetails ?? null;
+  }
+  get phoneVerifiedAt() {
+    return this.props.phoneVerifiedAt ?? null;
   }
 
   get id() {
@@ -189,10 +233,12 @@ export class User {
   get hasProfileBadge() {
     return Boolean(
       this.emailVerifiedAt &&
-      this.location &&
+      this.countryCode &&
+      this.city &&
+      (this.countryCode !== 'UZ' || this.administrativeRegion) &&
       this.gender &&
       this.gender !== 'undisclosed' &&
-      this.phoneNumber,
+      this.phoneVerifiedAt,
     );
   }
   get createdAt() {

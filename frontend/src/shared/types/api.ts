@@ -23,6 +23,10 @@ export type User = {
   location?: string | null;
   gender?: 'female' | 'male' | 'other' | 'undisclosed' | null;
   phoneNumber?: string | null;
+  phoneVerifiedAt?: string | null;
+  administrativeRegion?: string | null;
+  streetAddress?: string | null;
+  addressDetails?: string | null;
   socialLinks?: ProfileSocialLinks;
   hasProfileBadge?: boolean;
   privacy?: ProfilePrivacy;

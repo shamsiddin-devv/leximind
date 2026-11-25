@@ -1,11 +1,12 @@
 import { useEffect, useId, useState, type KeyboardEvent } from 'react';
 import {
-  ArrowLeft, BadgeCheck, BarChart3, BookOpen, Bookmark, ChevronDown, ChevronRight,
+  ArrowLeft, BarChart3, BookOpen, Bookmark, ChevronDown, ChevronRight,
   Clock3, Copy, Crown, EllipsisVertical, ExternalLink, Flag, Flame, House, Layers, Medal,
   Share2, Star, Target, Trophy, Zap,
 } from 'lucide-react';
 import { Link, routes } from '../../../app/router';
 import { Brand } from '../../../shared/components/Brand';
+import { VerifiedBadge } from '../../../shared/components/VerifiedBadge';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { Notice } from '../../../shared/components/UI';
 import { api, explain } from '../../../shared/services/api';
@@ -127,7 +128,7 @@ function RankingRow({ entry, selected }: { entry: RankingEntry; selected: boolea
     <span className="shared-ranking-crown" data-place={entry.rank}>{entry.rank !== null && entry.rank <= 3 && <Crown size={15} aria-hidden="true" />}</span>
     <UserAvatar className="shared-ranking-avatar" name={entry.fullName} url={entry.avatarUrl} />
     <span className="shared-ranking-name"><span>{entry.fullName}</span>
-      {entry.hasProfileBadge && <BadgeCheck size={14} aria-label="Tasdiqlangan profil" />}</span>
+      {entry.hasProfileBadge && <VerifiedBadge size={14} />}</span>
     <strong className="shared-ranking-xp">{number.format(entry.xp)} XP</strong>
   </>;
   return <li>{entry.canViewProfile

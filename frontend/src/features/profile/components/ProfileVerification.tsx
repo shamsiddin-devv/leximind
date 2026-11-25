@@ -1,20 +1,23 @@
 import { useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, ArrowRight, BadgeCheck, Check, Mail, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, LockKeyhole, Mail, MapPin, Phone, Send, UserRound } from 'lucide-react';
 import { Link, routes } from '../../../app/router';
 import { Notice } from '../../../shared/components/UI';
 import { api, explain } from '../../../shared/services/api';
 import type { User } from '../../../shared/types/api';
 import { EmailCodeField } from '../../auth/components/EmailCodeField';
 import { useEmailCodeCooldown } from '../../auth/hooks/useEmailCodeCooldown';
-import { LocationFields } from './LocationFields';
+import { VerifiedBadge } from '../../../shared/components/VerifiedBadge';
+import { VerificationAddress, type VerificationPlace } from './VerificationAddress';
+import { VerifyPhoneStep } from './VerifyPhoneStep';
+import './ProfileBadgeFlow.css';
 
 export type VerificationProps = { user: User; token: string; onUserChange: (user: User) => void };
 
 export function badgeRequirements(user: User) {
   return [
-    { label: 'Joylashuv', complete: Boolean(user.location) },
+    { label: 'Manzil', complete: Boolean(user.countryCode && user.city && (user.countryCode !== 'UZ' || user.administrativeRegion)) },
     { label: 'Gender', complete: Boolean(user.gender && user.gender !== 'undisclosed') },
-    { label: 'Telefon raqami', complete: Boolean(user.phoneNumber) },
+    { label: 'Telefon', complete: Boolean(user.phoneVerifiedAt) },
     { label: 'Email', complete: Boolean(user.emailVerifiedAt) },
   ];
 }
@@ -113,19 +116,27 @@ export function EmailVerification(props: VerificationProps) {
   </VerificationLayout>;
 }
 
-const badgeTitles = ['Qayerdansiz?', 'Genderingizni tanlang', 'Telefon raqamingizni kiriting', 'Emailingizni tasdiqlang'];
-const phonePattern = /^[+][1-9][0-9]{7,14}$/;
+const badgeStages = [
+  { title: 'Yashash hududingiz', description: 'Davlat va shahar yoki tumanni tanlang.', icon: MapPin },
+  { title: 'Genderingizni tanlang', description: '', icon: UserRound },
+  { title: 'Telefon raqamingizni tasdiqlang', description: 'Telegram orqali bir martalik kod oling.', icon: Phone },
+  { title: 'Emailingizni tasdiqlang', description: 'Email manzilingizga yuborilgan kod orqali yakunlang.', icon: Mail },
+];
 
 export function ProfileBadgeVerification({ user, token, onUserChange }: VerificationProps) {
   const requirements = badgeRequirements(user);
-  const firstMissing = requirements.findIndex(({ complete }) => !complete);
-  const [step, setStep] = useState(firstMissing === -1 ? 3 : firstMissing);
-  const [place, setPlace] = useState({ countryCode: user.countryCode ?? '', city: user.city ?? '', legacyLocation: user.countryCode ? '' : user.location ?? '' });
+  const completed = requirements.filter(({ complete }) => complete).length;
+  const firstIncomplete = requirements.findIndex(({ complete }) => !complete);
+  const [step, setStep] = useState(() => firstIncomplete === -1 ? 4 : firstIncomplete);
+  const [place, setPlace] = useState<VerificationPlace>({
+    countryCode: user.countryCode ?? '', administrativeRegion: user.administrativeRegion ?? '',
+    city: user.city ?? '', streetAddress: user.streetAddress ?? '', addressDetails: user.addressDetails ?? '',
+  });
   const [gender, setGender] = useState(user.gender === 'undisclosed' ? '' : user.gender ?? '');
-  const [phone, setPhone] = useState(user.phoneNumber ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const title = useRef<HTMLHeadingElement>(null);
+  const stage = badgeStages[step];
 
   function changeStep(next: number) {
     setError('');
@@ -133,19 +144,33 @@ export function ProfileBadgeVerification({ user, token, onUserChange }: Verifica
     requestAnimationFrame(() => title.current?.focus());
   }
 
+  function continueFrom(nextUser = user) {
+    if (nextUser.hasProfileBadge) {
+      changeStep(4);
+      return;
+    }
+    const statuses = badgeRequirements(nextUser);
+    const next = statuses.findIndex(({ complete }, index) => index > step && !complete);
+    changeStep(next < 0 ? Math.max(0, statuses.findIndex(({ complete }) => !complete)) : next);
+  }
+
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
-    const number = phone.replace(/[\s().-]/g, '');
-    if (step === 0 && !place.countryCode && !place.legacyLocation) { setError('Davlatni tanlang.'); return; }
-    if (step === 1 && !gender) { setError('Davom etish uchun genderingizni tanlang.'); return; }
-    if (step === 2 && !phonePattern.test(number)) { setError('Telefon raqamini +998901234567 formatida kiriting.'); return; }
-    const body = step === 0 ? (place.countryCode ? { countryCode: place.countryCode, city: place.city.trim() || null } : { location: place.legacyLocation })
-      : step === 1 ? { gender } : { phoneNumber: number };
+    const body = step === 0 ? {
+      countryCode: place.countryCode, city: place.city.trim(), administrativeRegion: place.administrativeRegion.trim() || null,
+      streetAddress: place.streetAddress.trim() || null, addressDetails: place.addressDetails.trim() || null,
+    } : { gender };
+    if (step === 0 && (!place.countryCode || !place.city.trim() || place.countryCode === 'UZ' && !place.administrativeRegion.trim())) {
+      setError('Davlat, viloyat va shahar yoki tuman tanlovini tekshiring.');
+      return;
+    }
+    setError('');
     setBusy(true);
     try {
-      onUserChange(await api<User>('/users/me', { token, method: 'PATCH', body }));
-      changeStep(step + 1);
+      const next = await api<User>('/users/me', { token, method: 'PATCH', body });
+      onUserChange(next);
+      continueFrom(next);
     } catch (failure) {
       setError(explain(failure));
     } finally {
@@ -153,41 +178,64 @@ export function ProfileBadgeVerification({ user, token, onUserChange }: Verifica
     }
   }
 
-  return <VerificationLayout title="Profil tasdiq belgisi" description="Profil belgisini olish uchun to‘rtta talabni bajaring."
-    labels={requirements.map(({ label }) => label)} step={user.hasProfileBadge ? 4 : step}>
-    {user.hasProfileBadge ? <div className="privacy-success">
-      <BadgeCheck size={28} aria-hidden="true" />
-      <h2>Profil tasdiqlandi</h2><p>Tasdiq belgisi LexiMind profilingizda ko‘rinadi.</p>
-      <Link className="button secondary" href={routes.profile}>Profilga o‘tish <ArrowRight size={16} aria-hidden="true" /></Link>
-    </div> : <>
-      <h2 ref={title} tabIndex={-1} id="badge-step-heading">{badgeTitles[step]}</h2>
-      {step === 3 ? <>
-        <p>Email tasdiqlangach, to‘rtta talab ham bajarilgan bo‘lsa, profil belgisi avtomatik beriladi.</p>
-        <div className="privacy-flow-actions">
-          <button type="button" className="button quiet" onClick={() => changeStep(step - 1)}>Orqaga</button>
-          <Link className="button primary" href={routes.settingsVerifyEmail}>Emailni tasdiqlash <ArrowRight size={16} aria-hidden="true" /></Link>
-        </div>
-      </> : <form className="privacy-step-form" aria-labelledby="badge-step-heading" onSubmit={(event) => void save(event)}>
-        {step === 0 && <LocationFields countryCode={place.countryCode} city={place.city} legacyLocation={place.legacyLocation} disabled={busy}
-          onCountryChange={(countryCode) => setPlace({ countryCode, city: '', legacyLocation: '' })}
-          onCityChange={(city) => setPlace((previous) => ({ ...previous, city }))}
-          onClearLegacy={() => setPlace((previous) => ({ ...previous, legacyLocation: '' }))} />}
-        {step === 1 && <label htmlFor="badge-gender">Gender
-          <select id="badge-gender" name="gender" value={gender} required disabled={busy}
-            onChange={(event) => setGender(event.target.value as typeof gender)}>
-            <option value="">Tanlang</option><option value="female">Ayol</option><option value="male">Erkak</option><option value="other">Boshqa</option>
-          </select>
-        </label>}
-        {step === 2 && <label htmlFor="badge-phone">Telefon raqami
-          <input id="badge-phone" name="phoneNumber" type="tel" autoComplete="tel" placeholder="+998901234567" maxLength={25} required
-            value={phone} disabled={busy} onChange={(event) => setPhone(event.target.value)} />
-        </label>}
-        {error && <Notice error>{error}</Notice>}
-        <div className="privacy-flow-actions">
-          {step > 0 && <button type="button" className="button quiet" disabled={busy} onClick={() => changeStep(step - 1)}>Orqaga</button>}
-          <button className="button primary" disabled={busy}>{busy ? 'Saqlanmoqda…' : 'Davom etish'} <ArrowRight size={16} aria-hidden="true" /></button>
-        </div>
-      </form>}
-    </>}
-  </VerificationLayout>;
+  return <div className="profile-badge-flow">
+    <Link className="text-link privacy-back" href={routes.settingsPrivacy}><ArrowLeft size={16} aria-hidden="true" /> Privacy &amp; Security</Link>
+    <header className="profile-badge-heading">
+      <div className="profile-badge-emblem"><VerifiedBadge size={41} decorative /></div>
+      <div><h1>Profil tasdiq belgisi</h1><p>To‘rtta qadamni yakunlang va tasdiq belgisini profilingizga qo‘shing.</p></div>
+    </header>
+    <div className="profile-badge-workspace">
+      <aside className="profile-badge-checklist" aria-label="Tasdiqlash holati">
+        <div className="badge-progress-label"><strong>Tasdiqlash jarayoni</strong><span>{completed} / 4</span></div>
+        <progress max={4} value={completed} aria-label="Bajarilgan talablar" />
+        <ol>
+          {requirements.map(({ label, complete }, index) => {
+            const Icon = badgeStages[index].icon;
+            return <li key={label}><button type="button" disabled={busy || firstIncomplete !== -1 && index > firstIncomplete && !complete}
+              aria-current={step === index ? 'step' : undefined} onClick={() => changeStep(index)}>
+              <Icon size={17} aria-hidden="true" /><span>{label}</span>
+              {complete ? <Check size={16} className="badge-step-check" role="img" aria-label="Bajarildi" /> : <span className="badge-step-number" aria-hidden="true">{index + 1}</span>}
+            </button></li>;
+          })}
+        </ol>
+      </aside>
+      <section className="profile-badge-panel" aria-labelledby="badge-step-heading">
+        {stage ? <>
+          <h2 ref={title} tabIndex={-1} id="badge-step-heading">{stage.title}</h2>
+          {stage.description && <p>{stage.description}</p>}
+          {step === 3 ? <>
+            {user.emailVerifiedAt && <Notice>Email manzilingiz tasdiqlangan.</Notice>}
+            <div className="privacy-flow-actions">
+              <button type="button" className="button quiet" onClick={() => changeStep(2)}>Orqaga</button>
+              {user.emailVerifiedAt ? <button type="button" className="button primary" onClick={() => continueFrom()}>Davom etish <ArrowRight size={16} aria-hidden="true" /></button>
+                : <Link className="button primary" href={routes.settingsVerifyEmail}>Emailni tasdiqlash <ArrowRight size={16} aria-hidden="true" /></Link>}
+            </div>
+          </> : step === 2 ? <VerifyPhoneStep user={user} token={token} onBack={() => changeStep(1)}
+            onContinue={(next) => {
+              if (next) onUserChange(next);
+              continueFrom(next);
+            }} /> : <form className="privacy-step-form" aria-labelledby="badge-step-heading" onSubmit={(event) => void save(event)}>
+            {step === 0 && <VerificationAddress place={place} onChange={setPlace} disabled={busy} />}
+            {step === 1 && <label htmlFor="badge-gender">Gender
+              <select id="badge-gender" name="gender" value={gender} required disabled={busy}
+                onChange={(event) => setGender(event.target.value as typeof gender)}>
+                <option value="">Tanlang</option><option value="female">Ayol</option><option value="male">Erkak</option><option value="other">Boshqa</option>
+              </select>
+            </label>}
+            {error && <Notice error>{error}</Notice>}
+            <div className="privacy-flow-actions">
+              {step > 0 && <button type="button" className="button quiet" disabled={busy} onClick={() => changeStep(step - 1)}>Orqaga</button>}
+              <button className="button primary" disabled={busy}>{busy ? 'Saqlanmoqda…' : 'Davom etish'} <ArrowRight size={16} aria-hidden="true" /></button>
+            </div>
+          </form>}
+        </> : <div className="profile-badge-success">
+          <VerifiedBadge size={62} decorative />
+          <h2 ref={title} tabIndex={-1} id="badge-step-heading">Profil tasdiqlandi</h2>
+          <p>Tasdiq belgisi ismingiz yonida ko‘rinadi.</p>
+          <Link className="button primary" href={routes.profile}>Profilga o‘tish <ArrowRight size={16} aria-hidden="true" /></Link>
+        </div>}
+      </section>
+    </div>
+    <p className="profile-badge-privacy"><LockKeyhole size={16} aria-hidden="true" /> Telefon raqamingiz, emailingiz va to‘liq manzilingiz faqat sizga ko‘rinadi.</p>
+  </div>;
 }

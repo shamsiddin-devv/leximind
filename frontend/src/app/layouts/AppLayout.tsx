@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from 'react';
-import { BookOpen, ChevronDown, LayoutGrid, LogOut, Menu, MoonStar, Sun, UserRound, Volume2, VolumeX, X } from 'lucide-react';
+import { BookOpen, ChevronDown, CircleHelp, LayoutGrid, LogOut, Menu, MoonStar, Sun, UserRound, Volume2, VolumeX, X } from 'lucide-react';
 import { LanguagePicker } from '../../shared/components/LanguagePicker';
 import { useInterfaceLanguage } from '../language';
 import { groupLabel, routeLabel, shellCopy } from '../shellCopy';
@@ -8,6 +8,7 @@ import { UserAvatar } from '../../shared/components/UserAvatar';
 import type { SessionAccount } from '../../features/auth/hooks/useSession';
 import { VocabularySearch } from '../../features/vocabulary/components/VocabularySearch';
 import { NotificationMenu } from '../../features/notifications/NotificationMenu';
+import { gettingStartedCopy } from '../../features/learning/gettingStartedCopy';
 import { accountNavigation, navigation, navigationPages, settingsNavigation, type NavigationGroup, type NavigationItem } from '../navigation';
 import { Link, routes, settingsParent } from '../router';
 import { getTheme, subscribeToTheme, toggleTheme } from '../theme';
@@ -15,6 +16,7 @@ import { SidebarAccountMenu, type AccountAccess } from './SidebarAccountMenu';
 import './AppLayout.css';
 
 const quickLinks = [...navigationPages.values()];
+const primaryLearningLabel = { uz: 'Asosiy', en: 'Core', ru: 'База' } as const;
 
 type SelectPage = (event: MouseEvent<HTMLAnchorElement>, href: string) => void;
 
@@ -116,10 +118,13 @@ function SidebarNavigation({ group, activePath, onSelect, id }: {
   }, [activePath, language]);
 
   function renderLink({ href, label, icon: Icon }: NavigationItem) {
+    const learning = href === routes.vocabulary || href === routes.games;
     return <Link key={href} href={href} lang={language === 'ru' ? 'ru' : 'en'} className="app-nav-link"
+      data-learning={learning || undefined}
       aria-current={activePath === href ? 'page' : undefined} onClick={(event) => onSelect(event, href)}>
       <Icon size={17} strokeWidth={1.7} aria-hidden="true" />
-      {routeLabel(language, href, label)}
+      <span>{routeLabel(language, href, label)}</span>
+      {learning && <span className="app-nav-learning-tag" aria-hidden="true">{primaryLearningLabel[language]}</span>}
     </Link>;
   }
 
@@ -139,9 +144,10 @@ function SidebarNavigation({ group, activePath, onSelect, id }: {
   </nav>;
 }
 
-export function AppLayout({ children, path, token, user, accountAccess, practicing, sound, soundAvailable, onToggleSound, onExitPractice, loggingOut, onLogout, collapsed, onCollapsedChange }: {
+export function AppLayout({ children, path, token, user, accountAccess, practicing, sound, soundAvailable, onToggleSound, onOpenGuide, onExitPractice, loggingOut, onLogout, collapsed, onCollapsedChange }: {
   children: ReactNode; path: string; token: string; user: SessionAccount; accountAccess: AccountAccess; practicing: boolean; sound: boolean; soundAvailable: boolean;
   onToggleSound: () => void; onExitPractice: () => void; loggingOut: boolean; onLogout: () => void;
+  onOpenGuide: () => void;
   collapsed: boolean; onCollapsedChange: (collapsed: boolean) => void;
 }) {
   const language = useInterfaceLanguage();
@@ -150,6 +156,8 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
   const { fullName: name, avatarUrl } = user;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const drawer = useRef<HTMLDialogElement>(null);
+  const mobileMenuTrigger = useRef<HTMLButtonElement>(null);
+  const quickTrigger = useRef<HTMLButtonElement>(null);
   const closeDrawerButton = useRef<HTMLButtonElement>(null);
   const logoutDialog = useRef<HTMLDialogElement>(null);
   const cancelLogoutButton = useRef<HTMLButtonElement>(null);
@@ -214,7 +222,7 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
           aria-expanded={!collapsed} aria-controls="app-sidebar-panel" onClick={() => onCollapsedChange(!collapsed)}>
           <Menu size={21} aria-hidden="true" />
         </button>
-        <button type="button" className="app-control app-mobile-toggle" aria-label={copy.openMenu}
+        <button ref={mobileMenuTrigger} type="button" className="app-control app-mobile-toggle" aria-label={copy.openMenu}
           aria-expanded={drawerOpen} aria-controls="app-mobile-drawer"
           onClick={openDrawer}>
           <Menu size={21} aria-hidden="true" />
@@ -223,11 +231,16 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
       <div className="app-topbar-brand"><Brand wordmark label={'LexiMind · ' + routeLabel(language, routes.dashboard, 'Dashboard')} href={routes.dashboard} onClick={(event) => goTo(event, routes.dashboard)} /></div>
       <div className="app-shortcuts">
         <VocabularySearch token={token} onNavigate={() => { if (practicing && path === routes.vocabulary) onExitPractice(); }} />
-        <button type="button" className="app-control app-toolbar-control app-quick-trigger" popoverTarget="app-quick-links" aria-label={copy.quick} title={copy.quick}>
+        <button ref={quickTrigger} type="button" className="app-control app-toolbar-control app-quick-trigger" popoverTarget="app-quick-links" aria-label={copy.quick} title={copy.quick}>
           <LayoutGrid size={17} strokeWidth={1.65} aria-hidden="true" />
         </button>
         <div id="app-quick-links" popover="auto" className="app-topbar-popover app-quick-popover" aria-label={copy.quick}>
           <p className="app-popover-title">{copy.quick}</p>
+          {!practicing && <button type="button" className="app-popover-item" aria-haspopup="dialog" onClick={(event) => {
+            event.currentTarget.closest<HTMLElement>('[popover]')?.hidePopover();
+            quickTrigger.current?.focus({ preventScroll: true });
+            onOpenGuide();
+          }}><CircleHelp size={17} aria-hidden="true" />{gettingStartedCopy[language].label}</button>}
           {quickLinks.map(({ href, label, icon: Icon }) => <Link key={href} href={href} lang={language === 'ru' ? 'ru' : 'en'}
             className="app-popover-item" aria-current={activePath === href ? 'page' : undefined} onClick={(event) => goTo(event, href)}>
             <Icon size={17} aria-hidden="true" />{routeLabel(language, href, label)}
@@ -283,6 +296,11 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
           <button type="button" className="app-control" aria-label={copy.closeMenu} ref={closeDrawerButton}
             onClick={() => drawer.current?.close()}><X size={21} aria-hidden="true" /></button>
         </div>
+        {!practicing && <button type="button" className="app-nav-link getting-started-mobile-link" aria-haspopup="dialog" onClick={() => {
+          drawer.current?.close();
+          mobileMenuTrigger.current?.focus({ preventScroll: true });
+          onOpenGuide();
+        }}><CircleHelp size={17} aria-hidden="true" />{gettingStartedCopy[language].label}</button>}
         <SidebarGroups selected={selectedGroup} expanded={drawerOpen} panelId="app-mobile-links"
           onSelect={(group) => setGroupSelection({ path, group })} />
         <SidebarNavigation id="app-mobile-links" key={selectedGroup.title} group={selectedGroup} activePath={activePath} onSelect={goTo} />

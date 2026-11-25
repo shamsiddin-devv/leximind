@@ -1,0 +1,910 @@
+[
+  {
+    "name": "Andijon viloyati",
+    "code": "Andijon",
+    "districts": [
+      {
+        "code": "AndijonTumani",
+        "name": "Andijon tumani"
+      },
+      {
+        "code": "AndijonShahri",
+        "name": "Andijon shahri"
+      },
+      {
+        "code": "AsakaTumani",
+        "name": "Asaka tumani"
+      },
+      {
+        "code": "BaliqchiTumani",
+        "name": "Baliqchi tumani"
+      },
+      {
+        "code": "BuloqboshiTumani",
+        "name": "Buloqboshi tumani"
+      },
+      {
+        "code": "BostonTumani",
+        "name": "Bo‘ston tumani"
+      },
+      {
+        "code": "IzboskanTumani",
+        "name": "Izboskan tumani"
+      },
+      {
+        "code": "JalaquduqTumani",
+        "name": "Jalaquduq tumani"
+      },
+      {
+        "code": "MarxamatTumani",
+        "name": "Marxamat tumani"
+      },
+      {
+        "code": "OltinkolTumani",
+        "name": "Oltinko‘l tumani"
+      },
+      {
+        "code": "PaxtaobodTumani",
+        "name": "Paxtaobod tumani"
+      },
+      {
+        "code": "QorgontepaTumani",
+        "name": "Qo‘rg‘ontepa tumani"
+      },
+      {
+        "code": "UlugnorTumani",
+        "name": "Ulug‘nor tumani"
+      },
+      {
+        "code": "XonobodShahri",
+        "name": "Xonobod shahri"
+      },
+      {
+        "code": "XojaobodTumani",
+        "name": "Xo‘jaobod tumani"
+      },
+      {
+        "code": "ShaxrixonTumani",
+        "name": "Shaxrixon tumani"
+      }
+    ]
+  },
+  {
+    "name": "Buxoro viloyati",
+    "code": "Buxoro",
+    "districts": [
+      {
+        "code": "BuxoroTumani",
+        "name": "Buxoro tumani"
+      },
+      {
+        "code": "BuxoroShahri",
+        "name": "Buxoro shahri"
+      },
+      {
+        "code": "JondorTumani",
+        "name": "Jondor tumani"
+      },
+      {
+        "code": "KogonTumani",
+        "name": "Kogon tumani"
+      },
+      {
+        "code": "KogonShahri",
+        "name": "Kogon shahri"
+      },
+      {
+        "code": "OlotTumani",
+        "name": "Olot tumani"
+      },
+      {
+        "code": "PeshkuTumani",
+        "name": "Peshku tumani"
+      },
+      {
+        "code": "QorakolTumani",
+        "name": "Qorako‘l tumani"
+      },
+      {
+        "code": "QorovulbozorTumani",
+        "name": "Qorovulbozor tumani"
+      },
+      {
+        "code": "RomitanTumani",
+        "name": "Romitan tumani"
+      },
+      {
+        "code": "VobkentTumani",
+        "name": "Vobkent tumani"
+      },
+      {
+        "code": "GijduvonTumani",
+        "name": "G‘ijduvon tumani"
+      },
+      {
+        "code": "ShofirkonTumani",
+        "name": "Shofirkon tumani"
+      }
+    ]
+  },
+  {
+    "name": "Farg‘ona viloyati",
+    "code": "Fargona",
+    "districts": [
+      {
+        "code": "BeshariqTumani",
+        "name": "Beshariq tumani"
+      },
+      {
+        "code": "BogdodTumani",
+        "name": "Bog‘dod tumani"
+      },
+      {
+        "code": "BuvaydaTumani",
+        "name": "Buvayda tumani"
+      },
+      {
+        "code": "DangaraTumani",
+        "name": "Dang‘ara tumani"
+      },
+      {
+        "code": "FargonaTumani",
+        "name": "Farg‘ona tumani"
+      },
+      {
+        "code": "FargonaShahri",
+        "name": "Farg‘ona shahri"
+      },
+      {
+        "code": "FurqatTumani",
+        "name": "Furqat tumani"
+      },
+      {
+        "code": "MargilonShahri",
+        "name": "Marg‘ilon shahri"
+      },
+      {
+        "code": "OltiariqTumani",
+        "name": "Oltiariq tumani"
+      },
+      {
+        "code": "QuvaTumani",
+        "name": "Quva tumani"
+      },
+      {
+        "code": "QuvasoyShahri",
+        "name": "Quvasoy shahri"
+      },
+      {
+        "code": "QoqonShahri",
+        "name": "Qo‘qon shahri"
+      },
+      {
+        "code": "QoshtepaTumani",
+        "name": "Qo‘shtepa tumani"
+      },
+      {
+        "code": "RishtonTumani",
+        "name": "Rishton tumani"
+      },
+      {
+        "code": "SoxTumani",
+        "name": "So‘x tumani"
+      },
+      {
+        "code": "ToshloqTumani",
+        "name": "Toshloq tumani"
+      },
+      {
+        "code": "UchkoprikTumani",
+        "name": "Uchko‘prik tumani"
+      },
+      {
+        "code": "YozyovonTumani",
+        "name": "Yozyovon tumani"
+      },
+      {
+        "code": "OzbekistonTumani",
+        "name": "O‘zbekiston tumani"
+      }
+    ]
+  },
+  {
+    "name": "Jizzax viloyati",
+    "code": "Jizzax",
+    "districts": [
+      {
+        "code": "ArnasoyTumani",
+        "name": "Arnasoy tumani"
+      },
+      {
+        "code": "BaxmalTumani",
+        "name": "Baxmal tumani"
+      },
+      {
+        "code": "DostlikTumani",
+        "name": "Do‘stlik tumani"
+      },
+      {
+        "code": "ForishTumani",
+        "name": "Forish tumani"
+      },
+      {
+        "code": "JizzaxShahri",
+        "name": "Jizzax shahri"
+      },
+      {
+        "code": "MirzacholTumani",
+        "name": "Mirzacho‘l tumani"
+      },
+      {
+        "code": "PaxtakorTumani",
+        "name": "Paxtakor tumani"
+      },
+      {
+        "code": "YangiobodTumani",
+        "name": "Yangiobod tumani"
+      },
+      {
+        "code": "ZafarobodTumani",
+        "name": "Zafarobod tumani"
+      },
+      {
+        "code": "ZarbdorTumani",
+        "name": "Zarbdor tumani"
+      },
+      {
+        "code": "ZominTumani",
+        "name": "Zomin tumani"
+      },
+      {
+        "code": "GallaorolTumani",
+        "name": "G‘allaorol tumani"
+      },
+      {
+        "code": "SharofRashidovTumani",
+        "name": "Sharof Rashidov tumani"
+      }
+    ]
+  },
+  {
+    "name": "Namangan viloyati",
+    "code": "Namangan",
+    "districts": [
+      {
+        "code": "KosonsoyTumani",
+        "name": "Kosonsoy tumani"
+      },
+      {
+        "code": "MingbuloqTumani",
+        "name": "Mingbuloq tumani"
+      },
+      {
+        "code": "NamanganTumani",
+        "name": "Namangan tumani"
+      },
+      {
+        "code": "NamanganShahri",
+        "name": "Namangan shahri"
+      },
+      {
+        "code": "NorinTumani",
+        "name": "Norin tumani"
+      },
+      {
+        "code": "PopTumani",
+        "name": "Pop tumani"
+      },
+      {
+        "code": "ToraqorgonTumani",
+        "name": "To‘raqo‘rg‘on tumani"
+      },
+      {
+        "code": "UychiTumani",
+        "name": "Uychi tumani"
+      },
+      {
+        "code": "UchqorgonTumani",
+        "name": "Uchqo‘rg‘on tumani"
+      },
+      {
+        "code": "YangiqorgonTumani",
+        "name": "Yangiqo‘rg‘on tumani"
+      },
+      {
+        "code": "ChortoqTumani",
+        "name": "Chortoq tumani"
+      },
+      {
+        "code": "ChustTumani",
+        "name": "Chust tumani"
+      }
+    ]
+  },
+  {
+    "name": "Navoiy viloyati",
+    "code": "Navoiy",
+    "districts": [
+      {
+        "code": "KarmanaTumani",
+        "name": "Karmana tumani"
+      },
+      {
+        "code": "KonimexTumani",
+        "name": "Konimex tumani"
+      },
+      {
+        "code": "NavbahorTumani",
+        "name": "Navbahor tumani"
+      },
+      {
+        "code": "NavoiyShahri",
+        "name": "Navoiy shahri"
+      },
+      {
+        "code": "NurotaTumani",
+        "name": "Nurota tumani"
+      },
+      {
+        "code": "QiziltepaTumani",
+        "name": "Qiziltepa tumani"
+      },
+      {
+        "code": "TomdiTumani",
+        "name": "Tomdi tumani"
+      },
+      {
+        "code": "UchquduqTumani",
+        "name": "Uchquduq tumani"
+      },
+      {
+        "code": "XatirchiTumani",
+        "name": "Xatirchi tumani"
+      },
+      {
+        "code": "ZarafshonShahri",
+        "name": "Zarafshon shahri"
+      },
+      {
+        "code": "GozgonShahri",
+        "name": "G‘ozg‘on shahri"
+      }
+    ]
+  },
+  {
+    "name": "Qashqadaryo viloyati",
+    "code": "Qashqadaryo",
+    "districts": [
+      {
+        "code": "DehqonobodTumani",
+        "name": "Dehqonobod tumani"
+      },
+      {
+        "code": "KasbiTumani",
+        "name": "Kasbi tumani"
+      },
+      {
+        "code": "KitobTumani",
+        "name": "Kitob tumani"
+      },
+      {
+        "code": "KosonTumani",
+        "name": "Koson tumani"
+      },
+      {
+        "code": "KokdalaTumani",
+        "name": "Ko‘kdala tumani"
+      },
+      {
+        "code": "MirishkorTumani",
+        "name": "Mirishkor tumani"
+      },
+      {
+        "code": "MuborakTumani",
+        "name": "Muborak tumani"
+      },
+      {
+        "code": "NishonTumani",
+        "name": "Nishon tumani"
+      },
+      {
+        "code": "QamashiTumani",
+        "name": "Qamashi tumani"
+      },
+      {
+        "code": "QarshiTumani",
+        "name": "Qarshi tumani"
+      },
+      {
+        "code": "QarshiShahri",
+        "name": "Qarshi shahri"
+      },
+      {
+        "code": "YakkabogTumani",
+        "name": "Yakkabog‘ tumani"
+      },
+      {
+        "code": "GuzorTumani",
+        "name": "G‘uzor tumani"
+      },
+      {
+        "code": "ShahrisabzTumani",
+        "name": "Shahrisabz tumani"
+      },
+      {
+        "code": "ShahrisabzShahri",
+        "name": "Shahrisabz shahri"
+      },
+      {
+        "code": "ChiroqchiTumani",
+        "name": "Chiroqchi tumani"
+      }
+    ]
+  },
+  {
+    "name": "Qoraqalpog‘iston Respublikasi",
+    "code": "Qoraqalpogiston",
+    "districts": [
+      {
+        "code": "AmudaryoTumani",
+        "name": "Amudaryo tumani"
+      },
+      {
+        "code": "BeruniyTumani",
+        "name": "Beruniy tumani"
+      },
+      {
+        "code": "BozatovTumani",
+        "name": "Bo‘zatov tumani"
+      },
+      {
+        "code": "EllikkalaTumani",
+        "name": "Ellikkala tumani"
+      },
+      {
+        "code": "KegeyliTumani",
+        "name": "Kegeyli tumani"
+      },
+      {
+        "code": "MoynoqTumani",
+        "name": "Mo‘ynoq tumani"
+      },
+      {
+        "code": "NukusTumani",
+        "name": "Nukus tumani"
+      },
+      {
+        "code": "NukusShahri",
+        "name": "Nukus shahri"
+      },
+      {
+        "code": "QanlikolTumani",
+        "name": "Qanliko‘l tumani"
+      },
+      {
+        "code": "QoraozakTumani",
+        "name": "Qorao‘zak tumani"
+      },
+      {
+        "code": "QongirotTumani",
+        "name": "Qo‘ng‘irot tumani"
+      },
+      {
+        "code": "TaxiatoshTumani",
+        "name": "Taxiatosh tumani"
+      },
+      {
+        "code": "TaxtakopirTumani",
+        "name": "Taxtako‘pir tumani"
+      },
+      {
+        "code": "TortkolTumani",
+        "name": "To‘rtko‘l tumani"
+      },
+      {
+        "code": "XojayliTumani",
+        "name": "Xo‘jayli tumani"
+      },
+      {
+        "code": "ShumanayTumani",
+        "name": "Shumanay tumani"
+      },
+      {
+        "code": "ChimboyTumani",
+        "name": "Chimboy tumani"
+      }
+    ]
+  },
+  {
+    "name": "Samarqand viloyati",
+    "code": "Samarqand",
+    "districts": [
+      {
+        "code": "BulungurTumani",
+        "name": "Bulung‘ur tumani"
+      },
+      {
+        "code": "IshtixonTumani",
+        "name": "Ishtixon tumani"
+      },
+      {
+        "code": "JomboyTumani",
+        "name": "Jomboy tumani"
+      },
+      {
+        "code": "KattaqorgonTumani",
+        "name": "Kattaqo‘rg‘on tumani"
+      },
+      {
+        "code": "KattaqorgonShahri",
+        "name": "Kattaqo‘rg‘on shahri"
+      },
+      {
+        "code": "NarpayTumani",
+        "name": "Narpay tumani"
+      },
+      {
+        "code": "NurobodTumani",
+        "name": "Nurobod tumani"
+      },
+      {
+        "code": "OqdaryoTumani",
+        "name": "Oqdaryo tumani"
+      },
+      {
+        "code": "PastdargomTumani",
+        "name": "Pastdarg‘om tumani"
+      },
+      {
+        "code": "PaxtachiTumani",
+        "name": "Paxtachi tumani"
+      },
+      {
+        "code": "PayariqTumani",
+        "name": "Payariq tumani"
+      },
+      {
+        "code": "QoshrabotTumani",
+        "name": "Qo‘shrabot tumani"
+      },
+      {
+        "code": "SamarqandTumani",
+        "name": "Samarqand tumani"
+      },
+      {
+        "code": "SamarqandShahri",
+        "name": "Samarqand shahri"
+      },
+      {
+        "code": "TayloqTumani",
+        "name": "Tayloq tumani"
+      },
+      {
+        "code": "UrgutTumani",
+        "name": "Urgut tumani"
+      }
+    ]
+  },
+  {
+    "name": "Sirdaryo viloyati",
+    "code": "Sirdaryo",
+    "districts": [
+      {
+        "code": "BoyovutTumani",
+        "name": "Boyovut tumani"
+      },
+      {
+        "code": "GulistonTumani",
+        "name": "Guliston tumani"
+      },
+      {
+        "code": "GulistonShahri",
+        "name": "Guliston shahri"
+      },
+      {
+        "code": "MirzaobodTumani",
+        "name": "Mirzaobod tumani"
+      },
+      {
+        "code": "OqoltinTumani",
+        "name": "Oqoltin tumani"
+      },
+      {
+        "code": "SardobaTumani",
+        "name": "Sardoba tumani"
+      },
+      {
+        "code": "SayxunobodTumani",
+        "name": "Sayxunobod tumani"
+      },
+      {
+        "code": "SirdaryoTumani",
+        "name": "Sirdaryo tumani"
+      },
+      {
+        "code": "XovosTumani",
+        "name": "Xovos tumani"
+      },
+      {
+        "code": "YangiyerShahri",
+        "name": "Yangiyer shahri"
+      },
+      {
+        "code": "ShirinShahri",
+        "name": "Shirin shahri"
+      }
+    ]
+  },
+  {
+    "name": "Surxondaryo viloyati",
+    "code": "Surxondaryo",
+    "districts": [
+      {
+        "code": "AngorTumani",
+        "name": "Angor tumani"
+      },
+      {
+        "code": "BandixonTumani",
+        "name": "Bandixon tumani"
+      },
+      {
+        "code": "BoysunTumani",
+        "name": "Boysun tumani"
+      },
+      {
+        "code": "DenovTumani",
+        "name": "Denov tumani"
+      },
+      {
+        "code": "JarqorgonTumani",
+        "name": "Jarqo‘rg‘on tumani"
+      },
+      {
+        "code": "MuzrabotTumani",
+        "name": "Muzrabot tumani"
+      },
+      {
+        "code": "OltinsoyTumani",
+        "name": "Oltinsoy tumani"
+      },
+      {
+        "code": "QiziriqTumani",
+        "name": "Qiziriq tumani"
+      },
+      {
+        "code": "QumqorgonTumani",
+        "name": "Qumqo‘rg‘on tumani"
+      },
+      {
+        "code": "SariosiyoTumani",
+        "name": "Sariosiyo tumani"
+      },
+      {
+        "code": "TermizTumani",
+        "name": "Termiz tumani"
+      },
+      {
+        "code": "TermizShahri",
+        "name": "Termiz shahri"
+      },
+      {
+        "code": "UzunTumani",
+        "name": "Uzun tumani"
+      },
+      {
+        "code": "SherobodTumani",
+        "name": "Sherobod tumani"
+      },
+      {
+        "code": "ShorchiTumani",
+        "name": "Sho‘rchi tumani"
+      }
+    ]
+  },
+  {
+    "name": "Toshkent viloyati",
+    "code": "ToshkentViloyati",
+    "districts": [
+      {
+        "code": "AngrenShahri",
+        "name": "Angren shahri"
+      },
+      {
+        "code": "BekobodTumani",
+        "name": "Bekobod tumani"
+      },
+      {
+        "code": "BekobodShahri",
+        "name": "Bekobod shahri"
+      },
+      {
+        "code": "BokaTumani",
+        "name": "Bo‘ka tumani"
+      },
+      {
+        "code": "BostonliqTumani",
+        "name": "Bo‘stonliq tumani"
+      },
+      {
+        "code": "NurafshonShahri",
+        "name": "Nurafshon shahri"
+      },
+      {
+        "code": "OhangaronTumani",
+        "name": "Ohangaron tumani"
+      },
+      {
+        "code": "OhangaronShahri",
+        "name": "Ohangaron shahri"
+      },
+      {
+        "code": "OlmaliqShahri",
+        "name": "Olmaliq shahri"
+      },
+      {
+        "code": "OqqorgonTumani",
+        "name": "Oqqo‘rg‘on tumani"
+      },
+      {
+        "code": "ParkentTumani",
+        "name": "Parkent tumani"
+      },
+      {
+        "code": "PskentTumani",
+        "name": "Pskent tumani"
+      },
+      {
+        "code": "QibrayTumani",
+        "name": "Qibray tumani"
+      },
+      {
+        "code": "QuyichirchiqTumani",
+        "name": "Quyichirchiq tumani"
+      },
+      {
+        "code": "ToshkentTumani",
+        "name": "Toshkent tumani"
+      },
+      {
+        "code": "YangiyolTumani",
+        "name": "Yangiyo‘l tumani"
+      },
+      {
+        "code": "YangiyolShahri",
+        "name": "Yangiyo‘l shahri"
+      },
+      {
+        "code": "YuqorichirchiqTumani",
+        "name": "Yuqorichirchiq tumani"
+      },
+      {
+        "code": "ZangiotaTumani",
+        "name": "Zangiota tumani"
+      },
+      {
+        "code": "OrtachirchiqTumani",
+        "name": "O‘rtachirchiq tumani"
+      },
+      {
+        "code": "ChinozTumani",
+        "name": "Chinoz tumani"
+      },
+      {
+        "code": "ChirchiqShahri",
+        "name": "Chirchiq shahri"
+      }
+    ]
+  },
+  {
+    "name": "Toshkent shahri",
+    "code": "ToshkentShahri",
+    "districts": [
+      {
+        "code": "BektemirTumani",
+        "name": "Bektemir tumani"
+      },
+      {
+        "code": "MirobodTumani",
+        "name": "Mirobod tumani"
+      },
+      {
+        "code": "MirzoUlugbekTumani",
+        "name": "Mirzo Ulug‘bek tumani"
+      },
+      {
+        "code": "OlmazorTumani",
+        "name": "Olmazor tumani"
+      },
+      {
+        "code": "SirgaliTumani",
+        "name": "Sirg‘ali tumani"
+      },
+      {
+        "code": "UchtepaTumani",
+        "name": "Uchtepa tumani"
+      },
+      {
+        "code": "YakkasaroyTumani",
+        "name": "Yakkasaroy tumani"
+      },
+      {
+        "code": "YangihayotTumani",
+        "name": "Yangihayot tumani"
+      },
+      {
+        "code": "YashnobodTumani",
+        "name": "Yashnobod tumani"
+      },
+      {
+        "code": "YunusobodTumani",
+        "name": "Yunusobod tumani"
+      },
+      {
+        "code": "ShayxontohurTumani",
+        "name": "Shayxontohur tumani"
+      },
+      {
+        "code": "ChilonzorTumani",
+        "name": "Chilonzor tumani"
+      }
+    ]
+  },
+  {
+    "name": "Xorazm viloyati",
+    "code": "Xorazm",
+    "districts": [
+      {
+        "code": "BogotTumani",
+        "name": "Bog‘ot tumani"
+      },
+      {
+        "code": "GurlanTumani",
+        "name": "Gurlan tumani"
+      },
+      {
+        "code": "QoshkopirTumani",
+        "name": "Qo‘shko‘pir tumani"
+      },
+      {
+        "code": "TuproqqalaTumani",
+        "name": "Tuproqqal’a tumani"
+      },
+      {
+        "code": "UrganchTumani",
+        "name": "Urganch tumani"
+      },
+      {
+        "code": "UrganchShahri",
+        "name": "Urganch shahri"
+      },
+      {
+        "code": "XazoraspTumani",
+        "name": "Xazorasp tumani"
+      },
+      {
+        "code": "XivaTumani",
+        "name": "Xiva tumani"
+      },
+      {
+        "code": "XivaShahri",
+        "name": "Xiva shahri"
+      },
+      {
+        "code": "XonqaTumani",
+        "name": "Xonqa tumani"
+      },
+      {
+        "code": "YangiariqTumani",
+        "name": "Yangiariq tumani"
+      },
+      {
+        "code": "YangibozorTumani",
+        "name": "Yangibozor tumani"
+      },
+      {
+        "code": "ShovotTumani",
+        "name": "Shovot tumani"
+      }
+    ]
+  }
+]

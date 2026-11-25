@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BadgeCheck, ChevronRight, Download, Globe2, KeyRound, LockKeyhole, MailCheck, MailWarning, ShieldCheck } from 'lucide-react';
+import { ChevronRight, Download, Globe2, KeyRound, LockKeyhole, MailCheck, MailWarning, ShieldCheck } from 'lucide-react';
 import { Link, routes } from '../../../app/router';
 import { Notice } from '../../../shared/components/UI';
 import { api, explain } from '../../../shared/services/api';
@@ -7,6 +7,7 @@ import { privateProfile, type Profile, type ProfilePrivacy, type User } from '..
 import { DeleteSettings } from './DeleteSettings';
 import { DeviceSessions } from './DeviceSessions';
 import { PreferenceSwitch } from './PreferenceControls';
+import { VerifiedBadge } from '../../../shared/components/VerifiedBadge';
 import { badgeRequirements, type VerificationProps } from './ProfileVerification';
 import './PrivacySettings.css';
 
@@ -109,8 +110,8 @@ export function PrivacySettings({ user, token, onUserChange, onDeleted }: Verifi
       </div>
       <div className="privacy-row">
         <div className="privacy-icon-row">
-          <span className="privacy-row-icon"><BadgeCheck size={20} aria-hidden="true" /></span>
-          <div><h3>Profil tasdiq belgisi</h3><p>{user.hasProfileBadge ? 'Belgi profilingizda ko‘rinadi.' : completed + ' / 4 talab bajarildi.'}</p></div>
+          <span className="privacy-row-icon privacy-badge-icon"><VerifiedBadge size={23} decorative /></span>
+          <div><h3>Profil tasdiq belgisi</h3><p>{user.hasProfileBadge ? 'Belgi profilingizda ko‘rinadi.' : 'Manzil, gender, telefon va email. ' + completed + ' / 4 qadam bajarildi.'}</p></div>
         </div>
         <Link className="button secondary" href={routes.settingsProfileBadge}>{user.hasProfileBadge ? 'Talablarni ko‘rish' : completed ? 'Davom etish' : 'Tasdiqlashni boshlash'}<ChevronRight size={16} aria-hidden="true" /></Link>
       </div>

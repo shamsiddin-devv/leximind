@@ -12,6 +12,9 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     await c.query('DELETE FROM auth_sessions WHERE expires_at<now()');
     await c.query('DELETE FROM account_actions WHERE expires_at<now()');
     await c.query(
+      'DELETE FROM phone_verification_challenges WHERE expires_at<now()',
+    );
+    await c.query(
       'DELETE FROM rate_limits WHERE expires_at<now() AND (blocked_until IS NULL OR blocked_until<now())',
     );
     await c.query(

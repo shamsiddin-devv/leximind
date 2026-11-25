@@ -8,8 +8,9 @@ export const leaderboardQuery = `
     END AS starts_at
   ), eligible AS (
     SELECT u.id, u.full_name AS "fullName", u.avatar_url AS "avatarUrl",
-      (u.email_verified_at IS NOT NULL AND coalesce(u.location,'')<>'' AND u.gender IS NOT NULL
-        AND u.gender<>'undisclosed' AND coalesce(u.phone_number,'')<>'') AS "hasProfileBadge",
+      (u.email_verified_at IS NOT NULL AND u.country_code IS NOT NULL AND coalesce(u.city,'')<>''
+        AND (u.country_code<>'UZ' OR coalesce(u.administrative_region,'')<>'')
+        AND coalesce(u.gender,'undisclosed')<>'undisclosed' AND u.phone_verified_at IS NOT NULL) AS "hasProfileBadge",
       (u.profile_public AND u.profile_sharing) AS "canViewProfile",
       (u.profile_public AND u.profile_sharing AND u.public_statistics) AS listed,
       CASE WHEN (p.last_session_at AT TIME ZONE 'UTC' AT TIME ZONE p.timezone)::date >=

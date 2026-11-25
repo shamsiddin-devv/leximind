@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { ArrowUpRight, BadgeCheck, Crown, Flame, Trophy, UserRound } from 'lucide-react';
+import { ArrowUpRight, Crown, Flame, Trophy, UserRound } from 'lucide-react';
 import { Link, routes } from '../../../app/router';
 import { Notice } from '../../../shared/components/UI';
+import { VerifiedBadge } from '../../../shared/components/VerifiedBadge';
 import { UserAvatar } from '../../../shared/components/UserAvatar';
 import { api, explain } from '../../../shared/services/api';
 import type { Leaderboard, RankingEntry } from '../../../shared/types/api';
@@ -75,7 +76,7 @@ export function LeaderboardPage({ token }: { token: string }) {
 
 function LearnerName({ item, ownId }: { item: RankingEntry; ownId?: string }) {
   return <><span>{item.fullName}</span>
-    {item.hasProfileBadge && <BadgeCheck className="leaderboard-verified" size={16} aria-label="Tasdiqlangan profil" />}
+    {item.hasProfileBadge && <VerifiedBadge size={16} />}
     {item.id === ownId && <small className="leaderboard-you">Siz</small>}</>;
 }
 

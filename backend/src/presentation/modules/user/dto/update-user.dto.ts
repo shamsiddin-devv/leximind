@@ -56,6 +56,10 @@ export class UpdateUserDto extends PartialType(
     string | null;
   @IsOptional() @IsString() @Matches(/^[A-Z]{2}$/) countryCode?: string | null;
   @IsOptional() @IsString() @MaxLength(100) city?: string | null;
+  @IsOptional() @IsString() @MaxLength(100) administrativeRegion?:
+    string | null;
+  @IsOptional() @IsString() @MaxLength(160) streetAddress?: string | null;
+  @IsOptional() @IsString() @MaxLength(250) addressDetails?: string | null;
   @IsOptional() @IsString() @MaxLength(100) location?: string | null;
   @IsOptional() @IsIn(genders) gender?: Gender | null;
   @IsOptional() @IsString() @Matches(phoneNumberPattern) phoneNumber?:

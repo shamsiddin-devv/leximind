@@ -8,6 +8,7 @@ import {
   pgEnum,
   uuid,
   boolean,
+  bigint,
   real,
   unique,
   jsonb,
@@ -72,6 +73,10 @@ export const users = pgTable('users', {
   bio: varchar({ length: 280 }),
   bioFormat: text('bio_format'),
   countryCode: varchar('country_code', { length: 2 }),
+  administrativeRegion: varchar('administrative_region', { length: 100 }),
+  streetAddress: varchar('street_address', { length: 160 }),
+  addressDetails: varchar('address_details', { length: 250 }),
+  phoneVerifiedAt: timestamp('phone_verified_at', { withTimezone: true }),
   city: varchar({ length: 100 }),
   location: varchar({ length: 100 }),
   gender: varchar({ length: 20 }).$type<Gender>(),
@@ -87,6 +92,39 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').$onUpdate(() => new Date()),
 });
+
+export const phoneVerificationChallenges = pgTable(
+  'phone_verification_challenges',
+  {
+    userId: uuid('user_id')
+      .primaryKey()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    phoneNumber: varchar('phone_number', { length: 13 }).notNull(),
+    startHash: char('start_hash', { length: 64 }).notNull().unique(),
+    chatId: bigint('chat_id', { mode: 'number' }),
+    startUpdateId: bigint('start_update_id', { mode: 'number' }),
+    contactUpdateId: bigint('contact_update_id', { mode: 'number' }),
+    failedAttempts: smallint('failed_attempts').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    check(
+      'phone_verification_challenges_phone_number_check',
+      sql`${t.phoneNumber} ~ '^[+]998[0-9]{9}$'`,
+    ),
+    check(
+      'phone_verification_challenges_failed_attempts_check',
+      sql`${t.failedAttempts} BETWEEN 0 AND 5`,
+    ),
+    index('phone_verification_challenges_chat_idx')
+      .on(t.chatId, t.startUpdateId.desc())
+      .where(sql`${t.chatId} IS NOT NULL`),
+    index('phone_verification_challenges_expiry_idx').on(t.expiresAt),
+  ],
+);
 
 export const referrals = pgTable('referrals', {
   id: uuid('id').defaultRandom().primaryKey(),

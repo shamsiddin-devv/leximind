@@ -65,6 +65,7 @@ export function validateEnvironment(env: Record<string, unknown>) {
   }
   const accountMailProvider = validateAccountEmail(env);
   validateNotificationDelivery(env);
+  validateTelegramBot(env);
   return {
     ...env,
     NODE_ENV: mode,
@@ -100,6 +101,25 @@ function validateNotificationDelivery(env: Record<string, unknown>) {
     } catch {
       throw new Error(
         'Configure a valid VAPID_SUBJECT and matching VAPID key pair.',
+      );
+    }
+  }
+}
+
+function validateTelegramBot(env: Record<string, unknown>) {
+  const [token, username, secret] = [
+    env.TELEGRAM_BOT_TOKEN || env.TG_BOT_API_KEY,
+    env.TELEGRAM_BOT_USERNAME,
+    env.TELEGRAM_WEBHOOK_SECRET,
+  ].map((value) => (typeof value === 'string' ? value.trim() : ''));
+  if (token || username || secret) {
+    if (
+      !/^[0-9]+:[\w-]+$/.test(token) ||
+      !/^[A-Za-z0-9_]{5,32}$/.test(username) ||
+      !/^[A-Za-z0-9_-]{32,256}$/.test(secret)
+    ) {
+      throw new Error(
+        'Configure a Telegram bot token, username, and random webhook secret together.',
       );
     }
   }

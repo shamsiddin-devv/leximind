@@ -1,5 +1,5 @@
 import { ArrowRight, BookOpen, CalendarDays, Check, CircleHelp, Clock3, Flame, Layers3, Play, RotateCcw, Sparkles, Target } from 'lucide-react';
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useInterfaceLanguage } from '../../../app/language';
 import { Link, routes } from '../../../app/router';
 import { Speak } from '../../../shared/components/UI';
@@ -9,12 +9,16 @@ import { dateKey, uzbekMonths } from '../../../shared/utils/date';
 import { activities } from '../../practice/activities';
 import { ActivityTile } from '../../practice/components/ActivityTile';
 import { describeDailySession } from '../dailySession';
+import { GettingStartedPrompt, type gettingStartedProgress } from '../components/GettingStartedGuide';
+import { gettingStartedCopy } from '../gettingStartedCopy';
 import { dashboardCopy } from './dashboardCopy';
 import './Dashboard.css';
 
 type Props = {
   name: string; token: string; profile?: Profile; plan?: Plan; history: SessionSummary[]; stats?: Statistics; busy: boolean;
   onStart: () => void; onActivity: (kind: Activity) => void;
+  guideProgress?: ReturnType<typeof gettingStartedProgress>;
+  onOpenGuide: () => void; onDismissGuide: () => void;
 };
 const uzbekDays = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya'];
 const weekDay = (date: Date) => (date.getUTCDay() + 6) % 7;
@@ -25,7 +29,7 @@ const dailyWordMessages = {
   ru: ['Загружаем слово дня…', 'Сегодня слово недоступно.', 'Не удалось загрузить слово дня.'],
 } as const;
 
-export function Dashboard({ name, token, profile, plan, history, stats, busy, onStart, onActivity }: Props) {
+export function Dashboard({ name, token, profile, plan, history, stats, busy, onStart, onActivity, guideProgress, onOpenGuide, onDismissGuide }: Props) {
   const language = useInterfaceLanguage();
   const copy = dashboardCopy[language];
   const timeZone = 'UTC';
@@ -55,16 +59,22 @@ export function Dashboard({ name, token, profile, plan, history, stats, busy, on
   const [title, detail, action] = describeDailySession(profile, plan, language);
   const forecast = plan?.forecast ?? [];
   const maxForecast = Math.max(1, ...forecast.map((item) => item.count));
+  const guideTrigger = useRef<HTMLButtonElement>(null);
 
   return <div className="container screen study-home">
     <header className="study-home-header">
       <div><h1>{firstName ? <>{copy.hello}, <em>{firstName}!</em></> : copy.hello + '!'}</h1>
         <p>{copy.description}</p></div>
       <div className="study-home-meta">
+        <button ref={guideTrigger} type="button" className="study-home-guide-link" aria-haspopup="dialog" onClick={onOpenGuide}>
+          <CircleHelp size={15} aria-hidden="true" /> {gettingStartedCopy[language].label}
+        </button>
         {profile && <span><BookOpen size={15} aria-hidden="true" /> {copy.level(profile.level)}</span>}
         <time dateTime={dateKey(today, 'UTC')}><CalendarDays size={15} aria-hidden="true" /> {language === 'uz' ? today.getUTCDate() + '-' + uzbekMonths[today.getUTCMonth()] : dateFormatter.format(today)}</time>
       </div>
     </header>
+    {guideProgress && <GettingStartedPrompt progress={guideProgress} busy={busy} onPractice={() => onActivity('meaning_match')}
+      onDismiss={() => { onDismissGuide(); guideTrigger.current?.focus(); }} />}
     <section className="study-home-focus" aria-labelledby="daily-title">
       <div className="study-home-focus-copy">
         <span className="study-home-focus-label"><Sparkles size={15} aria-hidden="true" /> {copy.daily}</span>

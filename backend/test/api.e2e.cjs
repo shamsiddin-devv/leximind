@@ -37,6 +37,8 @@ const auth = () => ({ Authorization: 'Bearer ' + token });
 const other = () => ({ Authorization: 'Bearer ' + otherToken });
 const successfulRoutes = new Set();
 const sentAccountEmails = [];
+const telegramMessages = [];
+const webhookSecret = 'telegram_test_' + 'a'.repeat(32);
 const uploadedAvatars = new Set();
 const testVapid = generateVAPIDKeys();
 let failAvatarRemoval = false;
@@ -58,10 +60,16 @@ before(async () => {
   process.env.TRUSTED_PROXIES = '';
   process.env.SMTP_EMAIL = '';
   process.env.SMTP_PASS = '';
+  process.env.BREVO_API_KEY = '';
+  process.env.BREVO_FROM_EMAIL = '';
   process.env.EMAIL_API_KEY = 'test-provider-key';
   process.env.EMAIL_FROM = 'LexiMind <test@example.com>';
   process.env.ACCOUNT_ACTION_URL = 'https://example.com/account-action';
   process.env.ACCOUNT_EMAIL_KEY = 'a1'.repeat(32);
+  process.env.TELEGRAM_BOT_TOKEN = '';
+  process.env.TG_BOT_API_KEY = '123:fake_bot_token';
+  process.env.TELEGRAM_BOT_USERNAME = 'LexiMindTestBot';
+  process.env.TELEGRAM_WEBHOOK_SECRET = webhookSecret;
   process.env.NOTIFICATION_DELIVERY_ENABLED = 'true';
   process.env.VAPID_SUBJECT = 'mailto:test@example.com';
   process.env.VAPID_PUBLIC_KEY = testVapid.publicKey;
@@ -70,6 +78,11 @@ before(async () => {
   process.env.CLOUDINARY_API_KEY = 'test';
   process.env.CLOUDINARY_API_SECRET = 'test';
   const { AppModule } = require('../dist/src/app.module');
+  const { Api } = require('grammy');
+  Api.prototype.getMe = async () => ({ id: 123, is_bot: true, first_name: 'LexiMind', username: 'LexiMindTestBot' });
+  Api.prototype.sendMessage = async (chatId, message, options) => {
+    telegramMessages.push({ chatId, message, ...options });
+  };
   const {
     AccountActionMailer,
   } = require('../dist/src/infrastructure/auth/AccountActionMailer');
@@ -1721,7 +1734,11 @@ test('complete API and database lifecycle', async (t) => {
         .body;
       const details = {
         bio: 'I learn English every day.',
-        location: 'Toshkent',
+        countryCode: 'UZ',
+        administrativeRegion: 'Toshkent shahri',
+        city: 'Chilonzor tumani',
+        streetAddress: 'Bunyodkor shoh ko‘chasi',
+        addressDetails: '15-uy, 4-xonadon',
         gender: 'other',
         phoneNumber: '+998901234567',
       };
@@ -1758,13 +1775,71 @@ test('complete API and database lifecycle', async (t) => {
           .emailVerifiedAt,
       );
       const verified = (await api.get('/api/users/me').set(auth()).expect(200)).body;
-      assert.equal(verified.hasProfileBadge, true);
+      assert.equal(verified.hasProfileBadge, false);
+      assert.equal(verified.phoneVerifiedAt, null);
+      assert.equal(verified.location, 'Chilonzor tumani, Oʻzbekiston');
+      const endpoint = '/api/users/me/phone-verification';
+      const webhook = '/api/telegram/phone-verification';
+      const update = (updateId, message) => ({ update_id: updateId, message: {
+        message_id: updateId, date: Math.floor(Date.now() / 1000),
+        from: { id: 456789, first_name: 'Learner', is_bot: false },
+        chat: { id: 456789, type: 'private' }, ...message,
+      } });
+      const startMessage = (token) => ({
+        text: '/start ' + token,
+        entities: [{ type: 'bot_command', offset: 0, length: 6 }],
+      });
+      const sendUpdate = (updateId, message) => api.post(webhook)
+        .set('X-Telegram-Bot-Api-Secret-Token', webhookSecret).send(update(updateId, message));
+      await api.get(endpoint).expect(401);
+      assert.equal((await api.get(endpoint).set(auth()).expect(200)).body.available, true);
+      const challenge = (await api.post(endpoint + '/request').set(auth())
+        .send({ phoneNumber: details.phoneNumber }).expect(200)).body;
+      await api.post(endpoint + '/request').set(auth()).send({ phoneNumber: details.phoneNumber }).expect(429);
+      const link = new URL(challenge.url);
+      assert.equal(link.hostname, 't.me');
+      const start = link.searchParams.get('start');
+      await api.post(webhook).send(update(10, startMessage(start))).expect(401);
+      await sendUpdate(8, { ...startMessage(start), chat: { id: -10, type: 'group' } }).expect(200);
+      await sendUpdate(9, { text: 'Salom' }).expect(200);
+      assert.equal(telegramMessages.length, 0);
+      await sendUpdate(10, startMessage(start)).expect(200);
+      assert.equal(telegramMessages.length, 1);
+      assert.deepEqual(telegramMessages.at(-1).reply_markup.keyboard, [
+        [{ text: 'Raqamimni yuborish', request_contact: true, style: 'primary' }],
+      ]);
+      assert.equal(telegramMessages.at(-1).reply_markup.one_time_keyboard, true);
+      await sendUpdate(11, { contact: { user_id: 1234, phone_number: details.phoneNumber } }).expect(200);
+      await sendUpdate(12, { contact: { user_id: 456789, phone_number: '+998901234500' } }).expect(200);
+      assert.ok(telegramMessages.every(({ message }) => !message.includes('<code>')));
+      await sendUpdate(13, { contact: { user_id: 456789, phone_number: details.phoneNumber } }).expect(200);
+      const code = telegramMessages.at(-1).message.match(/\b[0-9]{6}\b/)?.[0];
+      assert.ok(code);
+      assert.equal(telegramMessages.length, 4);
+      assert.equal(telegramMessages.at(-1).parse_mode, 'HTML');
+      assert.deepEqual(telegramMessages.at(-1).reply_markup.inline_keyboard, [
+        [{ text: 'Kodni nusxalash', copy_text: { text: code }, style: 'success' }],
+      ]);
+      const separateSession = (await api.post('/api/auth/login')
+        .send({ email: 'other@example.com', password: 'Change8!' }).expect(200)).body;
+      await api.post(endpoint + '/confirm').set('Authorization', 'Bearer ' + separateSession.accessToken)
+        .send({ code }).expect(400);
+      const wrongCode = code === '000000' ? '000001' : '000000';
+      await api.post(endpoint + '/confirm').set(auth()).send({ code: wrongCode }).expect(400);
+      const confirmed = (await api.post(endpoint + '/confirm').set(auth()).send({ code }).expect(200)).body;
+      assert.equal(confirmed.hasProfileBadge, true);
+      assert.ok(confirmed.phoneVerifiedAt);
+      await api.post(endpoint + '/confirm').set(auth()).send({ code }).expect(400);
       const incomplete = (await api.patch('/api/users/me').set(auth())
         .send({ gender: 'undisclosed' }).expect(200)).body;
       assert.equal(incomplete.hasProfileBadge, false);
       const restored = (await api.patch('/api/users/me').set(auth())
         .send({ gender: details.gender }).expect(200)).body;
       assert.equal(restored.hasProfileBadge, true);
+      const changedPhone = (await api.patch('/api/users/me').set(auth())
+        .send({ phoneNumber: '+998901234500' }).expect(200)).body;
+      assert.equal(changedPhone.phoneVerifiedAt, null);
+      assert.equal(changedPhone.hasProfileBadge, false);
       await api
         .post('/api/auth/password-reset/request')
         .send({ email: current.email })
@@ -2430,7 +2505,7 @@ test('complete API and database lifecycle', async (t) => {
       const missing = operations.filter(
         (operation) => !successfulRoutes.has(operation),
       );
-      assert.equal(operations.length, 96);
+      assert.equal(operations.length, 100);
       assert.deepEqual(missing, []);
     },
   );

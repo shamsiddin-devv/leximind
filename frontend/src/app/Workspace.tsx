@@ -10,6 +10,7 @@ import { SettingsPage } from '../features/profile/components/SettingsPage';
 import { useAccountUiPreferences } from '../features/profile/hooks/useAccountUiPreferences';
 import { usePreferenceSave } from '../features/profile/hooks/usePreferenceSave';
 import { Dashboard } from '../features/learning/pages/Dashboard';
+import { GettingStartedDialog, gettingStartedProgress } from '../features/learning/components/GettingStartedGuide';
 import { LearningSessionsPage } from '../features/learning/pages/LearningSessionsPage';
 import { StudyPlanPage } from '../features/learning/pages/StudyPlanPage';
 import { StatisticsPage } from '../features/learning/pages/StatisticsPage';
@@ -44,6 +45,13 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
   const [busy, setBusy] = useState(false);
   const [soundSaving, setSoundSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const guideDismissKey = 'leximind.getting-started.dismissed.' + user.id;
+  const [guideDismissed, setGuideDismissed] = useState(() => {
+    try { return localStorage.getItem(guideDismissKey) === 'true'; }
+    catch { return false; }
+  });
+  const guideDialog = useRef<HTMLDialogElement>(null);
+  const guideProgress = snapshot && gettingStartedProgress(snapshot.stats, snapshot.gamesPlayed);
   const sidebarCollapsed = useInterfaceSetting('sidebarCollapsed');
   const [error, setError] = useState('');
   const startRequest = useRef<AbortController | null>(null);
@@ -54,6 +62,16 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
   const reminder = useStudyReminder(user.id, snapshot?.profile, snapshot?.scores[0]?.playedAt);
   const page = navigationPages.get(path);
   const settingsSection = settingsNavigation.items.find((item) => item.href === settingsParent(path));
+
+  function openGuide() {
+    if (!guideDialog.current?.open) guideDialog.current?.showModal();
+  }
+
+  function dismissGuide() {
+    setGuideDismissed(true);
+    try { localStorage.setItem(guideDismissKey, 'true'); }
+    catch { /* The prompt stays hidden for this session. */ }
+  }
 
   function endPractice() {
     startRequest.current?.abort();
@@ -133,7 +151,8 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
   return <AppLayout path={path} token={token} user={user} accountAccess={accountAccess} practicing={Boolean(currentRound || currentReview)}
     sound={sound} soundAvailable={Boolean(snapshot) && !soundSaving} onToggleSound={() => void toggleSound()}
     collapsed={sidebarCollapsed} onCollapsedChange={(collapsed) => updateInterfaceSettings({ sidebarCollapsed: collapsed })}
-    onExitPractice={endPractice} loggingOut={loggingOut} onLogout={() => void logout()}>
+    onOpenGuide={openGuide} onExitPractice={endPractice} loggingOut={loggingOut} onLogout={() => void logout()}>
+    <GettingStartedDialog dialog={guideDialog} progress={guideProgress} busy={busy} onPractice={() => void startActivity('meaning_match')} />
     {(error || dataError) && <div className="container global-notice"><Notice error>{error || dataError}</Notice>
       {dataError && <button className="button secondary" onClick={reload}>Qayta urinish</button>}</div>}
     {reminder.visible && !currentRound && !currentReview && <div className="container global-notice">
@@ -172,6 +191,7 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
         onUserChange={onUserChange} onPasswordChanged={onSessionLost} onDeleted={onLogout} />
       : page?.intro ? <SectionIntroPage title={page.label} icon={page.icon} {...page.intro} />
       : <Dashboard name={user.fullName} token={token} profile={snapshot?.profile} plan={snapshot?.plan} history={snapshot?.history ?? []} stats={snapshot?.stats} busy={busy}
+        guideProgress={guideDismissed ? undefined : guideProgress} onDismissGuide={dismissGuide} onOpenGuide={openGuide}
         onStart={() => void daily()} onActivity={(kind) => void startActivity(kind)} />}
   </AppLayout>;
 }

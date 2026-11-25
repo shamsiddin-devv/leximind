@@ -119,6 +119,7 @@
   box-shadow: 0 9px 24px #18253820;
 }
 .app-quick-popover { inset-inline: calc(var(--rail-width) + max(159px, var(--panel-visible)) + var(--topbar-search-width) + 12px) auto; }
+.app-drawer .getting-started-mobile-link { color: var(--shell-accent-ink); padding-inline: 12px; min-block-size: 44px; }
 .app-popover-title { padding: 5px 8px 8px; font-size: .86rem; font-weight: 800; overflow-wrap: anywhere; }
 .app-popover-note { padding: 6px 8px; font-size: .79rem; line-height: 1.45; }
 .app-popover-item {
@@ -250,6 +251,29 @@
   transition: background-color .18s ease, color .18s ease, box-shadow .18s ease;
 }
 .app-nav-link > svg { flex: none; }
+.app-nav-link[data-learning] > svg {
+  color: var(--shell-accent-ink);
+  background: color-mix(in srgb, var(--shell-accent) 12%, transparent);
+  box-sizing: content-box;
+  padding: 3px;
+  margin-inline-start: -3px;
+  border-radius: 6px;
+}
+.app-nav-link[data-learning] > span:first-of-type { min-inline-size: 0; overflow-wrap: anywhere; }
+.app-nav-learning-tag {
+  margin-inline-start: auto;
+  border-radius: 5px;
+  padding: 2px 4px;
+  background: color-mix(in srgb, var(--shell-accent) 12%, transparent);
+  color: var(--shell-accent-ink);
+  font-size: .66rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.app-nav-link[data-learning][aria-current='page'] :is(svg, .app-nav-learning-tag) {
+  background: #fff3;
+  color: inherit;
+}
 .app-rail .app-nav-link,
 .app-nav-group-button { justify-content: center; padding-inline: 0; min-block-size: 42px; }
 .app-nav-group-button { width: 100%; border: 0; background: transparent; }

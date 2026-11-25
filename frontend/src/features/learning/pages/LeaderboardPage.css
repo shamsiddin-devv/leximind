@@ -201,7 +201,6 @@
 .podium-xp { display: inline-flex; gap: 3px; align-items: center; color: #f4ecff; font-size: clamp(.7rem, 1.25vw, 1rem); font-weight: 800; white-space: nowrap; }
 .podium-slot[data-place='1'] .podium-xp { color: var(--metal); }
 .podium-xp svg { width: clamp(11px, 1.5vw, 16px); height: auto; color: #ffb74d; fill: #e66a1b; }
-.leaderboard-verified { flex-shrink: 0; color: #6ac8ff; }
 .leaderboard-you { flex-shrink: 0; border-radius: 4px; padding-inline: 3px; color: #ded0ff; background: #342655; font-size: .63rem; }
 .podium-slot[data-filled='false'] .podium-avatar svg { opacity: .68; }
 .podium-slot[data-filled='false'] .podium-name { color: #ddd3ed; }

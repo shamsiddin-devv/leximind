@@ -33,7 +33,7 @@ export function SettingsPage({ path, section, user, profile, statistics, forecas
   if (path === routes.settingsVerifyEmail || path === routes.settingsProfileBadge) {
     const Verification = path === routes.settingsVerifyEmail ? EmailVerification : ProfileBadgeVerification;
     return <div className="container screen settings-page settings-sheet privacy-page">
-      <Verification user={user} token={token} onUserChange={onUserChange} />
+      <Verification key={user.id} user={user} token={token} onUserChange={onUserChange} />
     </div>;
   }
 

@@ -136,6 +136,9 @@ export class DrizzleUserRepository implements IUserRepository {
         row.bioFormat === user.bioFormat &&
         row.countryCode === user.countryCode &&
         row.city === user.city &&
+        row.administrativeRegion === user.administrativeRegion &&
+        row.streetAddress === user.streetAddress &&
+        row.addressDetails === user.addressDetails &&
         row.location === user.location &&
         row.gender === user.gender &&
         row.phoneNumber === user.phoneNumber &&
@@ -184,6 +187,10 @@ export class DrizzleUserRepository implements IUserRepository {
           location: user.location,
           gender: user.gender,
           phoneNumber: user.phoneNumber,
+          phoneVerifiedAt: user.phoneVerifiedAt,
+          administrativeRegion: user.administrativeRegion,
+          streetAddress: user.streetAddress,
+          addressDetails: user.addressDetails,
           socialLinks,
           ...privacy,
           avatarUrl: user.avatar?.url ?? null,
@@ -228,6 +235,10 @@ export class DrizzleUserRepository implements IUserRepository {
       location: r.location,
       gender: r.gender,
       phoneNumber: r.phoneNumber,
+      phoneVerifiedAt: r.phoneVerifiedAt,
+      administrativeRegion: r.administrativeRegion,
+      streetAddress: r.streetAddress,
+      addressDetails: r.addressDetails,
       socialLinks: r.socialLinks,
       profilePublic: r.profilePublic,
       profileSharing: r.profileSharing,
