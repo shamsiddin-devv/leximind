@@ -22,7 +22,7 @@ The historical Drizzle migration only altered foreign keys and could not initial
 - `002_production.sql` adds auth sessions, shared throttling, challenges, uniqueness/check constraints, indexes, normalized identities and fixes session timestamps/order indexes.
 - `003_learning_lifecycle.sql` adds card pause state and cancelled sessions. It prevents deletion of vocabulary still referenced by cards. Existing rows are preserved.
 - `004_practice_feedback.sql` adds five practice modes, per-question attempts, the learner audio preference, and a private mistake queue.
-- `005_operational_indexes.sql` karta va so‘z bog‘lanishi, o‘yinlar tarixi hamda muddati tugagan raundlarni tozalash uchun indekslar qo‘shadi.
+- `005_operational_indexes.sql` adds indexes for card-to-word relationships, game history, and cleanup of expired rounds.
 
 For an existing installation, back up the database, verify that it matches the original schema, and test a restore in staging. Then run `npm run db:migrate -- --adopt-existing`. This explicitly records the baseline and applies the upgrade. Duplicate normalized emails/words, duplicate profiles, duplicate active sessions, invalid sense indexes or scheduling data stop the migration instead of being silently deleted. Correct such historical records before retrying. Legacy timestamp columns are interpreted as UTC; convert historical local timestamps before adoption if necessary.
 
@@ -51,22 +51,22 @@ All routes below use `/api`. Authentication is required except registration, log
 | Feedback audio | `GET /feedback-audio/:file` | Public, cacheable PCM cues selected by the server for learners who enable them |
 | Stored results | `GET /assessment-results`, `GET /assessment-results/:id`, `GET /game-scores`, `GET /game-scores/:id` | Owner-only views of stored results, including records created before the challenge workflow |
 | Study plan | `GET /study-plan` | Today's actionable queue, next seven local calendar days, and difficult words |
-| Takliflar | `GET /referrals`, `POST /auth/register` dagi `referralCode` | Shaxsiy taklif havolasi, tasdiqlanish holati va bonus XP |
-| Bildirishnomalar | `GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all` | Akkaunt bo‘yicha tarix va o‘qilmaganlar soni |
-| Yetkazish | `GET /notifications/delivery`, `POST /notifications/push-subscriptions`, `DELETE /notifications/push-subscriptions/:id` | Kanal holati va joriy sessiyaga biriktirilgan brauzer obunalari |
+| Referrals | `GET /referrals`, `referralCode` in `POST /auth/register` | Personal referral link, verification status, and bonus XP |
+| Notifications | `GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all` | Account-specific notification history and unread count |
+| Notification delivery | `GET /notifications/delivery`, `POST /notifications/push-subscriptions`, `DELETE /notifications/push-subscriptions/:id` | Channel status and browser subscriptions associated with the current session |
 
-### Taklif orqali qo‘shilish
+### Joining through a referral
 
-Takliflar sahifasidagi havola yangi foydalanuvchini `/register?ref=…` manziliga olib boradi. Havola bilan yaratilgan akkaunt emailini tasdiqlaganda, taklif egasiga bir marta 50 XP yoziladi. Mukofot o‘quv statistikasi, taqvim va reytingga qo‘shiladi. Sahifada taklif oluvchilarning shaxsiy ma’lumotlari berilmaydi. `026_referrals.sql` mavjud akkauntlarga taklif kodi beradi. Avval hisoblangan do‘stlik XP’lari umumiy natijalarda saqlanadi.
+The link on the Referrals page takes new users to `/register?ref=…`. When a user who signed up through that link verifies their email, the referrer receives 50 XP once. The reward counts toward learning statistics, the calendar, and the leaderboard. The page does not disclose referred users' personal information. Migration `026_referrals.sql` assigns referral codes to existing accounts. XP previously awarded for friendships remains in the totals.
 
-### Bildirishnomalarni ishga tushirish
+### Setting up notifications
 
-Backend katalogida `npm run db:migrate` buyrug‘ini bajaring. `021–024` migratsiyalari xabarlar tarixi, rejalashtirish, push obunalari, yetkazish navbati, interfeys sozlamalari va yangiliklarni qayta e’lon qilishdan himoyani qo‘shadi. Kunlik mashq va seriya uchun foydalanuvchining vaqt mintaqasi ishlatiladi.
+Run `npm run db:migrate` in the backend directory. Migrations `021–024` add notification history, scheduling, push subscriptions, the delivery queue, interface settings, and protection against publishing the same announcement twice. Daily practice reminders and streak notifications use the learner's time zone.
 
-- Ilova ichidagi bildirishnomalar backend ishlaganda avtomatik hosil bo‘ladi. Yangilik e’lon qilish tartibi [operator yo‘riqnomasida](backend/docs/NEWS.md).
-- Web Push uchun serverdagi `NOTIFICATION_DELIVERY_ENABLED=true`, `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY` va `VAPID_PRIVATE_KEY` kerak. Frontend HTTPS orqali ishlashi, foydalanuvchi esa kanalda va qurilmasida bildirishnomaga ruxsat berishi kerak.
-- O‘quv xatlari tasdiqlangan emailga yuboriladi. `EMAIL_API_KEY`, `EMAIL_FROM`, `ACCOUNT_ACTION_URL` va `ACCOUNT_EMAIL_KEY`ni birga sozlang. Resend jo‘natuvchi domeni tasdiqlangan bo‘lishi kerak.
-- Stagingda haqiqiy push obunasi, tasdiqlangan sinov emaili, qayta urinishlar va navbat holatini tekshiring. Mahalliy avtomatik test transport javoblarini simulyatsiya qiladi.
+- The backend generates in-app notifications automatically while it is running. See the [operator guide](backend/docs/NEWS.md) for instructions on publishing announcements.
+- Web Push requires `NOTIFICATION_DELIVERY_ENABLED=true`, `VAPID_SUBJECT`, `VAPID_PUBLIC_KEY`, and `VAPID_PRIVATE_KEY` on the server. The frontend must run over HTTPS, and the learner must enable push notifications in both the app and their browser or device settings.
+- Learning emails go to verified email addresses. Configure `EMAIL_API_KEY`, `EMAIL_FROM`, `ACCOUNT_ACTION_URL`, and `ACCOUNT_EMAIL_KEY` together. The sender domain must be verified in Resend.
+- In staging, verify delivery with a real push subscription and a verified test email address. Check retry behavior and queue status as well. Local automated tests simulate transport responses.
 
 Pagination uses `page` (default 1) and `limit` (default 20, max 100). Cards also accept `pageSize`. Card ownership is always derived from authentication; passing a `userId` is rejected. Word search accepts `search`, `cefrLevel` and repeated `excludeIds` parameters. List ordering is deterministic. Card and word lists include total counts and total pages; histories return `data` and `total`.
 
@@ -113,68 +113,68 @@ The original repository had no product specification for sessions, assessments o
 - Nested sense updates keep the sense's UUID even when its order changes. A full word replacement matches existing senses by `orderIndex`. If moving a sense, use its nested endpoint to preserve its identity.
 - The study plan separates `dueNow` from `availableNow`, which applies the daily new-word allowance. `nextAction` is `RESUME_SESSION`, `START_SESSION`, `DAILY_NEW_LIMIT_REACHED`, `ADD_OR_RESUME_CARDS`, or `CAUGHT_UP`. `forecast` groups currently scheduled future reviews into seven local calendar dates, including the rest of today. It excludes the already-due queue and any rescheduling caused by future reviews. `difficultWords` ranks up to five active words by `AGAIN` ratings in the past 30 days.
 
-## Yangi o‘yinlar va xatoga qarab ovoz
+## New games and feedback audio by mistake type
 
-Mashq mexanikalari [Easy Vocabulary’ning ochiq o‘yinlar tavsifi](https://easy-vocabulary.com/index.html) asosida LexiMind lug‘atiga moslab yozildi. Savollar loyihadagi so‘zlar, o‘zbekcha tarjimalar, ma’nolar, misol gaplar va audio URL’lardan olinadi. Oldingi beshta o‘yin ham mavjud.
+The practice mechanics adapt [Easy Vocabulary's public game descriptions](https://easy-vocabulary.com/index.html) to LexiMind's vocabulary catalog. Questions draw on the project's words, Uzbek translations, definitions, example sentences, and audio URLs. The original five games are still available.
 
-| `gameType` | Mashq |
+| `gameType` | Exercise |
 | --- | --- |
-| `type_word` | Tarjima va ta’rifdan inglizcha so‘zni yozish |
-| `finish_sentence` | Gapdagi bo‘sh joyga inglizcha so‘zni yozish |
-| `build_sentence` | Aralashtirilgan so‘zlardan gap tuzish |
-| `word_dictation` | Lug‘atdagi HTTPS talaffuz audiosini tinglab so‘zni yozish |
-| `mistake_words` | Shaxsiy xato so‘zlar navbatidan mashq qilish |
+| `type_word` | Type the English word from its translation and definition |
+| `finish_sentence` | Type the missing English word in a sentence |
+| `build_sentence` | Arrange shuffled words into a sentence |
+| `word_dictation` | Listen to the catalog's HTTPS pronunciation audio and type the word |
+| `mistake_words` | Practice words from the learner's personal mistake queue |
 
-`POST /api/games` so‘rovida `{"gameType":"finish_sentence"}` yuboriladi. Savol `input: "text"` yoki `input: "tokens"` bilan keladi. Gap tuzish uchun frontend tanlangan so‘zlarni bitta bo‘sh joy bilan birlashtirib yuboradi. Savol ichidagi `audioUrl` talaffuz uchun, javobdagi `sound.url` esa feedback uchun ishlatiladi.
+Send `{"gameType":"finish_sentence"}` in a `POST /api/games` request. The question contains either `input: "text"` or `input: "tokens"`. For sentence-building exercises, the frontend joins the selected words with single spaces before submitting them. The question's `audioUrl` is for pronunciation, and the response's `sound.url` is for feedback.
 
-`POST /api/games/:id/attempts` uchun `{"index":0,"answer":"appel"}` yuboring. Backend bahoni, xato turini, o‘sha savolning to‘g‘ri javobini va sozlama yoqilgan bo‘lsa audio URL’ni qaytaradi. Oxirgi savol natijani avtomatik saqlaydi. Qayta yuborilgan indeks avvalgi bahoni `replayed: true` bilan qaytaradi. Bunday javobda ovoz qayta yuborilmaydi. `GET /api/games/:id` orqali sahifa yangilangach navbatdagi indeksni va oldingi baholarni olish mumkin. Eski `/submit` oqimi ham mavjud va natija uchun bitta umumiy signal beradi. Boshlangan individual urinishlar shu urinishlar orqali yakunlanadi.
+Send `{"index":0,"answer":"appel"}` to `POST /api/games/:id/attempts`. The backend returns the grade, error type, correct answer for that question, and an audio URL if feedback audio is enabled. The last question automatically saves the result. Resubmitting an index returns the previous grade with `replayed: true` and omits the audio URL. After refreshing the page, use `GET /api/games/:id` to retrieve the next index and previous grades. The original `/submit` flow is also available and returns one overall cue for the result. If a round was started with individual attempts, finish it through the same endpoint.
 
-Ovoz profil sozlamasida sukut bo‘yicha o‘chiq. `PATCH /api/profile` orqali `{"feedbackAudioEnabled":true}` yuboriladi. Frontend `sound.url` bo‘lsa API originiga nisbatan ochib, foydalanuvchining javob berish harakati bilan bog‘liq holda ijro etadi. Keyingi savolga o‘tilganda oldingi ovoz to‘xtaydi. Javob natijasi matnda ham ko‘rinadi.
+The profile setting for feedback audio is off by default. To enable it, send `{"feedbackAudioEnabled":true}` to `PATCH /api/profile`. When a response includes `sound.url`, the frontend resolves it against the API origin and plays the clip in response to the learner's answer. Moving to the next question stops the previous clip. The answer feedback also appears as text.
 
-| Holat | Cue ID’lari | Yozuvlar |
+| Condition | Cue IDs | Recordings |
 | --- | --- | --- |
-| Imlo xatosi | `bruh`, `dexter` | BRUH va Dexter |
-| So‘z yoki ketma-ketlik tartibi xato | `shocked`, `black-suit-spider-man` | Shocked sound va Black Suit Spider-Man |
-| Chala gap | `alert`, `galaxy` | Metal Gear alert va Galaxy |
-| Savol tashlab ketildi | `huh-cat`, `hub-intro-sound` | HUH? Cat va Hub Intro Sound |
-| Noto‘g‘ri tarjima | `faah`, `bruh`, `shocked` | FAAAH, BRUH yoki Shocked sound |
-| Diktantda noto‘g‘ri so‘z | `huh-cat`, `alert`, `dexter` | HUH? Cat, Metal Gear alert yoki Dexter |
-| Ketma-ket xatolar | Xatoga mos kengaytirilgan guruh | Masalan, ketma-ket imlo xatosida Metal Gear alert ham ishlatiladi |
-| To‘g‘ri javob | `encourage`, `romanceeeeeeeeeeeeee` | Du bist gut genug yoki Romance |
+| Spelling error | `bruh`, `dexter` | BRUH and Dexter |
+| Incorrect word or sequence order | `shocked`, `black-suit-spider-man` | Shocked sound and Black Suit Spider-Man |
+| Incomplete sentence | `alert`, `galaxy` | Metal Gear alert and Galaxy |
+| Skipped question | `huh-cat`, `hub-intro-sound` | HUH? Cat and Hub Intro Sound |
+| Incorrect translation | `faah`, `bruh`, `shocked` | FAAAH, BRUH, or Shocked sound |
+| Incorrect word in dictation | `huh-cat`, `alert`, `dexter` | HUH? Cat, Metal Gear alert, or Dexter |
+| Consecutive mistakes | Expanded pool for the error type | For example, consecutive spelling errors can also play Metal Gear alert |
+| Correct answer | `encourage`, `romanceeeeeeeeeeeeee` | Du bist gut genug or Romance |
 
-Raundlar ovozlarni guruhning turli joyidan boshlab aylantiradi. Ketma-ket ikki javobda bir xil klip yangramaydi. Xotira raundida bitta yakuniy ovoz ijro etiladi. Unda tartib xatosi, chala javob va raundni o‘tkazib yuborish alohida hisobga olinadi.
+Rounds rotate through each cue pool from different starting points. The same clip does not play on two consecutive answers. A memory round plays a single cue at the end. Incorrect order, incomplete answers, and skipped rounds are tracked separately.
 
-O‘yin ovozlarining nomi, ma’lum manbasi yoki import qilingan MP3 nomi, davomiyligi va o‘lchangan peak qiymati `assets/feedback-audio/sources.json` faylida.
+`assets/feedback-audio/sources.json` lists each clip's name, known source or imported MP3 filename, duration, and measured peak amplitude.
 
-12 ta yozuv mono, 48 kHz, 16-bit PCM WAV formatida. Kliplar 5.5 soniyadan oshmaydi. Uzun kliplarning oxiri asta pasayadi. Manifestda har bir WAV uchun SHA-256, davomiylik va peak qiymati bor. Asl MP3 fayllar mavjud bo‘lsa, `node scripts/restore-feedback-audio.cjs <ffmpeg> <mp3-katalogi> <chiqish-katalogi>` orqali yozuvlarni qayta ishlash mumkin.
+The 12 recordings are mono 48 kHz, 16-bit PCM WAV files. Clips are at most 5.5 seconds long, and longer clips fade out. The manifest records the SHA-256 checksum, duration, and peak amplitude for each WAV file. If the original MP3s are available, run `node scripts/restore-feedback-audio.cjs <ffmpeg> <mp3-directory> <output-directory>` to process them again.
 
-Testlar format, amplituda, HTTP orqali yuklash va range javoblarini tekshiradi. Yangi URL versiyasi eskirgan keshdan foydalanishning oldini oladi. Siqilgan manbada oldindan mavjud buzilishlar to‘liq tiklanishi kafolatlanmaydi.
+Tests check audio format, amplitude, HTTP delivery, and range responses. Versioned URLs prevent the browser from using stale cached clips. Distortion already present in compressed source files may remain after processing.
 
-### Media saqlovi
+### Media storage
 
-To‘qqizta tayyor bannerning gorizontal va vertikal WebP nusxalari frontendning `public` katalogida turadi. Galereya kichik nusxalarni kerak bo‘lganda yuklaydi. Avval saqlangan banner tanlovlari o‘z identifikatorlari orqali ochiladi.
+Horizontal and vertical WebP versions of the nine preset banners are stored in the frontend's `public` directory. The gallery loads thumbnails on demand. Previously saved banner selections still resolve through their original identifiers.
 
-O‘yin ovozlarini tashqi CDN’dan uzatish uchun frontend build muhitida `VITE_FEEDBACK_AUDIO_BASE_URL=https://assets.example.com/feedback-audio/` qiymatini bering. Foydalanish va qayta tarqatish huquqi tasdiqlangan WAV fayllarni serverdagi nomlari bilan shu yo‘lga joylashtiring. Cloudflare R2 Standard’da public bucket uchun production domenini ulang va obyektlarga `Content-Type: audio/wav` hamda kesh sarlavhasini bering. CDN ishlamasa yoki sozlanmagan bo‘lsa, frontend mavjud LexiMind API manzilidan ovozni oladi. [R2 bepul kvotasi](https://developers.cloudflare.com/r2/pricing/) · [Public bucket va domen](https://developers.cloudflare.com/r2/buckets/public-buckets/)
+To serve game audio from an external CDN, set `VITE_FEEDBACK_AUDIO_BASE_URL=https://assets.example.com/feedback-audio/` in the frontend build environment. Upload the WAV files to that location using the same filenames as on the server, after confirming that you have the rights to use and redistribute them. For a public bucket on Cloudflare R2 Standard, connect a production domain and set `Content-Type: audio/wav` and a cache header on the objects. If the CDN is unavailable or unconfigured, the frontend fetches audio from the LexiMind API. [R2 free allowance](https://developers.cloudflare.com/r2/pricing/) · [Public buckets and custom domains](https://developers.cloudflare.com/r2/buckets/public-buckets/)
 
-Xato navbati tugallangan o‘yinlarning so‘zli savollaridan to‘ldiriladi. O‘quvchi `mistake_words` mashqida so‘zni to‘g‘ri topganda u navbatdan chiqadi. Parallel raundda undan keyin yuz bergan xato saqlanadi. Lug‘atda mos misol gap yoki talaffuz yozuvi bo‘lmasa, tegishli rejim `409` qaytaradi.
+The mistake queue is populated from vocabulary questions in completed games. Answering a word correctly in `mistake_words` removes it from the queue. Errors that occur later in a concurrent round are retained. If the catalog has no suitable example sentences or pronunciation recordings, the corresponding mode returns `409`.
 
-### Easy Vocabulary bilan solishtirish
+### Comparison with Easy Vocabulary
 
-[Inglizcha o‘yinlar menyusi](https://easy-vocabulary.com/game/games.html?lang=en) mashqlarni daraja va mavzularga ajratadi. Ochiq katalogda rasm tanlash, juftlik topish, so‘z qidirish, fe’l zamonlari va talaffuzga taqlid mashqlari ham bor. LexiMind’ning diktanti so‘z talaffuzidan foydalanadi. Gap diktanti uchun har bir misol gapga alohida audio manzili kerak bo‘ladi. So‘z tanlashda keyingi foydali o‘zgarish mavzu va CEFR darajasi bo‘yicha filtrlashdir.
+The [English-language games menu](https://easy-vocabulary.com/game/games.html?lang=en) groups exercises by level and topic. The public catalog also includes picture selection, matching pairs, word searches, verb tense exercises, and pronunciation imitation. LexiMind's word dictation uses recordings of individual words. Sentence dictation requires a separate audio URL for each example sentence. Filtering word selection by topic and CEFR level would be a useful next improvement.
 
-## Render orqali joylash
+## Deploying on Render
 
-[`render.yaml`](render.yaml) Frankfurt mintaqasida bepul Node.js backend va React uchun Render Static Site yaratadi. Frontenddagi `/register`, `/account-action` va taklif havolalari uchun SPA yo‘naltirishi sozlangan. Deploy qo‘lda boshlanadi. [Render Blueprint](https://render.com/docs/blueprint-spec)
+[`render.yaml`](render.yaml) creates a free Node.js backend in Frankfurt and a Render Static Site for the React frontend. An SPA rewrite supports direct visits to `/register`, `/account-action`, and referral links. Deployments are started manually. [Render Blueprint](https://render.com/docs/blueprint-spec)
 
-1. LexiMind uchun alohida cloud PostgreSQL bazasini yarating. Masalan, Neon Free bazasiga 1 GB beriladi. Render Free PostgreSQL 30 kunlik. Mavjud mahalliy foydalanuvchilarni bu bazaga ko‘chirish talab qilinmaydi. [Neon Free](https://neon.com/blog/neon-free-plan-1-gb-per-project) · [Render Free](https://render.com/docs/free)
-2. Backendga yangi bazaning PostgreSQL TLS ulanishini `DATABASE_URL` orqali bering. `CORS_ORIGINS` qiymati frontendning HTTPS origin’i, `ACCOUNT_ACTION_URL` esa shu manzilning `/account-action` sahifasi bo‘ladi. Backend ishga tushishda migratsiyalar va boshlang‘ich lug‘at seed’ini bajaradi.
-3. Brevo’da yuboruvchini tasdiqlang va `BREVO_API_KEY`, `BREVO_FROM_EMAIL` qiymatlarini Render’ning backend muhitiga kiriting. `ACCOUNT_EMAIL_KEY` uchun `node -p "require('node:crypto').randomBytes(32).toString('hex')"` bilan yangi qiymat yarating. Render Free Gmail SMTP portlarini bloklaydi. Brevo va Resend HTTPS API’lari orqali OTP yuborish mumkin. [Brevo yuborish qo‘llanmasi](https://developers.brevo.com/docs/send-a-transactional-email)
-4. `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` va `CLOUDINARY_API_SECRET` faqat backendga beriladi. Frontendga `VITE_API_BASE_URL` qiymati sifatida backendning HTTPS manzilini `/api` bilan bering.
-5. Kengaytirilgan lug‘at importini quyidagi buyruq bilan cloud bazasiga bir marta bajaring. Ochiq URL’da API readiness, `/register?ref=…`, OTP va media yuklanishini tekshiring. Render Free bekor turganda uxlaydi. Fon vazifalari servis ishlayotgan vaqtda bajariladi. [Render Free](https://render.com/docs/free)
+1. Create a separate cloud PostgreSQL database for LexiMind. For example, Neon Free offers 1 GB per project. Render Free PostgreSQL expires after 30 days. You do not need to copy existing local users into this database. [Neon Free](https://neon.com/blog/neon-free-plan-1-gb-per-project) · [Render Free](https://render.com/docs/free)
+2. Set `DATABASE_URL` on the backend to the new PostgreSQL connection URL with TLS. Set `CORS_ORIGINS` to the frontend's HTTPS origin and `ACCOUNT_ACTION_URL` to its `/account-action` page. At startup, the backend applies migrations and seeds the starter vocabulary.
+3. Verify a sender in Brevo and set `BREVO_API_KEY` and `BREVO_FROM_EMAIL` in the Render backend environment. Generate a new `ACCOUNT_EMAIL_KEY` with `node -p "require('node:crypto').randomBytes(32).toString('hex')"`. Render Free blocks Gmail's SMTP ports. Brevo and Resend can send one-time codes through their HTTPS APIs. [Brevo transactional email guide](https://developers.brevo.com/docs/send-a-transactional-email)
+4. Set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` on the backend only. Set `VITE_API_BASE_URL` on the frontend to the backend's HTTPS URL ending in `/api`.
+5. Run the extended vocabulary import below once against the cloud database. At the public URL, check API readiness, `/register?ref=…`, one-time code delivery, and media loading. Render Free spins down idle services, and background tasks run while the service is active. [Render Free](https://render.com/docs/free)
 
-### Kengaytirilgan inglizcha lug‘at
+### Extended English vocabulary
 
-Import manbalari [Princeton WordNet 3.0 arxivi](https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/corpora/wordnet.zip), [UzWordnet 1.0](https://raw.githubusercontent.com/LDKR-Group/UzWordnet/4b983edc3e922e5565d8ac5affed37143646f6fa/files/uzwordnet.json), [CEFR-J 1.5](https://raw.githubusercontent.com/openlanguageprofiles/olp-en-cefrj/d4e45b75b38f27b30dfc5c44d8c571aec7e7092f/cefrj-vocabulary-profile-1.5.csv) va [Octanove C1/C2 1.0](https://raw.githubusercontent.com/openlanguageprofiles/olp-en-cefrj/d4e45b75b38f27b30dfc5c44d8c571aec7e7092f/octanove-vocabulary-profile-c1c2-1.0.csv). WordNet zip arxivini oching va `data.noun`, `data.verb`, `data.adj`, `data.adv` hamda `index.sense` fayllari turgan katalogni bering.
+The importer uses the [Princeton WordNet 3.0 archive](https://raw.githubusercontent.com/nltk/nltk_data/gh-pages/packages/corpora/wordnet.zip), [UzWordnet 1.0](https://raw.githubusercontent.com/LDKR-Group/UzWordnet/4b983edc3e922e5565d8ac5affed37143646f6fa/files/uzwordnet.json), [CEFR-J 1.5](https://raw.githubusercontent.com/openlanguageprofiles/olp-en-cefrj/d4e45b75b38f27b30dfc5c44d8c571aec7e7092f/cefrj-vocabulary-profile-1.5.csv), and [Octanove C1/C2 1.0](https://raw.githubusercontent.com/openlanguageprofiles/olp-en-cefrj/d4e45b75b38f27b30dfc5c44d8c571aec7e7092f/octanove-vocabulary-profile-c1c2-1.0.csv). Extract the WordNet ZIP archive and pass the directory containing `data.noun`, `data.verb`, `data.adj`, `data.adv`, and `index.sense`.
 
 ```sh
 npm run db:migrate
@@ -182,7 +182,7 @@ npm run db:seed:vocabulary
 npm run db:import:vocabulary -- /data/wordnet /data/uzwordnet.json /data/cefr.csv /data/advanced.csv
 ```
 
-Buyruq `backend` katalogidan, kerakli bazaga qaragan `DATABASE_URL` bilan ishga tushadi. `--inspect` parametrini oxiriga qo‘shib, bazaga yozishdan oldin qamrovni ko‘rish mumkin. WordNet bosh so‘zlari ma’lumotnoma jadvaliga tushadi. O‘quv lug‘atiga o‘zbekcha ma’no va CEFR darajasi mos kelgan so‘zlar qo‘shiladi. Import mavjud o‘quv so‘zlarini almashtirmaydi va qayta ishlatilganda takroriy yozuv qo‘shmaydi. Manbalar va litsenziya shartlari [lug‘at manbalari faylida](frontend/public/vocabulary-sources.txt).
+Run the command from `backend/` with `DATABASE_URL` pointing to the intended database. Append `--inspect` to preview coverage before writing to the database. WordNet headwords go into a reference table. Words with a matching Uzbek definition and CEFR level go into the learning catalog. The import preserves existing learning entries and can be rerun without creating duplicates. See the [vocabulary sources file](frontend/public/vocabulary-sources.txt) for sources and license terms.
 
 ## Architecture
 
@@ -221,20 +221,20 @@ The implementation audit reported zero production dependency vulnerabilities. De
 
 Reference documentation: [NestJS validation](https://docs.nestjs.com/techniques/validation), [rate limiting](https://docs.nestjs.com/security/rate-limiting), [authorization](https://docs.nestjs.com/security/authorization).
 
-### Ishlatish va tekshirish
+### Operations and verification
 
-- Readiness release ichidagi barcha SQL migratsiyalari checksum’ini bazadagi yozuv bilan solishtiradi. Ishga tushishda 12 ta faol audio faylning SHA-256 qiymati ham tekshiriladi. Fayl yoki migratsiya mos kelmasa `/api/health/ready` 503 qaytaradi, liveness esa jarayon holatini alohida bildiradi.
-- Reverse proxy ishlatilganda `TRUSTED_PROXIES`ga faqat boshqariladigan proxy IP yoki CIDR qiymatlari kiritiladi. Bo‘sh sozlamada tashqaridan berilgan `X-Forwarded-For` ishonchli hisoblanmaydi.
-- Integratsion test Swagger’dagi amallarni HTTP orqali tekshiradi. Shuningdek, akkauntlararo ruxsatlar, bir vaqtdagi profil tahrirlari, bildirishnoma yetkazish, audio range va migratsiya checksum xatolari sinovdan o‘tadi.
-- Yangi indekslarni qo‘llash uchun `npm run db:migrate` ishlatiladi. Avvalgi migratsiyalar saqlangan.
+- The readiness check compares the checksums of all SQL migrations in the release with the records in the database. Startup also verifies the SHA-256 checksums of the 12 active audio files. If an audio file or migration does not match, `/api/health/ready` returns 503. Liveness reports the process status independently.
+- When using a reverse proxy, list only trusted proxy IP addresses or CIDR ranges that you control in `TRUSTED_PROXIES`. With an empty setting, the application ignores externally supplied `X-Forwarded-For` headers.
+- Integration tests exercise the operations documented in Swagger over HTTP. They also check access across accounts, concurrent profile updates, notification delivery, audio range requests, and migration checksum failures.
+- Run `npm run db:migrate` to apply the new indexes. Previous migrations are retained.
 
-### Auditdan keyingi yangilanishlar
+### Post-audit updates
 
-- `006_catalog_and_account_actions.sql` uchun PostgreSQL'da `pg_trgm` extensionini yoqish huquqi kerak. Yangi jadval `account_actions` bir martalik email amallarini saqlaydi. `npm run db:seed:vocabulary` 30 ta boshlang‘ich so‘z va ma’noni kiritadi. Qayta ishlatilganda mavjud lug‘at yozuvlarini almashtirmaydi.
-- `GET /api/words` mavzu uchun `topic` va keyingi sahifa uchun `after` qabul qiladi. Javobdagi `nextCursor` keyingi so‘rovga yuboriladi. Filtrlar o‘zgarsa sahifalashni boshidan boshlash kerak. Eski `page` parametri ishlaydi. So‘z va ma’nolar o‘qilishi bitta DB snapshot ichida bajariladi.
-- `POST /api/games` qo‘shimcha `topic` va `cefrLevel` qabul qiladi. Lug‘atli rejimlarda har safar mos katalog bo‘yicha yangi namuna tanlanadi. `sentence_dictation` rejimi admin so‘z ma’nosiga qo‘shgan HTTPS `exampleAudioUrl` yozuvidan foydalanadi. Boshlang‘ich lug‘at so‘zlarida audio yo‘q.
-- Email tasdiqlash va parolni tiklash uchun `backend/.env` faylidagi `SMTP_EMAIL` Gmail manzilini, `SMTP_PASS` Google App Password’ni, `ACCOUNT_EMAIL_KEY` esa OTP va xat navbatini himoyalaydigan 32 baytlik hex kalitni bildiradi. Google App Password olish uchun ikki bosqichli tasdiqlashni yoqing. Kalitni `node -p "require('node:crypto').randomBytes(32).toString('hex')"` buyrug‘i bilan bir marta yarating va saqlang.
-- 6 xonali kod 10 daqiqa amal qiladi va 5 ta xato urinishdan keyin bloklanadi. Xat ichiga havola ham qo‘shilishi uchun `ACCOUNT_ACTION_URL`ga frontendning HTTPS orqali ochiladigan `/account-action` manzilini yozing. Resend orqali jo‘natish uchun `EMAIL_API_KEY`, `EMAIL_FROM`, `ACCOUNT_ACTION_URL` va `ACCOUNT_EMAIL_KEY` ishlatiladi. Ikkala jo‘natish usuli sozlanganida, akkaunt xatlari Gmail orqali boradi. Sozlamalardan keyin backendni qayta ishga tushiring.
-- Email amallari `POST /api/auth/email-verification/request`, `POST /api/auth/email-verification/confirm`, `POST /api/auth/password-reset/request`, `POST /api/auth/password-reset/confirm`. Request uchun `email`, tasdiqlash uchun `token`, parolni tiklash uchun `token` va yangi `password` yuboriladi. Xat yetkazish sozlanmagan bo‘lsa request endpointi 503 qaytaradi. Mavjud foydalanuvchilar kirishi uchun email tasdiqlash majburiy qilinmagan.
-- Admin uchun `GET /api/ops/metrics` so‘rovlar soni va kechikish histogramini beradi. `ops/prometheus-alerts.yml` ogohlantirish qoidalarini beradi. Tashqi Prometheus va ogohlantirish manzilini o‘rnatish muhit sozlamasiga bog‘liq. Eskirgan yozuvlar har 15 daqiqada 1000 tagacha paketlarda tozalanadi.
-- HTTP loglarida `traceId` bor. API yaroqli W3C `traceparent` qiymatidan ID oladi yoki yangi ID yaratadi va javobda `X-Trace-Id` orqali beradi. Bu HTTP qatlamidagi bog‘lash uchun xizmat qiladi. Alohida span qabul qiluvchi servis ulanmagan.
+- `006_catalog_and_account_actions.sql` requires permission to enable the PostgreSQL `pg_trgm` extension. The `account_actions` table stores one-time email actions. `npm run db:seed:vocabulary` inserts 30 starter words and their meanings, preserving existing catalog entries on subsequent runs.
+- `GET /api/words` accepts `topic` for topic filtering and `after` for cursor-based pagination. Send the returned `nextCursor` in the next request. Restart pagination when filters change. The original `page` parameter remains available. Words and their senses are read from the same database snapshot.
+- `POST /api/games` also accepts `topic` and `cefrLevel`. Vocabulary-based modes draw a fresh sample from the matching catalog entries each time. The `sentence_dictation` mode uses the HTTPS recording at `exampleAudioUrl` that an admin adds to a word sense. Starter vocabulary entries have no audio.
+- For email verification and password resets, set `SMTP_EMAIL` in `backend/.env` to the Gmail address and `SMTP_PASS` to its Google App Password. `ACCOUNT_EMAIL_KEY` is a 32-byte hex-encoded key that protects one-time codes and the email queue. Enable two-step verification to obtain a Google App Password. Generate the key once with `node -p "require('node:crypto').randomBytes(32).toString('hex')"` and store it securely.
+- A six-digit code is valid for ten minutes and is locked after five incorrect attempts. To include a link in the email, set `ACCOUNT_ACTION_URL` to the frontend's HTTPS `/account-action` URL. For delivery through Resend, set `EMAIL_API_KEY`, `EMAIL_FROM`, `ACCOUNT_ACTION_URL`, and `ACCOUNT_EMAIL_KEY`. If both Gmail and Resend are configured, account emails are sent through Gmail. Restart the backend after changing these settings.
+- Email action endpoints are `POST /api/auth/email-verification/request`, `POST /api/auth/email-verification/confirm`, `POST /api/auth/password-reset/request`, and `POST /api/auth/password-reset/confirm`. Send `email` when requesting a code, `token` when confirming email verification, and `token` plus the new `password` when confirming a reset. The request endpoint returns 503 if email delivery is unconfigured. Existing users are not required to verify their email to sign in.
+- The admin endpoint `GET /api/ops/metrics` exposes request counts and a latency histogram. `ops/prometheus-alerts.yml` defines alert rules. Provisioning Prometheus and configuring alert destinations depend on the deployment environment. Cleanup runs every 15 minutes and removes expired records in batches of up to 1,000.
+- HTTP logs include a `traceId`. The API uses the ID from a valid W3C `traceparent` header or generates a new one, then returns it in `X-Trace-Id`. This allows requests and responses to be correlated at the HTTP layer. No separate span collector is configured.
