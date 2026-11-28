@@ -9,6 +9,7 @@ import { RepositoriesModule } from './infrastructure/repositories.module';
 import { AuthModule } from './presentation/modules/user/auth.module';
 import { RateLimitStorage } from './infrastructure/auth/RateLimitStorage';
 import { UserModule } from './presentation/modules/user/User.module';
+import { LearningPathModule } from './presentation/modules/learning-path/learning-path.module';
 import { WordModule } from './presentation/modules/word/word.module';
 import { CardModule } from './presentation/modules/card/card.module';
 import { LearningModule } from './presentation/modules/learning/learning.module';
@@ -38,6 +39,7 @@ import {
     }),
     UserModule,
     WordModule,
+    LearningPathModule,
     CardModule,
     LearningModule,
     NotificationsModule,

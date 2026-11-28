@@ -145,8 +145,12 @@ word('rabotat', 'работать', 'ishlamoq', 'Ruscha fe’l bilan qiyoslash',
 
 export const words: readonly Word[] = entries;
 export const wordsById = new Map(words.map((entry) => [entry.id, entry]));
-const wordsByToken = new Map(words.flatMap((entry) => [entry.original, ...entry.aliases ?? []].map((token) => [token.toLowerCase(), entry] as const)));
+const wordsByToken = new Map(words.flatMap((entry) => [entry.original, ...entry.aliases ?? []].map((token) => [normalize(token), entry] as const)));
+
+function normalize(token: string) {
+  return token.trim().toLowerCase().replaceAll('’', "'").replace(/[?.!]$/, '');
+}
 
 export function findWord(token: string) {
-  return wordsByToken.get(token.toLowerCase().replaceAll('’', "'"));
+  return wordsByToken.get(normalize(token));
 }

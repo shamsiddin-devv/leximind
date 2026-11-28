@@ -511,9 +511,12 @@ test('complete API and database lifecycle', async (t) => {
     assert.equal(r.body.sense[0].orderIndex, 0);
     assert.equal(r.body.audioUrl, 'https://example.com/apple.mp3');
     await api.get('/api/words/daily').expect(401);
+    const { rows: catalog } = await pool.query('SELECT id FROM words ORDER BY id');
+    const day = Math.floor(Date.now() / 86_400_000);
     const daily = await api.get('/api/words/daily').set(auth()).expect(200);
-    assert.equal(daily.body.word.id, wordId);
-    assert.equal(daily.body.word.sense[0].translationUz, 'olma');
+    assert.equal(daily.body.word.id, catalog[day % catalog.length].id);
+    const dailyWord = await api.get('/api/words/' + daily.body.word.id).set(auth()).expect(200);
+    assert.deepEqual(daily.body.word.sense, dailyWord.body.sense);
     await api
       .get('/api/words/' + randomUUID())
       .set(auth())
@@ -535,12 +538,13 @@ test('complete API and database lifecycle', async (t) => {
       })),
     );
     await api.post('/api/words/bulk').set(auth()).send({ words }).expect(201);
+    const { rows: [{ courseWordCount }] } = await pool.query('SELECT count(DISTINCT word_id)::int AS "courseWordCount" FROM course_lesson_words');
     const r = await api
       .get('/api/words?limit=2&page=2')
       .set(auth())
       .expect(200);
-    assert.equal(r.body.total, 25);
-    assert.equal(r.body.totalPage, 13);
+    assert.equal(r.body.total, 25 + courseWordCount);
+    assert.equal(r.body.totalPage, Math.ceil((25 + courseWordCount) / 2));
     assert.equal(r.body.data.length, 2);
     await api.get('/api/words?limit=-1').set(auth()).expect(400);
   });
@@ -1278,13 +1282,16 @@ test('complete API and database lifecycle', async (t) => {
 
   await t.test(
     'plays error-specific feedback once and clears a recovered word',
-    async () => {
+    async (caseContext) => {
+      const topic = 'feedback-test';
+      await pool.query('UPDATE words SET topic=$1 WHERE id=$2', [topic, wordId]);
+      caseContext.after(() => pool.query('UPDATE words SET topic=NULL WHERE id=$1', [wordId]));
       await pool.query('DELETE FROM rate_limits');
       const round = (
         await api
           .post('/api/games')
           .set(auth())
-          .send({ gameType: 'finish_sentence' })
+          .send({ gameType: 'finish_sentence', topic })
           .expect(201)
       ).body;
       const path = '/api/games/' + round.id + '/attempts';
@@ -1355,7 +1362,7 @@ test('complete API and database lifecycle', async (t) => {
         await api
           .post('/api/games')
           .set(auth())
-          .send({ gameType: 'finish_sentence' })
+          .send({ gameType: 'finish_sentence', topic })
           .expect(201)
       ).body;
       const success = (
@@ -2532,6 +2539,53 @@ test('complete API and database lifecycle', async (t) => {
       0,
     );
   });
+  await t.test('unlocks A1–C2 vocabulary by course progress and tracks learner-owned cards', async () => {
+    const email = 'course-learner@example.test';
+    const registration = await registerAccount({ fullName: 'Course Learner', email, password });
+    const login = await api.post('/api/auth/login').send({ email, password }).expect(200);
+    const learner = { Authorization: 'Bearer ' + login.body.accessToken };
+    const requestComplete = (lessonIds) => api.post('/api/learning-path/complete').set(learner).send({ lessonIds });
+    await api.patch('/api/profile').set(learner).send({ studyLevel: 'B2' }).expect(200);
+    const initial = (await api.get('/api/learning-path').set(learner).expect(200)).body;
+    assert.deepEqual(initial, { startLevel: 'B2', activeLevel: 'B2', unlockedLevel: 'B2', nextLessonId: 'reported-speech', completed: [] });
+    await requestComplete(['passive-voice']).expect(409);
+    await requestComplete(['reported-speech','inversion']).expect(409);
+    const suggested = (await api.get('/api/learning-path/vocabulary?suggested=1').set(learner).expect(200)).body;
+    assert(suggested.data.length > 0 && suggested.data.every((word) => word.cefrLevel === 'B2' && word.status === 'new'));
+    const basic = (await api.get('/api/learning-path/vocabulary?cefrLevel=A1').set(learner).expect(200)).body;
+    assert(basic.data.length > 0);
+    const locked = (await api.get('/api/learning-path/vocabulary?cefrLevel=C1').set(learner).expect(200)).body;
+    assert.equal(locked.total, 0);
+    const { rows: [advanced] } = await pool.query("SELECT id FROM words WHERE cefr_level='C1' LIMIT 1");
+    await api.get('/api/learning-path/vocabulary/' + advanced.id).set(learner).expect(404);
+    assert.equal((await api.get('/api/learning-path').set(learner)).body.completed.length, 0);
+
+    await Promise.all([requestComplete(['reported-speech']).expect(200), requestComplete(['reported-speech']).expect(200)]);
+    const finished = (await requestComplete(['passive-voice']).expect(200)).body;
+    assert.equal(finished.activeLevel, 'C1');
+    assert.equal(finished.unlockedLevel, 'C1');
+    assert.equal(finished.nextLessonId, 'inversion');
+    const fromLessons = (await api.get('/api/learning-path/vocabulary?fromLessons=1').set(learner).expect(200)).body;
+    assert(fromLessons.data.length > 0 && fromLessons.data.every((word) => word.fromLesson && word.cardId && word.status === 'new'));
+    const word = fromLessons.data[0];
+    const detail = (await api.get('/api/learning-path/vocabulary/' + word.id).set(learner).expect(200)).body;
+    assert.equal(detail.cardId, word.cardId);
+    assert(detail.sense[0].translationUz);
+    assert.equal((await api.get('/api/learning-path/vocabulary?fromLessons=1').set(other()).expect(200)).body.total, 0);
+
+    for (const [state, due, status] of [
+      ['LEARNING', "now()+interval '1 hour'", 'learning'],
+      ['REVIEW', "now()+interval '1 day'", 'mastered'],
+      ['REVIEW', "now()-interval '1 minute'", 'due'],
+    ]) {
+      await pool.query(`UPDATE cards SET state=$1, stability=2, difficulty=5, reps=1, last_review_at=now(), due=${due} WHERE id=$2`, [state, word.cardId]);
+      const filtered = (await api.get('/api/learning-path/vocabulary?status=' + status + '&fromLessons=1').set(learner).expect(200)).body;
+      assert(filtered.data.some((item) => item.id === word.id && item.status === status));
+    }
+    await api.get('/api/learning-path/vocabulary/' + advanced.id).set(learner).expect(200);
+    const { rows: [{ count }] } = await pool.query('SELECT count(*)::int AS count FROM user_course_lessons WHERE user_id=$1', [registration.body.id]);
+    assert.equal(count, 2);
+  });
   await t.test(
     'exercises a successful request for every documented API operation',
     () => {
@@ -2546,7 +2600,7 @@ test('complete API and database lifecycle', async (t) => {
       const missing = operations.filter(
         (operation) => !successfulRoutes.has(operation),
       );
-      assert.equal(operations.length, 101);
+      assert.equal(operations.length, 105);
       assert.deepEqual(missing, []);
     },
   );

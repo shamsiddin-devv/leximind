@@ -286,7 +286,7 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
     </aside>
 
     <div className="app-workspace">
-      <main id="main" tabIndex={-1} lang={path === routes.dashboard && !practicing ? language : 'uz'}>{children}</main>
+      <main id="main" className={activePath === routes.learningPath || activePath === routes.vocabulary ? 'course-main' : undefined} tabIndex={-1} lang={path === routes.dashboard && !practicing ? language : 'uz'}>{children}</main>
       <footer className="footer"><div className="container"><span><BookOpen size={16} /> LexiMind</span>
         <span>{copy.footer}</span></div></footer>
     </div>

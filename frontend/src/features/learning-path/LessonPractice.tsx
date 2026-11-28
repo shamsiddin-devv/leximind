@@ -16,7 +16,7 @@ function shuffleIndices(length: number) {
   return indices;
 }
 
-export function LessonPractice({ lesson, onBack, onComplete }: { lesson: CourseLesson; onBack: () => void; onComplete: () => void }) {
+export function LessonPractice({ lesson, onBack, onComplete, saving }: { lesson: CourseLesson; onBack: () => void; onComplete: () => void; saving: boolean }) {
   const [step, setStep] = useState(0);
   const [choice, setChoice] = useState<number>();
   const [feedback, setFeedback] = useState<'correct' | 'retry'>();
@@ -54,7 +54,7 @@ export function LessonPractice({ lesson, onBack, onComplete }: { lesson: CourseL
     setFeedback(undefined);
   }
 
-  return <section className="path-card path-content path-practice" aria-labelledby="path-exercise-heading">
+  return <section className="course-panel analysis-section path-practice" aria-labelledby="path-exercise-heading">
     <div className="path-practice-step"><span className="path-icon"><Icon size={21} aria-hidden="true" /></span><span>Mashq {step + 1} / {steps.length}</span></div>
     <progress className="path-progress" value={step + Number(feedback === 'correct')} max={steps.length} aria-label="Mashqlar natijasi" />
     <h2 id="path-exercise-heading" tabIndex={-1} ref={heading}>{steps[step]}</h2>
@@ -87,10 +87,10 @@ export function LessonPractice({ lesson, onBack, onComplete }: { lesson: CourseL
         ? 'So‘z tartibini tekshirib, qayta urinib ko‘ring.' : 'Gapni yana tinglab, boshqa tarjimani sinab ko‘ring.'}</span>}
     </div>
     <div className="path-actions">
-      <button type="button" className="button secondary" onClick={onBack}><ArrowLeft size={16} aria-hidden="true" /> Darsga qaytish</button>
-      {feedback === 'correct' ? <button type="button" className="button primary" onClick={advance}>
-        {step === steps.length - 1 ? 'Darsni yakunlash' : 'Keyingi mashq'} <ArrowRight size={16} aria-hidden="true" />
-      </button> : <button type="button" className="button primary" disabled={!canCheck} onClick={check}>Javobni tekshirish</button>}
+      <button type="button" className="course-button" onClick={onBack}><ArrowLeft size={16} aria-hidden="true" /> Darsga qaytish</button>
+      {feedback === 'correct' ? <button type="button" className="course-button filled" onClick={advance} disabled={saving}>
+        {saving ? 'Saqlanmoqda…' : step === steps.length - 1 ? 'Darsni yakunlash' : 'Keyingi mashq'} <ArrowRight size={16} aria-hidden="true" />
+      </button> : <button type="button" className="course-button filled" disabled={!canCheck} onClick={check}>Javobni tekshirish</button>}
     </div>
   </section>;
 }

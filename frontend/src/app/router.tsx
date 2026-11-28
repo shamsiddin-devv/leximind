@@ -16,7 +16,9 @@ export function settingsParent(path: string) {
   return path === routes.settingsVerifyEmail || path === routes.settingsProfileBadge ? routes.settingsPrivacy : path;
 }
 export function workspaceParent(path: string) {
-  return path.startsWith(routes.learningPath + '/') ? routes.learningPath : settingsParent(path);
+  if (path.startsWith(routes.learningPath + '/')) return routes.learningPath;
+  if (path.startsWith(routes.vocabulary + '/')) return routes.vocabulary;
+  return settingsParent(path);
 }
 
 const locationEvent = 'leximind:navigation';

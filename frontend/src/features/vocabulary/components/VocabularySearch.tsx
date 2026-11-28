@@ -7,6 +7,7 @@ import { explain } from '../../../shared/services/api';
 import type { Word } from '../../../shared/types/api';
 import { isDialogBackdropPress } from '../../../shared/utils/dialog';
 import { listWords, vocabularyHref, wordSearchLength } from '../wordSearch';
+import { wordDetailHref } from '../studyVocabulary';
 import './VocabularySearch.css';
 
 type SearchPreview = { term: string; words?: Word[]; total?: number; error?: string };
@@ -124,7 +125,7 @@ export function VocabularySearch({ token, onNavigate }: { token: string; onNavig
         </p>
         {!!current?.words?.length && <ul ref={results} aria-label={copy.searchResults}>
           {current.words.map((word) => <li key={word.id}>
-            <Link className="app-search-result" href={vocabularyHref(word.text)} onClick={chooseResult}>
+            <Link className="app-search-result" href={wordDetailHref(word.id, vocabularyHref(word.text))} onClick={chooseResult}>
               <span className="app-search-word"><strong lang="en">{word.text}</strong>{word.sense[0]?.translationUz && <small lang="uz">{word.sense[0].translationUz}</small>}</span>
               <span className="level">{word.cefrLevel}</span><ArrowUpRight size={16} aria-hidden="true" />
             </Link>

@@ -9,7 +9,7 @@ import { ProfilePage } from '../features/profile/pages/ProfilePage';
 import { SettingsPage } from '../features/profile/components/SettingsPage';
 import { useAccountUiPreferences } from '../features/profile/hooks/useAccountUiPreferences';
 import { usePreferenceSave } from '../features/profile/hooks/usePreferenceSave';
-import { readProgress } from '../features/learning-path/progress';
+import { useCourseProgress } from '../features/learning-path/useCourseProgress';
 import { Dashboard } from '../features/learning/pages/Dashboard';
 import { LearningSessionsPage } from '../features/learning/pages/LearningSessionsPage';
 import { StudyPlanPage } from '../features/learning/pages/StudyPlanPage';
@@ -24,6 +24,7 @@ import { MistakesNotebookPage } from '../features/practice/pages/MistakesNoteboo
 import { Practice } from '../features/practice/pages/Practice';
 import { Review } from '../features/review/pages/Review';
 import { ReviewCenterPage } from '../features/review/pages/ReviewCenterPage';
+import { VocabularyWordPage } from '../features/vocabulary/pages/VocabularyWordPage';
 import { Catalog } from '../features/vocabulary/pages/Catalog';
 import { CollectionsPage } from '../features/vocabulary/pages/CollectionsPage';
 import { TopicsExplorerPage } from '../features/vocabulary/pages/TopicsExplorerPage';
@@ -58,6 +59,9 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
   const autoplayPronunciation = snapshot?.profile.autoplayPronunciation ?? false;
   const reminder = useStudyReminder(user.id, snapshot?.profile, snapshot?.scores[0]?.playedAt);
   const page = navigationPages.get(workspaceParent(path));
+  const parent = workspaceParent(path);
+  const course = useCourseProgress(token, user.id, snapshot?.profile.studyLevel ?? snapshot?.profile.level,
+    parent === routes.learningPath || parent === routes.vocabulary || path === routes.games, reload);
   const settingsSection = settingsNavigation.items.find((item) => item.href === settingsParent(path));
 
   function endPractice() {
@@ -152,16 +156,16 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
       : currentReview ? <Review key={currentReview.id} initial={currentReview} token={token} onDone={reload} onClose={() => { endPractice(); reload(); }}
         autoplayPronunciation={autoplayPronunciation}
         doneActionLabel={path === routes.studyPlan ? 'Rejaga qaytish' : path === routes.learningSessions ? 'Seanslar tarixiga' : undefined} />
-      : path === routes.vocabulary ? <Catalog token={token} onChange={reload} />
+      : path === routes.vocabulary ? <Catalog token={token} progress={course.progress} onChange={reload} />
+      : parent === routes.vocabulary ? <VocabularyWordPage key={path} path={path} token={token} onChange={reload} />
       : path === routes.referrals ? <ReferralsPage token={token} />
       : path === routes.collections ? <CollectionsPage key={user.id} token={token} userId={user.id} />
       : path === routes.topics ? <TopicsExplorerPage key={user.id} token={token} busy={busy}
         onStart={(topic) => void startActivity('type_word', undefined, topic)} />
-      : path === routes.games ? <GamesPage busy={busy} scores={snapshot?.scores ?? []} courseReviewId={readProgress(user.id).at(-1)} onActivity={(kind) => void startActivity(kind)} />
+      : path === routes.games ? <GamesPage busy={busy} scores={snapshot?.scores ?? []} courseReviewId={course.progress?.completed.at(-1)} onActivity={(kind) => void startActivity(kind)} />
       : path === routes.mistakes ? <MistakesNotebookPage key={user.id} token={token} />
       : path === routes.learningPath || path.startsWith(routes.learningPath + '/') ? <Suspense fallback={<div className="container inner-screen" role="status">Darslar yuklanmoqda…</div>}>
-        <LearningPathPage key={user.id} userId={user.id} path={path} unavailable={Boolean(dataError)}
-          level={snapshot?.profile.studyLevel ?? snapshot?.profile.level} streak={snapshot?.plan.activity.currentStreak} />
+        <LearningPathPage key={user.id} path={path} course={course} streak={snapshot?.plan.activity.currentStreak} />
       </Suspense>
       : path === routes.learningSessions ? <LearningSessionsPage token={token} profile={snapshot?.profile} plan={snapshot?.plan}
         busy={busy} planFailed={Boolean(dataError)} onStart={() => void daily()} />

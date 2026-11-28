@@ -1,6 +1,6 @@
 import { routes } from '../../app/router';
-import { api } from '../../shared/services/api';
-import type { Level, Page, Word } from '../../shared/types/api';
+import { listStudyVocabulary } from './studyVocabulary';
+import type { Level } from '../../shared/types/api';
 
 export const wordSearchLength = 80;
 
@@ -16,10 +16,5 @@ export function vocabularyHref(query: string, level: Level | '' = '', page = 1, 
 export function listWords({ query, level, page, limit, token, signal, topic }: {
   query: string; level?: Level | ''; page: number; limit: number; token: string; signal: AbortSignal; topic?: string;
 }) {
-  const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-  const term = query.trim();
-  if (term) params.set('search', term);
-  if (level) params.set('cefrLevel', level);
-  if (topic) params.set('topic', topic);
-  return api<Page<Word>>('/words?' + params, { token, signal });
+  return listStudyVocabulary({ query, page, scope: level || 'all', topic: topic ?? '', status: '', fromLessons: false }, limit, token, signal);
 }
