@@ -1,6 +1,13 @@
-import type { AccountActionKind } from '../../application/use-cases/user/AccountActions';
+import type { AccountEmailKind } from '../../application/use-cases/user/AccountActions';
 
 const copy = {
+  register: {
+    title: 'Ro‘yxatdan o‘tishni yakunlang',
+    subject: 'LexiMind ro‘yxatdan o‘tish kodi',
+    instruction:
+      'Hisobingizni yaratish uchun kodni LexiMind ro‘yxatdan o‘tish sahifasiga kiriting.',
+    action: 'Ro‘yxatdan o‘tish',
+  },
   verify_email: {
     title: 'Email manzilingizni tasdiqlang',
     subject: 'LexiMind email manzilini tasdiqlash',
@@ -16,7 +23,7 @@ const copy = {
     action: 'Parolni tiklash',
   },
 } satisfies Record<
-  AccountActionKind,
+  AccountEmailKind,
   Record<'title' | 'subject' | 'instruction' | 'action', string>
 >;
 
@@ -34,7 +41,7 @@ function escapeHtml(value: string) {
 }
 
 export function accountActionEmail(
-  kind: AccountActionKind,
+  kind: AccountEmailKind,
   code: string | undefined,
   actionUrl: URL | null,
 ) {

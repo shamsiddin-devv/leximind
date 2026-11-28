@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { BellRing, X } from 'lucide-react';
 import { api, ApiError, explain } from '../shared/services/api';
 import type { Activity, Level, Profile, Round, Session, User } from '../shared/types/api';
@@ -9,6 +9,7 @@ import { ProfilePage } from '../features/profile/pages/ProfilePage';
 import { SettingsPage } from '../features/profile/components/SettingsPage';
 import { useAccountUiPreferences } from '../features/profile/hooks/useAccountUiPreferences';
 import { usePreferenceSave } from '../features/profile/hooks/usePreferenceSave';
+import { readProgress } from '../features/learning-path/progress';
 import { Dashboard } from '../features/learning/pages/Dashboard';
 import { LearningSessionsPage } from '../features/learning/pages/LearningSessionsPage';
 import { StudyPlanPage } from '../features/learning/pages/StudyPlanPage';
@@ -30,7 +31,9 @@ import { AppLayout } from './layouts/AppLayout';
 import { updateInterfaceSettings, useInterfaceSetting } from './interfacePreferences';
 import type { AccountAccess } from './layouts/SidebarAccountMenu';
 import { navigationPages, settingsNavigation } from './navigation';
-import { navigate, routes, settingsParent } from './router';
+import { navigate, routes, settingsParent, workspaceParent } from './router';
+
+const LearningPathPage = lazy(() => import('../features/learning-path/LearningPathPage').then((module) => ({ default: module.LearningPathPage })));
 
 export default function Workspace({ path, token, user, accountAccess, onUserChange, onSessionLost, onLogout }: {
   path: string; token: string; user: User; onUserChange: (user: User) => void; onSessionLost: () => void; onLogout: () => void;
@@ -54,7 +57,7 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
   const sound = snapshot?.profile.feedbackAudioEnabled ?? true;
   const autoplayPronunciation = snapshot?.profile.autoplayPronunciation ?? false;
   const reminder = useStudyReminder(user.id, snapshot?.profile, snapshot?.scores[0]?.playedAt);
-  const page = navigationPages.get(path);
+  const page = navigationPages.get(workspaceParent(path));
   const settingsSection = settingsNavigation.items.find((item) => item.href === settingsParent(path));
 
   function endPractice() {
@@ -154,8 +157,12 @@ export default function Workspace({ path, token, user, accountAccess, onUserChan
       : path === routes.collections ? <CollectionsPage key={user.id} token={token} userId={user.id} />
       : path === routes.topics ? <TopicsExplorerPage key={user.id} token={token} busy={busy}
         onStart={(topic) => void startActivity('type_word', undefined, topic)} />
-      : path === routes.games ? <GamesPage busy={busy} scores={snapshot?.scores ?? []} onActivity={(kind) => void startActivity(kind)} />
+      : path === routes.games ? <GamesPage busy={busy} scores={snapshot?.scores ?? []} courseReviewId={readProgress(user.id).at(-1)} onActivity={(kind) => void startActivity(kind)} />
       : path === routes.mistakes ? <MistakesNotebookPage key={user.id} token={token} />
+      : path === routes.learningPath || path.startsWith(routes.learningPath + '/') ? <Suspense fallback={<div className="container inner-screen" role="status">Darslar yuklanmoqda…</div>}>
+        <LearningPathPage key={user.id} userId={user.id} path={path} unavailable={Boolean(dataError)}
+          level={snapshot?.profile.studyLevel ?? snapshot?.profile.level} streak={snapshot?.plan.activity.currentStreak} />
+      </Suspense>
       : path === routes.learningSessions ? <LearningSessionsPage token={token} profile={snapshot?.profile} plan={snapshot?.plan}
         busy={busy} planFailed={Boolean(dataError)} onStart={() => void daily()} />
       : path === routes.studyPlan ? <StudyPlanPage profile={snapshot?.profile} plan={snapshot?.plan}

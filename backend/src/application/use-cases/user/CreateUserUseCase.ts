@@ -1,3 +1,5 @@
+import { BadRequestError } from '../../../domain/errors/BadRequestError';
+import type { RegistrationEmailProof } from '../../../domain/repositories/IUserRepository';
 import { validatePassword } from '../../../domain/value-objects/PasswordPolicy';
 import { CreateUserUseCaseDto } from '../../dto/user/CreateUserUseCaseDto';
 import { User } from '../../../domain/entities/User';
@@ -12,7 +14,7 @@ export class CreateUserUseCase {
     private readonly hashService: IHashService,
   ) {}
 
-  async execute(dto: CreateUserUseCaseDto) {
+  async execute(dto: CreateUserUseCaseDto, proof: RegistrationEmailProof) {
     validatePassword(dto.password);
     const checkingEmail = new Email(dto.email);
     const findingUser = await this.userRepo.findByEmail(
@@ -20,7 +22,6 @@ export class CreateUserUseCase {
     );
 
     if (findingUser) throw new ConflictError('User already exist.');
-    const hashPassword = await this.hashService.hash(dto.password);
 
     const user = new User({
       fullName: dto.fullName,
@@ -29,7 +30,8 @@ export class CreateUserUseCase {
 
     const row = await this.userRepo.create(
       user,
-      hashPassword,
+      () => this.hashService.hash(dto.password),
+      proof,
       {
         studyLevel: dto.studyLevel,
         dailyStudyMinutes: dto.dailyStudyMinutes,
@@ -37,6 +39,8 @@ export class CreateUserUseCase {
       },
       dto.referralCode,
     );
+    if (!row)
+      throw new BadRequestError('Invalid or expired registration code.');
     return row;
   }
 }

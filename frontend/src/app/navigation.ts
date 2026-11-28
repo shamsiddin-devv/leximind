@@ -1,6 +1,6 @@
 import {
   BarChart3, Bell, BookOpen, CalendarDays, ClipboardList, Compass, Crown, FolderHeart, Gamepad2,
-  House, KeyRound, Layers3, NotebookPen, Palette, PanelsTopLeft, RotateCcw, Send, Settings2, ShieldCheck, Trophy, UserRound, type LucideIcon,
+  House, KeyRound, Layers3, Map as MapIcon, NotebookPen, Palette, PanelsTopLeft, RotateCcw, Send, Settings2, ShieldCheck, Trophy, UserRound, type LucideIcon,
 } from 'lucide-react';
 import { routes } from './router';
 
@@ -28,6 +28,7 @@ export const navigation: NavigationGroup[] = [
     icon: House,
     items: [
       { href: routes.dashboard, label: 'Dashboard', icon: House },
+      { href: routes.learningPath, label: 'Learning Path', icon: MapIcon },
       { href: routes.vocabulary, label: 'Vocabulary', icon: BookOpen },
       { href: routes.games, label: 'Games', icon: Gamepad2 },
       { href: routes.learningSessions, label: 'Learning Sessions', icon: Layers3 },

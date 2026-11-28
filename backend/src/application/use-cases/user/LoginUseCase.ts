@@ -15,7 +15,12 @@ export class LoginUseCase {
     private readonly ttlSeconds: number,
     private readonly dummyHash: string,
   ) {}
-  async execute(email: string, password: string, userAgent?: string, rememberSession = false) {
+  async execute(
+    email: string,
+    password: string,
+    userAgent?: string,
+    rememberSession = false,
+  ) {
     const user = await this.users.findByEmail(new Email(email).toString());
     const stored = user?.id
       ? await this.users.findPasswordHashByUserId(user.id)
@@ -25,7 +30,13 @@ export class LoginUseCase {
       throw new UnauthorizedError('Invalid email or password.');
     const accessToken = this.tokens.generate();
     const now = Date.now();
-    const expiresAt = new Date(now + (rememberSession ? Math.min(this.ttlSeconds, maxAccessSeconds) : this.ttlSeconds) * 1000);
+    const expiresAt = new Date(
+      now +
+        (rememberSession
+          ? Math.min(this.ttlSeconds, maxAccessSeconds)
+          : this.ttlSeconds) *
+          1000,
+    );
     const refreshToken = rememberSession ? this.tokens.generate() : undefined;
     const refreshExpiresAt = new Date(now + rememberedSessionMs);
     const sessionId = await this.sessions.create(
@@ -34,11 +45,21 @@ export class LoginUseCase {
       refreshToken ? refreshExpiresAt : expiresAt,
       stored,
       userAgent,
-      refreshToken ? { tokenHash: this.tokens.digest(refreshToken), accessExpiresAt: expiresAt } : undefined,
+      refreshToken
+        ? {
+            tokenHash: this.tokens.digest(refreshToken),
+            accessExpiresAt: expiresAt,
+          }
+        : undefined,
     );
     if (!sessionId)
       throw new UnauthorizedError('Credentials changed; sign in again.');
-    return { accessToken, tokenType: 'Bearer', expiresAt, ...(refreshToken && { sessionId, refreshToken, refreshExpiresAt }) };
+    return {
+      accessToken,
+      tokenType: 'Bearer',
+      expiresAt,
+      ...(refreshToken && { sessionId, refreshToken, refreshExpiresAt }),
+    };
   }
 
   async refresh(currentToken: string) {
@@ -49,13 +70,19 @@ export class LoginUseCase {
       this.tokens.digest(accessToken),
       {
         tokenHash: this.tokens.digest(refreshToken),
-        accessExpiresAt: new Date(Date.now() + Math.min(this.ttlSeconds, maxAccessSeconds) * 1000),
+        accessExpiresAt: new Date(
+          Date.now() + Math.min(this.ttlSeconds, maxAccessSeconds) * 1000,
+        ),
       },
     );
     if (!session) throw new UnauthorizedError('Session invalid or expired.');
     return {
-      accessToken, tokenType: 'Bearer', expiresAt: session.accessExpiresAt,
-      sessionId: session.id, refreshToken, refreshExpiresAt: session.expiresAt,
+      accessToken,
+      tokenType: 'Bearer',
+      expiresAt: session.accessExpiresAt,
+      sessionId: session.id,
+      refreshToken,
+      refreshExpiresAt: session.expiresAt,
     };
   }
 }

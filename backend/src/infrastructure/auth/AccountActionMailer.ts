@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createTransport, type Transporter } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 import type {
-  AccountActionKind,
+  AccountEmailKind,
   AccountActionMailer as Mailer,
 } from '../../application/use-cases/user/AccountActions';
 import { UnavailableError } from '../../domain/errors/UnavailableError';
@@ -65,9 +65,22 @@ export class AccountActionMailer implements Mailer {
     return String(randomInt(0, 1_000_000)).padStart(6, '0');
   }
 
-  digestCode(email: string, kind: AccountActionKind, code: string) {
+  digestCode(
+    email: string,
+    kind: AccountEmailKind,
+    code: string,
+    binding?: string,
+  ) {
     return createHmac('sha256', this.key())
-      .update(JSON.stringify(['account-email-code-v1', email, kind, code]))
+      .update(
+        JSON.stringify([
+          'account-email-code-v1',
+          email,
+          kind,
+          code,
+          ...(binding ? [binding] : []),
+        ]),
+      )
       .digest('hex');
   }
 
@@ -85,7 +98,7 @@ export class AccountActionMailer implements Mailer {
 
   async send(
     email: string,
-    kind: AccountActionKind,
+    kind: AccountEmailKind,
     encryptedToken: string,
     digest: string,
   ) {
@@ -108,13 +121,13 @@ export class AccountActionMailer implements Mailer {
 
   async deliver(
     email: string,
-    kind: AccountActionKind,
+    kind: AccountEmailKind,
     token: string,
     digest: string,
     code?: string,
   ) {
     const link = this.config.get<string>('ACCOUNT_ACTION_URL')?.trim();
-    const actionUrl = link ? new URL(link) : null;
+    const actionUrl = link && kind !== 'register' ? new URL(link) : null;
     if (actionUrl) {
       actionUrl.hash = new URLSearchParams({ action: kind, token }).toString();
     }

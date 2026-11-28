@@ -56,7 +56,7 @@ export const shellCopy: Record<InterfaceLanguage, typeof uz> = {
 };
 
 const russianRoutes: Readonly<Record<string, string>> = {
-  [routes.dashboard]: 'Главная', [routes.vocabulary]: 'Словарь', [routes.games]: 'Игры', [routes.learningSessions]: 'Занятия',
+  [routes.dashboard]: 'Главная', [routes.learningPath]: 'Путь обучения', [routes.vocabulary]: 'Словарь', [routes.games]: 'Игры', [routes.learningSessions]: 'Занятия',
   [routes.studyPlan]: 'План занятий', [routes.reviewCenter]: 'Повторение', [routes.statistics]: 'Статистика',
   [routes.learningCalendar]: 'Календарь', [routes.topics]: 'Темы', [routes.achievements]: 'Достижения',
   [routes.leaderboard]: 'Рейтинг', [routes.collections]: 'Мои коллекции', [routes.referrals]: 'Приглашения', [routes.mistakes]: 'Работа над ошибками',

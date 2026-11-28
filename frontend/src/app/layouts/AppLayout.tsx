@@ -11,7 +11,7 @@ import { NotificationMenu } from '../../features/notifications/NotificationMenu'
 import { OnboardingTour } from '../../features/onboarding/OnboardingTour';
 import { onboardingCopy } from '../../features/onboarding/onboardingCopy';
 import { accountNavigation, navigation, navigationPages, settingsNavigation, type NavigationGroup, type NavigationItem } from '../navigation';
-import { Link, routes, settingsParent } from '../router';
+import { Link, routes, workspaceParent } from '../router';
 import { getTheme, subscribeToTheme, toggleTheme } from '../theme';
 import { SidebarAccountMenu, type AccountAccess } from './SidebarAccountMenu';
 import './AppLayout.css';
@@ -163,9 +163,9 @@ export function AppLayout({ children, path, token, user, accountAccess, practici
   const closeDrawerButton = useRef<HTMLButtonElement>(null);
   const logoutDialog = useRef<HTMLDialogElement>(null);
   const cancelLogoutButton = useRef<HTMLButtonElement>(null);
-  const activePath = practicing ? undefined : settingsParent(path);
-  const routeGroup = settingsNavigation.items.some((item) => item.href === settingsParent(path)) ? settingsNavigation
-    : navigation.find((group) => group.items.some((item) => item.href === path));
+  const activePath = practicing ? undefined : workspaceParent(path);
+  const routeGroup = settingsNavigation.items.some((item) => item.href === workspaceParent(path)) ? settingsNavigation
+    : navigation.find((group) => group.items.some((item) => item.href === workspaceParent(path)));
   const [groupSelection, setGroupSelection] = useState({ path, group: routeGroup ?? navigation[0] });
   const fallbackGroup = groupSelection.group === settingsNavigation ? navigation[0] : groupSelection.group;
   const selectedGroup = groupSelection.path === path ? groupSelection.group : routeGroup ?? fallbackGroup;

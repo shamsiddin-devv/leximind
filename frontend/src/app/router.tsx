@@ -3,7 +3,7 @@ import { useEffect, useSyncExternalStore, type ComponentProps } from 'react';
 export const routes = {
   home: '/', login: '/login', register: '/register', recover: '/reset-password',
   account: '/account-action', demo: '/demo', dashboard: '/dashboard', vocabulary: '/vocabulary', games: '/games', profile: '/profile',
-  learningSessions: '/learning-sessions', reviewCenter: '/review-center', studyPlan: '/study-plan',
+  learningPath: '/learning-path', learningSessions: '/learning-sessions', reviewCenter: '/review-center', studyPlan: '/study-plan',
   statistics: '/statistics', topics: '/topics', achievements: '/achievements', leaderboard: '/leaderboard',
   learningCalendar: '/learning-calendar', collections: '/my-collections', referrals: '/referrals', mistakes: '/mistakes-notebook', settings: '/settings',
   settingsAccount: '/settings/account', settingsPassword: '/settings/password', settingsNotifications: '/settings/notifications', settingsAppearance: '/settings/appearance',
@@ -15,6 +15,10 @@ export const routes = {
 export function settingsParent(path: string) {
   return path === routes.settingsVerifyEmail || path === routes.settingsProfileBadge ? routes.settingsPrivacy : path;
 }
+export function workspaceParent(path: string) {
+  return path.startsWith(routes.learningPath + '/') ? routes.learningPath : settingsParent(path);
+}
+
 const locationEvent = 'leximind:navigation';
 const legacyPaths = new Map([
   ['/kirish', routes.login],

@@ -43,8 +43,12 @@ export class AuthRepository implements IAuthRepository {
         `INSERT INTO auth_sessions(user_id,token_hash,expires_at,user_agent,refresh_token_hash,access_expires_at)
          VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
         [
-          userId, tokenHash, expiresAt, userAgent?.trim().slice(0, 512) || null,
-          refresh?.tokenHash ?? null, refresh?.accessExpiresAt ?? null,
+          userId,
+          tokenHash,
+          expiresAt,
+          userAgent?.trim().slice(0, 512) || null,
+          refresh?.tokenHash ?? null,
+          refresh?.accessExpiresAt ?? null,
         ],
       );
       await client.query('COMMIT');
@@ -56,20 +60,29 @@ export class AuthRepository implements IAuthRepository {
       client.release();
     }
   }
-  async rotateRefresh(currentHash: string, accessHash: string, refresh: SessionRefresh) {
+  async rotateRefresh(
+    currentHash: string,
+    accessHash: string,
+    refresh: SessionRefresh,
+  ) {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const { rows } = await client.query<{ id: string; expiresAt: Date; accessExpiresAt: Date }>(
+      const { rows } = await client.query<{
+        id: string;
+        expiresAt: Date;
+        accessExpiresAt: Date;
+      }>(
         `UPDATE auth_sessions SET token_hash=$2,refresh_token_hash=$3,access_expires_at=LEAST(expires_at,$4)
          WHERE refresh_token_hash=$1 AND expires_at>now()
          RETURNING id,expires_at AS "expiresAt",access_expires_at AS "accessExpiresAt"`,
         [currentHash, accessHash, refresh.tokenHash, refresh.accessExpiresAt],
       );
       if (rows[0]) {
-        await client.query('INSERT INTO used_session_refresh_tokens(token_hash,session_id) VALUES($1,$2)', [
-          currentHash, rows[0].id,
-        ]);
+        await client.query(
+          'INSERT INTO used_session_refresh_tokens(token_hash,session_id) VALUES($1,$2)',
+          [currentHash, rows[0].id],
+        );
       } else {
         await client.query(
           'DELETE FROM auth_sessions WHERE id=(SELECT session_id FROM used_session_refresh_tokens WHERE token_hash=$1)',

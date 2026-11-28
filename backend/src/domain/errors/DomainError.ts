@@ -4,7 +4,8 @@ export type DomainErrorCode =
   | 'NOT_FOUND'
   | 'UNAUTHORIZED'
   | 'VALIDATION'
-  | 'UNAVAILABLE';
+  | 'UNAVAILABLE'
+  | 'RATE_LIMITED';
 export class DomainError extends Error {
   constructor(
     message: string,

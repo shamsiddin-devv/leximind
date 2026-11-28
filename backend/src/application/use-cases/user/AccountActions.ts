@@ -1,3 +1,6 @@
+import { ConflictError } from '../../../domain/errors/ConflictError';
+import { DomainError } from '../../../domain/errors/DomainError';
+import type { RegistrationEmailProof } from '../../../domain/repositories/IUserRepository';
 import { BadRequestError } from '../../../domain/errors/BadRequestError';
 import type { IUserRepository } from '../../../domain/repositories/IUserRepository';
 import type { IHashService } from '../../../domain/services/IHashService';
@@ -6,7 +9,17 @@ import { Email } from '../../../domain/value-objects/Email';
 import { validatePassword } from '../../../domain/value-objects/PasswordPolicy';
 
 export type AccountActionKind = 'verify_email' | 'reset_password';
+export type AccountEmailKind = AccountActionKind | 'register';
+export const maxEmailCodeAttempts = 5;
+
+export interface RegistrationCode {
+  email: string;
+  tokenHash: string;
+  codeHash: string;
+  encryptedCode: string;
+}
 export interface AccountActionStore {
+  issueRegistration(challenge: RegistrationCode): Promise<boolean>;
   issue(
     userId: string,
     email: string,
@@ -31,7 +44,12 @@ export interface AccountActionStore {
 export interface AccountActionMailer {
   ensureConfigured(): void;
   generateCode(): string;
-  digestCode(email: string, kind: AccountActionKind, code: string): string;
+  digestCode(
+    email: string,
+    kind: AccountEmailKind,
+    code: string,
+    binding?: string,
+  ): string;
   seal(token: string, code: string): string;
 }
 
@@ -43,6 +61,49 @@ export class AccountActions {
     private readonly tokens: ITokenService,
     private readonly hashes: IHashService,
   ) {}
+
+  async requestRegistration(
+    email: string,
+  ): Promise<{ registrationToken: string }> {
+    const address = new Email(email).toString();
+    if (await this.users.findByEmail(address)) {
+      throw new ConflictError('An account with this email already exists.');
+    }
+
+    const registrationToken = this.tokens.generate();
+    const code = this.mailer.generateCode();
+    const proof = this.registrationProof(address, registrationToken, code);
+    const issued = await this.actions.issueRegistration({
+      email: address,
+      ...proof,
+      encryptedCode: this.mailer.seal('', code),
+    });
+    if (!issued) {
+      throw new DomainError(
+        'Wait before requesting another registration code.',
+        'RATE_LIMITED',
+      );
+    }
+    return { registrationToken };
+  }
+
+  registrationProof(
+    email: string,
+    token: string,
+    code: string,
+  ): RegistrationEmailProof {
+    this.mailer.ensureConfigured();
+    const tokenHash = this.tokens.digest(token);
+    return {
+      tokenHash,
+      codeHash: this.mailer.digestCode(
+        new Email(email).toString(),
+        'register',
+        code,
+        tokenHash,
+      ),
+    };
+  }
 
   async request(email: string, kind: AccountActionKind): Promise<void> {
     this.mailer.ensureConfigured();

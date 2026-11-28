@@ -6,6 +6,7 @@ import {
   IsString,
   IsUUID,
   Length,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -44,4 +45,9 @@ export class CreateUserDto {
   @ValidateIf((_target, value: unknown) => value !== undefined)
   @IsUUID('4')
   referralCode?: string;
+}
+
+export class ConfirmRegistrationDto extends CreateUserDto {
+  @Matches(/^[A-Za-z0-9_-]{43}$/) registrationToken!: string;
+  @Matches(/^[0-9]{6}$/) code!: string;
 }

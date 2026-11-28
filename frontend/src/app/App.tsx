@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { AuthPage, MissingAccountLink, type AccountLink } from '../features/auth/pages/AuthPage';
+import { RegisterPage } from '../features/auth/pages/RegisterPage';
 import { useSession } from '../features/auth/hooks/useSession';
 import { LandingPage } from '../features/landing/pages/LandingPage';
 import { landingCopy } from '../features/landing/copy';
@@ -11,7 +12,7 @@ import { Notice } from '../shared/components/UI';
 import { PublicLayout } from './layouts/PublicLayout';
 import { routeLabel } from './shellCopy';
 import { navigationPages } from './navigation';
-import { Link, navigate, Redirect, routes, settingsParent, useRoute } from './router';
+import { Link, navigate, Redirect, routes, useRoute, workspaceParent } from './router';
 import '@fontsource-variable/manrope';
 import '@fontsource-variable/instrument-sans';
 import '@fontsource/instrument-serif/latin-400.css';
@@ -32,7 +33,7 @@ export function App() {
   const publicCopy = landingCopy[pageLanguage];
   const { clear, token } = session;
   const clearCurrent = useCallback(() => { if (token) clear(token); }, [clear, token]);
-  const protectedPage = protectedPaths.has(settingsParent(path));
+  const protectedPage = protectedPaths.has(workspaceParent(path));
   const sharedProfileId = path.startsWith(routes.sharedProfile + '/') ? path.slice(routes.sharedProfile.length + 1) : '';
   const signInPage = path === routes.login || path === routes.register;
   const restoringSession = Boolean(session.token && !session.user);
@@ -44,7 +45,7 @@ export function App() {
       [routes.account]: accountLink?.action === 'verify_email' ? 'Verify Email' : accountLink ? 'Reset Password' : 'Account Link',
       [routes.settingsVerifyEmail]: 'Verify Email', [routes.settingsProfileBadge]: 'Profile Badge',
     } as Record<string, string>)[path];
-    document.title = (pageTitle ?? routeLabel(language, path, navigationPages.get(path)?.label ?? (sharedProfileId ? 'Shared Profile' : 'Page Not Found'))) + ' — LexiMind';
+    document.title = (pageTitle ?? routeLabel(language, workspaceParent(path), navigationPages.get(workspaceParent(path))?.label ?? (sharedProfileId ? 'Shared Profile' : 'Page Not Found'))) + ' — LexiMind';
     document.documentElement.lang = pageLanguage;
     document.querySelector('meta[name=description]')?.setAttribute('content', publicCopy.description);
   }, [path, accountLink?.action, sharedProfileId, language, pageLanguage, publicCopy]);
@@ -78,9 +79,8 @@ export function App() {
     else content = <><Redirect to={routes.login} /><LoadingScreen /></>;
   } else if (signInPage || path === routes.recover) {
     if (session.user && signInPage) content = <><Redirect to={routes.dashboard} /><LoadingScreen /></>;
-    else content = <AuthPage key={path} mode={path === routes.login ? 'login' : path === routes.register ? 'register' : 'recover'}
-      referralCode={path === routes.register ? searchParams.get('ref') ?? undefined : undefined}
-      onLogin={session.establish} onConfirmed={confirmed} />;
+    else if (path === routes.register) content = <RegisterPage referralCode={searchParams.get('ref') ?? undefined} onLogin={session.establish} />;
+    else content = <AuthPage key={path} mode={path === routes.login ? 'login' : 'recover'} onLogin={session.establish} onConfirmed={confirmed} />;
   } else if (path === routes.account && accountLink) {
     const link: AccountLink = { token: accountLink.token, action: accountLink.action === 'verify_email' ? 'verify_email' : 'reset_password' };
     content = <AuthPage key={link.action + link.token}

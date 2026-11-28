@@ -16,7 +16,7 @@ import type { Identity } from '../../../domain/repositories/IAuthRepository';
 import { LoginUseCase } from '../../../application/use-cases/user/LoginUseCase';
 import { CreateUserUseCase } from '../../../application/use-cases/user/CreateUserUseCase';
 import { LogoutUseCase } from '../../../application/use-cases/user/LogoutUseCase';
-import { CreateUserDto } from './dto/create-user.dto';
+import { ConfirmRegistrationDto } from './dto/create-user.dto';
 import { LoginDto, RefreshSessionDto } from './dto/login.dto';
 import { userView } from '../../serializers';
 import { AccountSessions } from '../../../application/use-cases/user/AccountSessions';
@@ -39,11 +39,26 @@ export class AuthController {
     private readonly sessions: AccountSessions,
   ) {}
   @Public()
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('register/request')
+  @HttpCode(202)
+  @ApiOperation({ security: [] })
+  requestRegistration(@Body() dto: RequestAccountActionDto) {
+    return this.accountActions.requestRegistration(dto.email);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('register')
   @ApiOperation({ security: [] })
-  async signUp(@Body() dto: CreateUserDto) {
-    return userView(await this.register.execute(dto));
+  async signUp(@Body() dto: ConfirmRegistrationDto) {
+    const { registrationToken, code, ...account } = dto;
+    const proof = this.accountActions.registrationProof(
+      account.email,
+      registrationToken,
+      code,
+    );
+    return userView(await this.register.execute(account, proof));
   }
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -51,7 +66,12 @@ export class AuthController {
   @ApiOperation({ security: [] })
   @HttpCode(200)
   signIn(@Body() dto: LoginDto, @Headers('user-agent') userAgent?: string) {
-    return this.login.execute(dto.email, dto.password, userAgent, dto.rememberSession);
+    return this.login.execute(
+      dto.email,
+      dto.password,
+      userAgent,
+      dto.rememberSession,
+    );
   }
   @Public()
   @Throttle({ default: { limit: 30, ttl: 60000 } })

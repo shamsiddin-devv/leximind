@@ -7,6 +7,11 @@ export interface InitialLearningPreferences {
   dailyNewWords?: number;
 }
 
+export interface RegistrationEmailProof {
+  tokenHash: string;
+  codeHash: string;
+}
+
 export interface IUserRepository {
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
@@ -22,10 +27,11 @@ export interface IUserRepository {
   ): Promise<boolean>;
   create(
     data: User,
-    passwordHash: string,
+    hashPassword: () => Promise<string>,
+    proof: RegistrationEmailProof,
     preferences?: InitialLearningPreferences,
     referralCode?: string,
-  ): Promise<User>;
+  ): Promise<User | null>;
   edit(
     id: string,
     change: (current: User, passwordHash: string) => void | Promise<void>,

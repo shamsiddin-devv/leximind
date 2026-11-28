@@ -38,6 +38,21 @@ const other = () => ({ Authorization: 'Bearer ' + otherToken });
 const successfulRoutes = new Set();
 const sentAccountEmails = [];
 const telegramMessages = [];
+async function registrationCode(email) {
+  const { body } = await api.post('/api/auth/register/request').send({ email }).expect(202);
+  await emailWorker.flush();
+  const mail = sentAccountEmails.findLast(
+    (message) => message.email === email.trim().toLowerCase() && message.kind === 'register',
+  );
+  assert.match(mail?.code ?? '', /^[0-9]{6}$/);
+  assert.equal(mail.token, '');
+  return { registrationToken: body.registrationToken, code: mail.code };
+}
+
+async function registerAccount(details) {
+  const verification = await registrationCode(details.email);
+  return api.post('/api/auth/register').send({ ...details, ...verification }).expect(201);
+}
 const webhookSecret = 'telegram_test_' + 'a'.repeat(32);
 const uploadedAvatars = new Set();
 const testVapid = generateVAPIDKeys();
@@ -202,7 +217,10 @@ test('complete API and database lifecycle', async (t) => {
     'documents request schemas and rejects malformed or oversized bodies',
     async () => {
       contract = (await api.get('/api/docs-json').expect(200)).body;
-      assert.ok(contract.components.schemas.CreateUserDto.properties.password);
+      const registrationSchema = contract.components.schemas.ConfirmRegistrationDto;
+      assert.ok(registrationSchema.properties.password);
+      assert.ok(registrationSchema.required.includes('registrationToken'));
+      assert.ok(registrationSchema.required.includes('code'));
       assert.deepEqual(contract.paths['/api/auth/login'].post.security, []);
       assert.ok(
         contract.paths['/api/feedback-audio/{file}'].get.responses['200']
@@ -241,14 +259,19 @@ test('complete API and database lifecycle', async (t) => {
   await t.test(
     'registers normalized user and profile without exposing secrets',
     async () => {
-      const r = await api
-        .post('/api/auth/register')
-        .send({
-          fullName: ' First Learner ',
-          email: 'FIRST@example.com',
-          password,
-        })
-        .expect(201);
+      const details = { fullName: ' First Learner ', email: 'FIRST@example.com', password };
+      await api.post('/api/auth/register').send(details).expect(400);
+      const verification = await registrationCode(details.email);
+      await api.post('/api/auth/register/request').send({ email: details.email }).expect(429);
+      assert.equal((await pool.query('SELECT id FROM users WHERE email=$1', ['first@example.com'])).rowCount, 0);
+      await api.post('/api/auth/login').send({ email: details.email, password }).expect(401);
+      await api.post('/api/auth/register')
+        .send({ ...details, ...verification, registrationToken: Buffer.alloc(32, 7).toString('base64url') }).expect(400);
+      const wrongCode = verification.code === '000000' ? '111111' : '000000';
+      await api.post('/api/auth/register').send({ ...details, ...verification, code: wrongCode }).expect(400);
+      const r = await api.post('/api/auth/register').send({ ...details, ...verification }).expect(201);
+      assert.ok(r.body.emailVerifiedAt);
+      assert.equal((await pool.query("SELECT 1 FROM account_actions WHERE email=$1 AND kind='register'", [r.body.email])).rowCount, 0);
       userId = r.body.id;
       assert.equal(r.body.email, 'first@example.com');
       assert.equal(r.body.fullName, 'First Learner');
@@ -262,8 +285,8 @@ test('complete API and database lifecycle', async (t) => {
   );
   await t.test('rejects duplicate email and invalid credentials', async () => {
     await api
-      .post('/api/auth/register')
-      .send({ fullName: 'Again', email: 'first@example.com', password })
+      .post('/api/auth/register/request')
+      .send({ email: 'first@example.com' })
       .expect(409);
     await api
       .post('/api/auth/login')
@@ -638,13 +661,10 @@ test('complete API and database lifecycle', async (t) => {
     },
   );
   await t.test('saves onboarding preferences and isolates another account from private data', async () => {
-    await api
-      .post('/api/auth/register')
-      .send({
-        fullName: 'Other', email: 'other@example.com', password,
-        dailyStudyMinutes: 20, dailyNewWords: 12, studyLevel: 'B2',
-      })
-      .expect(201);
+    await registerAccount({
+      fullName: 'Other', email: 'other@example.com', password,
+      dailyStudyMinutes: 20, dailyNewWords: 12, studyLevel: 'B2',
+    });
     otherToken = (
       await api
         .post('/api/auth/login')
@@ -1732,6 +1752,7 @@ test('complete API and database lifecycle', async (t) => {
     async () => {
       const current = (await api.get('/api/users/me').set(auth()).expect(200))
         .body;
+      await pool.query('UPDATE users SET email_verified_at=NULL WHERE id=$1', [current.id]);
       const details = {
         bio: 'I learn English every day.',
         countryCode: 'UZ',
@@ -1753,7 +1774,7 @@ test('complete API and database lifecycle', async (t) => {
         .send({ email: 'absent@example.com' })
         .expect(202);
       await emailWorker.flush();
-      assert.equal(sentAccountEmails.length, 0);
+      assert.equal(sentAccountEmails.filter((mail) => mail.kind === 'verify_email').length, 0);
       await api
         .post('/api/auth/email-verification/request')
         .send({ email: current.email })
@@ -1871,7 +1892,8 @@ test('complete API and database lifecycle', async (t) => {
     await pool.query('DELETE FROM rate_limits');
     const email = 'otp-learner@example.com';
     const login = { email, password: 'Original8!' };
-    await api.post('/api/auth/register').send({ ...login, fullName: 'Email code learner' }).expect(201);
+    const { body: learner } = await registerAccount({ ...login, fullName: 'Email code learner' });
+    await pool.query('UPDATE users SET email_verified_at=NULL WHERE id=$1', [learner.id]);
     const { accessToken } = (await api.post('/api/auth/login').send(login).expect(200)).body;
     const account = { Authorization: 'Bearer ' + accessToken };
     const verifyRoute = '/api/auth/email-verification';
@@ -1949,7 +1971,7 @@ test('complete API and database lifecycle', async (t) => {
 
   await t.test('syncs UI preferences across sessions and cleans private banners', async () => {
     const address = { email: 'preferences@example.com', password: 'Local88!', fullName: 'Preferences test' };
-    const { body: owner } = await api.post('/api/auth/register').send(address).expect(201);
+    const { body: owner } = await registerAccount(address);
     const connect = async () => {
       const { body } = await api.post('/api/auth/login')
         .send({ email: address.email, password: address.password }).expect(200);
@@ -2125,6 +2147,30 @@ test('complete API and database lifecycle', async (t) => {
     await api.get(endpoint).expect(404);
   });
 
+  await t.test('expires registration codes and limits attempts across resends', async () => {
+    await pool.query('DELETE FROM rate_limits');
+    const details = { fullName: 'Code expiry learner', email: 'registration-expiry@example.com', password };
+    const first = await registrationCode(details.email);
+    const adjustExpiry = (seconds) => pool.query(
+      "UPDATE account_actions SET expires_at=now()+$2*interval '1 second',otp_expires_at=now()+$2*interval '1 second' WHERE email=$1 AND kind='register'",
+      [details.email, seconds],
+    );
+    await adjustExpiry(-1);
+    await api.post('/api/auth/register').send({ ...details, ...first }).expect(400);
+    const second = await registrationCode(details.email);
+    assert.notEqual(first.registrationToken, second.registrationToken);
+    await api.post('/api/auth/register').send({ ...details, ...first }).expect(400);
+    const wrongCode = (code) => code === '000000' ? '111111' : '000000';
+    await api.post('/api/auth/register').send({ ...details, ...second, code: wrongCode(second.code) }).expect(400);
+    await adjustExpiry(539);
+    const third = await registrationCode(details.email);
+    for (let i = 0; i < 4; i++) {
+      await api.post('/api/auth/register').send({ ...details, ...third, code: wrongCode(third.code) }).expect(400);
+    }
+    await api.post('/api/auth/register').send({ ...details, ...third }).expect(400);
+    assert.equal((await pool.query('SELECT id FROM users WHERE email=$1', [details.email])).rowCount, 0);
+  });
+
   await t.test('credits a referral only once after email verification', async () => {
     await pool.query('DELETE FROM rate_limits');
     const endpoint = '/api/referrals';
@@ -2146,34 +2192,30 @@ test('complete API and database lifecycle', async (t) => {
       password: 'Referral8!',
       referralCode: invite.code,
     };
-    await api.post('/api/auth/register').send({ ...registration, referralCode: 'broken' }).expect(400);
-    await api.post('/api/auth/register').send(registration).expect(201);
-    await api.post('/api/auth/register').send(registration).expect(409);
-
+    const verification = await registrationCode(registration.email);
+    const request = { ...registration, ...verification };
+    await api.post('/api/auth/register').send({ ...request, referralCode: 'broken' }).expect(400);
     const pending = await summary();
-    assert.equal(pending.pending, 1);
+    assert.equal(pending.registered, 0);
     assert.equal(pending.rewarded, 0);
     assert.equal((await readXp(auth())).totalXp, before.totalXp);
-    assert.deepEqual(Object.keys(pending.recent[0]).sort(), ['id', 'registeredAt', 'rewardXp', 'rewardedAt']);
     assert.equal((await summary(other())).registered, 0);
 
-    const verify = '/api/auth/email-verification';
-    await api.post(verify + '/request').send({ email: registration.email }).expect(202);
-    await emailWorker.flush();
-    const mail = sentAccountEmails.find(({ email, kind }) => email === registration.email && kind === 'verify_email');
-    assert.ok(mail);
     const responses = await Promise.all([
-      api.post(verify + '/confirm-code').send({ email: registration.email, code: mail.code }),
-      api.post(verify + '/confirm-code').send({ email: registration.email, code: mail.code }),
+      api.post('/api/auth/register').send(request),
+      api.post('/api/auth/register').send(request),
     ]);
-    assert.deepEqual(responses.map(({ status }) => status).sort(), [204, 400]);
-    await api.post(verify + '/confirm').send({ token: mail.token }).expect(400);
+    const success = responses.find(({ status }) => status === 201);
+    assert.ok(success?.body.emailVerifiedAt);
+    assert.ok(responses.some(({ status }) => status === 400 || status === 409));
+    await api.post('/api/auth/register').send(request).expect(409);
 
     const earned = await summary();
     assert.equal(earned.rewarded, 1);
     assert.equal(earned.pending, 0);
     assert.equal(earned.earnedXp, 50);
     assert.ok(earned.recent[0].rewardedAt);
+    assert.deepEqual(Object.keys(earned.recent[0]).sort(), ['id', 'registeredAt', 'rewardXp', 'rewardedAt']);
     const after = await readXp(auth());
     assert.equal(after.totalXp, before.totalXp + 50);
     assert.equal(after.studySeconds, before.studySeconds);
@@ -2229,8 +2271,7 @@ test('complete API and database lifecycle', async (t) => {
 
   await t.test('creates personalized learning notifications once with real activity', async () => {
     const email = 'notification-test@example.com';
-    const { body: learner } = await api.post('/api/auth/register')
-      .send({ email, password, fullName: 'Notifications learner' }).expect(201);
+    const { body: learner } = await registerAccount({ email, password, fullName: 'Notifications learner' });
     // Pick a real zone where both afternoon checks are due, independent of the test runner clock.
     const zone = (await pool.query(
       `SELECT name FROM pg_timezone_names WHERE name NOT LIKE 'posix/%'
@@ -2505,7 +2546,7 @@ test('complete API and database lifecycle', async (t) => {
       const missing = operations.filter(
         (operation) => !successfulRoutes.has(operation),
       );
-      assert.equal(operations.length, 100);
+      assert.equal(operations.length, 101);
       assert.deepEqual(missing, []);
     },
   );

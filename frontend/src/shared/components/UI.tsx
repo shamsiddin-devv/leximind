@@ -7,7 +7,7 @@ export function Notice({ children, error = false }: { children: ReactNode; error
   </div>;
 }
 
-export function Speak({ text, url, autoplay = false, label = 'Talaffuzni tinglash' }: { text: string; url?: string | null; autoplay?: boolean; label?: string }) {
+export function Speak({ text, url, autoplay = false, label = 'Talaffuzni tinglash', language = 'en-US' }: { language?: string; text: string; url?: string | null; autoplay?: boolean; label?: string }) {
   const player = useRef<HTMLAudioElement | null>(null);
   const speech = useRef<SpeechSynthesisUtterance | null>(null);
   const stop = useCallback(() => {
@@ -26,14 +26,14 @@ export function Speak({ text, url, autoplay = false, label = 'Talaffuzni tinglas
     } else if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'en-US';
+      utterance.lang = language;
       const clear = () => { if (speech.current === utterance) speech.current = null; };
       utterance.onend = clear;
       utterance.onerror = clear;
       speech.current = utterance;
       window.speechSynthesis.speak(utterance);
     }
-  }, [stop, text, url]);
+  }, [language, stop, text, url]);
   useEffect(() => {
     if (autoplay) speak();
     return stop;

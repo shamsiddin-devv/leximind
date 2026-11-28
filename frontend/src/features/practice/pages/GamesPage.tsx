@@ -1,4 +1,5 @@
-import { ArrowRight, BookOpen, Brain, Gamepad2, Languages } from 'lucide-react';
+import { ArrowRight, BookOpen, Brain, Gamepad2, Languages, Map } from 'lucide-react';
+import { Link, routes } from '../../../app/router';
 import type { Activity, GameScore } from '../../../shared/types/api';
 import { activities } from '../activities';
 import { ActivityTile } from '../components/ActivityTile';
@@ -11,12 +12,15 @@ const groups = [
   { id: 'assessment', title: 'Darajani aniqlash', description: 'Inglizcha so‘z boyligingizni CEFR bo‘yicha sinang.', icon: BookOpen, color: 'amber' },
 ] as const;
 
-export function GamesPage({ busy, scores, onActivity }: { busy: boolean; scores: GameScore[]; onActivity: (kind: Activity) => void }) {
+export function GamesPage({ busy, scores, courseReviewId, onActivity }: { busy: boolean; scores: GameScore[]; courseReviewId?: string; onActivity: (kind: Activity) => void }) {
   return <div className="container screen inner-screen games-page">
     <div className="page-intro"><span className="tile-icon violet"><Gamepad2 size={27} /></span><h1 lang="en">Games</h1>
       <p>So‘z boyligingizni kengaytiring yoki xotirangizni sinab ko‘ring.</p></div>
     <nav className="game-jump" aria-label="O‘yin bo‘limlari">
       {groups.map(({ id, title, icon: Icon }) => <a className="filter" href={'#games-' + id} key={id}><Icon size={16} />{title}</a>)}
+      <Link className="filter" href={courseReviewId ? routes.learningPath + '/lesson/' + courseReviewId + '?practice=1' : routes.learningPath}>
+        <Map size={16} aria-hidden="true" />{courseReviewId ? 'O‘tilgan darsni mashq qilish' : 'Learning Path'}
+      </Link>
     </nav>
     <div className="game-groups" aria-busy={busy}>
       {groups.map(({ id, title, description, icon: Icon, color }) => <section className={`game-group ${id === 'memory' ? 'memory-game-group' : ''}`} key={id} id={'games-' + id} aria-labelledby={'heading-' + id}>

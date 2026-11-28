@@ -35,11 +35,19 @@ const headings = [
   ['Kuniga qancha vaqt ajratasiz?', 'Kichik maqsad uzoq davom etadi. Keyin o‘zgartirishingiz mumkin.'],
   ['Darajangizni aniqlaymiz', '6 ta qisqa savol boshlang‘ich darajangizni taxmin qilishga yordam beradi.'],
   ['Natijangiz tayyor', 'Tavsiya etilgan darajadan boshlab o‘rganishingiz mumkin.'],
-  ['Hisobingizni yarating', 'Ism, email va parol — shu uchta ma’lumot kerak.'],
+  ['Hisobingizni yarating', 'Ism, email va parolni kiriting.'],
+  ['Emailni tasdiqlang', 'Hisobni yaratish uchun emailingizga yuborilgan 6 xonali kodni kiriting.'],
 ];
 
-export function RegisterOnboarding({ renderForm, busy, referred }: { renderForm: (preferences: RegistrationPreferences) => ReactNode; busy: boolean; referred: boolean }) {
-  const [step, setStep] = useState(1);
+export function RegisterOnboarding({ renderForm, busy, referred, verification, onEditEmail }: {
+  renderForm: (preferences: RegistrationPreferences) => ReactNode;
+  busy: boolean;
+  referred: boolean;
+  verification: ReactNode;
+  onEditEmail: () => void;
+}) {
+  const [detailsStep, setStep] = useState(1);
+  const step = verification ? headings.length : detailsStep;
   const [english, setEnglish] = useState(false);
   const [minutes, setMinutes] = useState(10);
   const [answers, setAnswers] = useState<number[]>([]);
@@ -64,7 +72,8 @@ export function RegisterOnboarding({ renderForm, busy, referred }: { renderForm:
   }
 
   function goBack() {
-    if (step === 3 && questionIndex > 0) changeQuestion(questionIndex - 1);
+    if (verification) { onEditEmail(); changeStep(5); }
+    else if (step === 3 && questionIndex > 0) changeQuestion(questionIndex - 1);
     else changeStep(step - 1);
   }
 
@@ -83,10 +92,10 @@ export function RegisterOnboarding({ renderForm, busy, referred }: { renderForm:
       <div className="welcome-register-track">
         {step === 1 ? <Link className="welcome-back-circle" href={routes.login} aria-label="Kirish sahifasiga"><ArrowLeft size={15} /></Link>
           : <button type="button" className="welcome-back-circle" onClick={goBack} disabled={busy} aria-label="Orqaga"><ArrowLeft size={15} /></button>}
-        <div className="welcome-step-track" role="progressbar" aria-label="Ro‘yxatdan o‘tish bosqichi" aria-valuemin={0} aria-valuemax={5} aria-valuenow={step}>
+        <div className="welcome-step-track" role="progressbar" aria-label="Ro‘yxatdan o‘tish bosqichi" aria-valuemin={1} aria-valuemax={headings.length} aria-valuenow={step}>
           {headings.map(([title], index) => <span key={title} data-reached={index < step || undefined} />)}
         </div>
-        <span>{step} / 5</span><Link className="welcome-register-exit" href={routes.home} aria-label="Chiqish"><X size={17} /></Link>
+        <span>{step} / {headings.length}</span><Link className="welcome-register-exit" href={routes.home} aria-label="Chiqish"><X size={17} /></Link>
       </div>
     </header>
     <main className="welcome-register-main" id="main" tabIndex={-1}>
@@ -149,6 +158,7 @@ export function RegisterOnboarding({ renderForm, busy, referred }: { renderForm:
           <button className="welcome-button welcome-primary" type="button" onClick={() => changeStep(5)}>Hisob yaratish <ArrowRight size={16} /></button>
         </div>
       </>}
+      {verification}
       {step === 5 && renderForm({ dailyStudyMinutes: minutes, dailyNewWords: placement.words, studyLevel: placement.level })}
     </main>
   </div>;

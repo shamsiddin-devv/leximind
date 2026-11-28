@@ -1,9 +1,12 @@
+import { timingSafeEqual } from 'node:crypto';
+import { maxEmailCodeAttempts } from '../../application/use-cases/user/AccountActions';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, count, eq, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type {
   InitialLearningPreferences,
   IUserRepository,
+  RegistrationEmailProof,
 } from '../../domain/repositories/IUserRepository';
 import { User } from '../../domain/entities/User';
 import { referralRewardXp } from '../../domain/repositories/IReferralRepository';
@@ -14,6 +17,7 @@ import { UnavailableError } from '../../domain/errors/UnavailableError';
 import { DRIZZLE } from '../db/drizzle/drizzle.provider';
 import { relations } from '../db/drizzle/drizzle.relations';
 import {
+  accountActions,
   avatarCleanupJobs,
   learnerProfiles,
   users,
@@ -58,17 +62,51 @@ export class DrizzleUserRepository implements IUserRepository {
   }
   async create(
     data: User,
-    passwordHash: string,
+    hashPassword: () => Promise<string>,
+    proof: RegistrationEmailProof,
     preferences?: InitialLearningPreferences,
     referralCode?: string,
   ) {
     return this.db.transaction(async (tx) => {
+      const email = data.email.toString();
+      const challenge = and(
+        eq(accountActions.tokenHash, proof.tokenHash),
+        eq(accountActions.email, email),
+        eq(accountActions.kind, 'register'),
+        sql`${accountActions.otpExpiresAt} > clock_timestamp()`,
+      );
+      const [code] = await tx
+        .select({
+          hash: accountActions.otpHash,
+          attempts: accountActions.otpAttempts,
+        })
+        .from(accountActions)
+        .where(challenge)
+        .for('update');
+      if (!code?.hash || code.attempts >= maxEmailCodeAttempts) return null;
+      if (
+        !timingSafeEqual(
+          Buffer.from(code.hash, 'hex'),
+          Buffer.from(proof.codeHash, 'hex'),
+        )
+      ) {
+        await tx
+          .update(accountActions)
+          .set({ otpAttempts: code.attempts + 1 })
+          .where(challenge);
+        return null;
+      }
+
+      await tx
+        .delete(accountActions)
+        .where(eq(accountActions.tokenHash, proof.tokenHash));
       const [r] = await tx
         .insert(users)
         .values({
           fullName: data.fullName.trim(),
-          email: data.email.toString(),
-          passwordHash,
+          email,
+          passwordHash: await hashPassword(),
+          emailVerifiedAt: new Date(),
         })
         .returning();
       await tx.insert(learnerProfiles).values({
@@ -83,8 +121,8 @@ export class DrizzleUserRepository implements IUserRepository {
       });
       if (referralCode) {
         await tx.execute(sql`
-          INSERT INTO referrals (referrer_id, referred_user_id, reward_xp)
-          SELECT id, ${r.id}, ${referralRewardXp}
+          INSERT INTO referrals (referrer_id, referred_user_id, reward_xp, rewarded_at)
+          SELECT id, ${r.id}, ${referralRewardXp}, now()
           FROM users WHERE referral_code=${referralCode} AND id<>${r.id}
           FOR KEY SHARE
         `);

@@ -1,17 +1,43 @@
 import { Injectable } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
 import type { PoolClient } from 'pg';
-import type {
-  AccountActionKind,
-  AccountActionStore,
+import {
+  maxEmailCodeAttempts,
+  type AccountActionKind,
+  type AccountActionStore,
+  type AccountEmailKind,
+  type RegistrationCode,
 } from '../../application/use-cases/user/AccountActions';
 import { DatabasePool } from '../db/drizzle/drizzle.provider';
-
-const maxCodeAttempts = 5;
 
 @Injectable()
 export class AccountActionRepository implements AccountActionStore {
   constructor(private readonly pool: DatabasePool) {}
+
+  async issueRegistration({
+    email,
+    tokenHash,
+    codeHash,
+    encryptedCode,
+  }: RegistrationCode) {
+    const result = await this.pool.query(
+      `INSERT INTO account_actions(token_hash,email,kind,expires_at,encrypted_token,otp_hash,otp_expires_at)
+       VALUES ($1,$2,'register',statement_timestamp()+interval '10 minutes',$3,$4,statement_timestamp()+interval '10 minutes')
+       ON CONFLICT (email) WHERE kind='register' DO UPDATE SET
+         token_hash=excluded.token_hash,
+         expires_at=excluded.expires_at,
+         encrypted_token=excluded.encrypted_token,
+         otp_hash=excluded.otp_hash,
+         otp_expires_at=excluded.otp_expires_at,
+         otp_attempts=CASE WHEN account_actions.expires_at<=clock_timestamp() THEN 0 ELSE account_actions.otp_attempts END,
+         deliver_after=now(),
+         delivery_attempts=0
+       WHERE account_actions.expires_at<=clock_timestamp()
+          OR (account_actions.expires_at<=clock_timestamp()+interval '9 minutes' AND account_actions.otp_attempts<$5)`,
+      [tokenHash, email, encryptedCode, codeHash, maxEmailCodeAttempts],
+    );
+    return result.rowCount === 1;
+  }
 
   async issue(
     userId: string,
@@ -44,7 +70,7 @@ export class AccountActionRepository implements AccountActionStore {
         [userId, kind],
       );
       const attempts = previous?.usable ? previous.attempts : 0;
-      if (previous?.coolingDown || attempts >= maxCodeAttempts) return;
+      if (previous?.coolingDown || attempts >= maxEmailCodeAttempts) return;
 
       await client.query(
         `UPDATE account_actions SET otp_hash=NULL, otp_expires_at=NULL, otp_attempts=0, encrypted_token=NULL
@@ -72,12 +98,13 @@ export class AccountActionRepository implements AccountActionStore {
     const { rows } = await this.pool.query<{
       digest: string;
       email: string;
-      kind: AccountActionKind;
+      kind: AccountEmailKind;
       encryptedToken: string;
     }>(
       `WITH pending AS (
-         SELECT a.token_hash FROM account_actions a JOIN users u ON u.id=a.user_id AND u.email=a.email
-         WHERE a.encrypted_token IS NOT NULL AND a.expires_at>now() AND a.deliver_after<=now()
+         SELECT a.token_hash FROM account_actions a LEFT JOIN users u ON u.id=a.user_id AND u.email=a.email
+         WHERE (a.kind='register' OR u.id IS NOT NULL)
+           AND a.encrypted_token IS NOT NULL AND a.expires_at>now() AND a.deliver_after<=now()
            AND a.delivery_attempts<6
          ORDER BY a.deliver_after,a.token_hash LIMIT 1 FOR UPDATE OF a SKIP LOCKED
        )
@@ -143,7 +170,7 @@ export class AccountActionRepository implements AccountActionStore {
          AND expires_at>clock_timestamp()`,
         [user.id, email, kind],
       );
-      if (!code || code.attempts >= maxCodeAttempts) return false;
+      if (!code || code.attempts >= maxEmailCodeAttempts) return false;
       if (
         !timingSafeEqual(
           Buffer.from(code.digest, 'hex'),

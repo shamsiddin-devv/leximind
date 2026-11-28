@@ -71,7 +71,7 @@
 .welcome-back-circle { border: 1px solid var(--welcome-line); border-radius: 50%; }
 .welcome-register-exit { border-radius: 8px; }
 .welcome-back-circle:hover, .welcome-register-exit:hover { background: var(--welcome-panel); color: var(--welcome-text); }
-.welcome-step-track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); flex: 1; gap: 6px; }
+.welcome-step-track { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); flex: 1; gap: 6px; }
 .welcome-step-track span { height: 3px; border-radius: 99px; background: var(--welcome-line); }
 .welcome-step-track [data-reached] { background: var(--welcome-accent); }
 .welcome-registration .welcome-register-main { width: min(624px, calc(100% - 40px)); margin-inline: auto; padding-block: 64px 48px; }

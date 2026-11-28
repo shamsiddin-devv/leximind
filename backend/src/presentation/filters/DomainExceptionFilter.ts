@@ -30,6 +30,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
         UNAUTHORIZED: 401,
         VALIDATION: 422,
         UNAVAILABLE: 503,
+        RATE_LIMITED: 429,
       }[error.code];
       message = error.message;
     } else if (error instanceof HttpException) {

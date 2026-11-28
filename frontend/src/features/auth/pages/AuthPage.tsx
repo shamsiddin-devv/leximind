@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowRight, Check, Mail } from 'lucide-react';
+import { ArrowRight, Mail } from 'lucide-react';
 import { Link, navigate, routes } from '../../../app/router';
 import { Notice } from '../../../shared/components/UI';
 import { api, ApiError, explain } from '../../../shared/services/api';
 import type { SessionToken } from '../../../shared/types/api';
-import { RegisterOnboarding, type RegistrationPreferences } from '../components/RegisterOnboarding';
 import { AuthLayout } from '../components/AuthLayout';
 import { EmailCodeField } from '../components/EmailCodeField';
 import { useEmailCodeCooldown } from '../hooks/useEmailCodeCooldown';
@@ -12,33 +11,29 @@ import { minimumPasswordLength, WelcomePasswordField } from '../components/Welco
 import './AuthWelcome.css';
 
 export type AccountLink = { action: 'verify_email' | 'reset_password'; token: string };
-type Mode = 'login' | 'register' | 'recover' | 'reset' | 'verify';
+type Mode = 'login' | 'recover' | 'reset' | 'verify';
 const copy = {
   login: { title: 'Xush kelibsiz', description: 'Davom etish uchun hisobingizga kiring.', action: 'Kirish' },
-  register: { title: 'Hisobingizni yarating', description: 'Ism, email va parolni kiriting.', action: 'Hisobni yaratish' },
   recover: { title: 'Parolni tiklash', description: 'Tiklash kodini olish uchun email manzilingizni kiriting.', action: 'Kod yuborish' },
   reset: { title: 'Yangi parol o‘rnating', description: 'LexiMind akkauntingiz uchun yangi parol kiriting.', action: 'Parolni saqlash' },
   verify: { title: 'Emailni tasdiqlash', description: 'Email manzilingizni tasdiqlash uchun quyidagi tugmani bosing.', action: 'Emailni tasdiqlash' },
 };
 
-export function AuthPage({ mode, link, signedIn, referralCode, onLogin, onConfirmed }: {
-  mode: Mode; link?: AccountLink; signedIn?: boolean; referralCode?: string; onLogin: (session: SessionToken) => void; onConfirmed: (action: AccountLink['action']) => void;
+export function AuthPage({ mode, link, signedIn, onLogin, onConfirmed }: {
+  mode: Mode; link?: AccountLink; signedIn?: boolean; onLogin: (session: SessionToken) => void; onConfirmed: (action: AccountLink['action']) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [complete, setComplete] = useState(false);
-  const [created, setCreated] = useState(false);
   const [invalidLink, setInvalidLink] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const codeCooldown = useEmailCodeCooldown();
   const active = useRef<AbortController | null>(null);
-  const register = mode === 'register';
-  const ref = register && referralCode && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(referralCode) ? referralCode : undefined;
   const enteringCode = mode === 'recover' && Boolean(recoveryEmail);
-  const needsEmail = mode === 'login' || register || (mode === 'recover' && !enteringCode);
-  const needsPassword = mode === 'login' || register || mode === 'reset' || enteringCode;
-  const newPassword = register || mode === 'reset' || enteringCode;
+  const needsEmail = mode === 'login' || (mode === 'recover' && !enteringCode);
+  const needsPassword = mode === 'login' || mode === 'reset' || enteringCode;
+  const newPassword = mode === 'reset' || enteringCode;
   const content = enteringCode ? { ...copy.reset, description: 'Emaildagi kodni va yangi parolingizni kiriting.' } : copy[mode];
   const returnToVerification = mode === 'verify' && signedIn;
   const returnLink = returnToVerification ? routes.settingsVerifyEmail : routes.login;
@@ -67,14 +62,12 @@ export function AuthPage({ mode, link, signedIn, referralCode, onLogin, onConfir
     }
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>, preferences?: RegistrationPreferences) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (active.current || complete || created || invalidLink) return;
+    if (active.current || complete || invalidLink) return;
     const fields = new FormData(event.currentTarget);
     const email = String(fields.get('email') ?? '').trim();
     const password = String(fields.get('password') ?? '');
-    const fullName = String(fields.get('fullName') ?? '').trim();
-    if (register && !fullName) { setError('Ism va familiyangizni kiriting.'); return; }
     if (newPassword && Array.from(password).length < minimumPasswordLength) {
       setError('Parol kamida ' + minimumPasswordLength + ' belgidan iborat bo‘lishi kerak.');
       return;
@@ -86,7 +79,6 @@ export function AuthPage({ mode, link, signedIn, referralCode, onLogin, onConfir
     const request = new AbortController();
     active.current = request;
     const options = { method: 'POST', signal: request.signal };
-    let registered = false;
     setBusy(true); setError(''); setMessage('');
     try {
       if (mode === 'recover') {
@@ -108,23 +100,16 @@ export function AuthPage({ mode, link, signedIn, referralCode, onLogin, onConfir
         onConfirmed(link.action);
         return;
       }
-      if (register) {
-        await api('/auth/register', { ...options, body: { fullName, email, password, ...preferences, referralCode: ref } });
-        registered = true;
-      }
       const session = await api<SessionToken>('/auth/login', { ...options, body: { email, password, rememberSession: true } });
-      if (!request.signal.aborted) { onLogin(session); navigate(ref ? routes.settingsVerifyEmail : routes.dashboard, true); }
+      if (!request.signal.aborted) { onLogin(session); navigate(routes.dashboard, true); }
     } catch (failure) {
       if (request.signal.aborted) return;
-      if (registered) {
-        setCreated(true);
-        setMessage('Akkaunt yaratildi. Kirish sahifasida parolingiz bilan davom eting.');
-      } else if (link && failure instanceof ApiError && failure.status === 400) {
+      if (link && failure instanceof ApiError && failure.status === 400) {
         setInvalidLink(true);
         setError('Havola yaroqsiz, muddati tugagan yoki ishlatib bo‘lingan.');
       } else {
         const errors: Record<number, string> = {
-          409: register ? 'Bu email bilan akkaunt mavjud. Kirish sahifasidan foydalaning.' : 'Havola eskirgan yoki ilgari ishlatilgan.',
+          409: 'Havola eskirgan yoki ilgari ishlatilgan.',
         };
         if (mode === 'recover') {
           errors[503] = 'Parolni tiklash uchun email xizmati hozircha ishlamayapti.';
@@ -137,15 +122,11 @@ export function AuthPage({ mode, link, signedIn, referralCode, onLogin, onConfir
     }
   }
 
-  function accountForm(preferences?: RegistrationPreferences) {
-    return <form className={register ? 'welcome-register-form' : 'welcome-login-form'}
-      aria-labelledby={register ? 'welcome-register-title' : 'welcome-login-title'} onSubmit={(event) => void submit(event, preferences)}>
-      {!created && !complete && !invalidLink && (needsEmail || needsPassword) && <div className={register ? 'welcome-register-fields' : 'welcome-login-fields'}>
-        {register && <div className="welcome-field"><label htmlFor="full-name">To‘liq ism va familiya</label>
-          <input id="full-name" name="fullName" placeholder="Aziza Karimova" autoComplete="name" required maxLength={255} enterKeyHint="next" />
-        </div>}
+  function accountForm() {
+    return <form className="welcome-login-form" aria-labelledby="welcome-login-title" onSubmit={(event) => void submit(event)}>
+      {!complete && !invalidLink && (needsEmail || needsPassword) && <div className="welcome-login-fields">
         {needsEmail && <div className="welcome-field"><label htmlFor="email">Email</label>
-          <div className="welcome-input-wrap">{!register && <Mail className="welcome-input-icon" size={16} aria-hidden="true" />}
+          <div className="welcome-input-wrap"><Mail className="welcome-input-icon" size={16} aria-hidden="true" />
             <input id="email" name="email" type="email" placeholder="siz@example.com" spellCheck={false}
               autoComplete={mode === 'login' ? 'username' : 'email'} required maxLength={255} enterKeyHint={needsPassword ? 'next' : 'send'} />
           </div>
@@ -160,7 +141,7 @@ export function AuthPage({ mode, link, signedIn, referralCode, onLogin, onConfir
           <EmailCodeField id="recovery-code" />
         </>}
         {needsPassword && <WelcomePasswordField id="password" name="password" label={mode === 'reset' || enteringCode ? 'Yangi parol' : 'Parol'}
-          placeholder={newPassword ? 'Kamida 8 belgi' : '••••••••'} newPassword={newPassword} hint={newPassword} icon={!register} />}
+          placeholder={newPassword ? 'Kamida 8 belgi' : '••••••••'} newPassword={newPassword} hint={newPassword} icon />}
       </div>}
       {error && <Notice error>{error}</Notice>}
       {message && <Notice>{message}</Notice>}
@@ -168,11 +149,7 @@ export function AuthPage({ mode, link, signedIn, referralCode, onLogin, onConfir
         <button type="button" disabled={busy || codeCooldown.coolingDown} onClick={() => void resendCode()}>Kodni qayta yuborish</button>
         {codeCooldown.coolingDown && <span>1 daqiqadan keyin qayta so‘rashingiz mumkin.</span>}
       </div>}
-      {register ? <div className="welcome-register-actions">
-        <small>Hisobingiz bormi? <Link href={routes.login}>Kirish</Link></small>
-        {created ? <Link className="welcome-button welcome-primary" href={routes.login}>Kirish sahifasiga <ArrowRight size={16} /></Link>
-          : <button className="welcome-button welcome-primary" disabled={busy} type="submit">{busy ? 'Yuborilmoqda…' : content.action} <Check size={16} /></button>}
-      </div> : invalidLink
+      {invalidLink
         ? <AccountLinkActions action={link?.action} signedIn={signedIn} />
         : complete
         ? <Link className="welcome-button welcome-primary" href={returnLink}>{returnLabel} <ArrowRight size={16} /></Link>
@@ -180,7 +157,6 @@ export function AuthPage({ mode, link, signedIn, referralCode, onLogin, onConfir
     </form>;
   }
 
-  if (register) return <RegisterOnboarding renderForm={accountForm} busy={busy} referred={Boolean(ref)} />;
   return <AuthLayout title={content.title} description={content.description} login={mode === 'login'}>{accountForm()}</AuthLayout>;
 }
 

@@ -45,7 +45,10 @@ export class AuthGuard implements CanActivate {
       this.tokens.digest(header.slice(7)),
     );
     if (!identity) {
-      ctx.switchToHttp().getResponse<Response>().setHeader('WWW-Authenticate', 'Bearer error="invalid_token"');
+      ctx
+        .switchToHttp()
+        .getResponse<Response>()
+        .setHeader('WWW-Authenticate', 'Bearer error="invalid_token"');
       throw new UnauthorizedException('Session invalid or expired.');
     }
     req.identity = identity;

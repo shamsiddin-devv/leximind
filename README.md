@@ -30,11 +30,11 @@ Migrations use a PostgreSQL advisory lock, a transaction per migration, and SHA-
 
 ## API workflows
 
-All routes below use `/api`. Authentication is required except registration, login and health. Send `Authorization: Bearer <accessToken>`. IDs are UUIDs, unknown body/query fields are rejected, optional fields accept omission but not `null`, and bulk requests are bounded.
+All routes below use `/api`. Authentication is required except registration, login, and health. Send `Authorization: Bearer <accessToken>`. IDs are UUIDs, unknown body/query fields are rejected, optional fields accept omission but not `null`, and bulk requests are bounded.
 
 | Area | Routes | Behavior |
 | --- | --- | --- |
-| Authentication | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout` | Register, issue a session, revoke the current session |
+| Authentication | `POST /auth/register/request`, `POST /auth/register`, `POST /auth/login`, `POST /auth/logout` | Send a registration code, create a verified account, issue a session, and revoke the current session |
 | Account | `GET/PATCH/DELETE /users/me`, `PATCH /users/me/password` | Own account; password changes revoke all sessions |
 | Administration | `GET /users`, `GET /users/:id` | Admin only, paginated user list |
 | Vocabulary | `GET /words`, `GET /words/:id`, `GET /words/daily` | Search, CEFR filter, pagination and a catalog word selected for the current UTC day |
@@ -55,6 +55,10 @@ All routes below use `/api`. Authentication is required except registration, log
 | Notifications | `GET /notifications`, `PATCH /notifications/:id/read`, `PATCH /notifications/read-all` | Account-specific notification history and unread count |
 | Notification delivery | `GET /notifications/delivery`, `POST /notifications/push-subscriptions`, `DELETE /notifications/push-subscriptions/:id` | Channel status and browser subscriptions associated with the current session |
 
+### Registration and email verification
+
+After the placement test and account details, the web app requests a six-digit email code using `POST /auth/register/request`. Keep the returned `registrationToken` for confirmation. Submit it with the code and account details to `POST /auth/register`, then sign in. Registration requires a configured account email provider. Codes expire after ten minutes, can be resent after one minute, and allow up to five incorrect attempts. A new account and its learner profile are created only when the code is accepted.
+
 ### Joining through a referral
 
 The link on the Referrals page takes new users to `/register?ref=…`. When a user who signed up through that link verifies their email, the referrer receives 50 XP once. The reward counts toward learning statistics, the calendar, and the leaderboard. The page does not disclose referred users' personal information. Migration `026_referrals.sql` assigns referral codes to existing accounts. XP previously awarded for friendships remains in the totals.
@@ -73,8 +77,11 @@ Pagination uses `page` (default 1) and `limit` (default 20, max 100). Cards also
 Example bodies:
 
 ```json
+// POST /auth/register/request
+{"email":"learner@example.com"}
+
 // POST /auth/register
-{"fullName":"Learner","email":"learner@example.com","password":"a-long-private-password"}
+{"fullName":"Learner","email":"learner@example.com","password":"a-long-private-password","registrationToken":"<token returned by /auth/register/request>","code":"123456"}
 
 // POST /words (admin)
 {"text":"apple","cefrLevel":"A1","sense":[{"definition":"A fruit","exampleSentence":"I eat an apple.","translationUz":"olma","orderIndex":0}]}

@@ -373,9 +373,7 @@ export const usedSessionRefreshTokens = pgTable('used_session_refresh_tokens', {
 });
 export const accountActions = pgTable('account_actions', {
   tokenHash: char('token_hash', { length: 64 }).primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
   email: varchar({ length: 255 }).notNull(),
   kind: text().notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
